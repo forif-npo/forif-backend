@@ -1,0 +1,40 @@
+name: Java CI with Gradle
+
+# 어떤 이벤트가 발생했을 때 이 워크플로우를 실행할지 정의합니다.
+on:
+  # main, release, dev 브랜치에 코드가 push될 때 실행됩니다.
+  push:
+    branches: [ "main", "release", "dev" ]
+  # main, release, dev 브랜치로 Pull Request가 생성/업데이트될 때 실행됩니다.
+  pull_request:
+    branches: [ "main", "release", "dev" ]
+
+# 실행될 작업(job)들을 정의합니다.
+jobs:
+  # 'build-and-test' 라는 이름의 작업을 정의합니다.
+  # 이 이름이 브랜치 보호 규칙에서 사용하는 '상태 확인(status check)'의 이름이 됩니다.
+  build-and-test:
+    # 이 작업이 실행될 가상 환경을 지정합니다. (최신 우분투)
+    runs-on: ubuntu-latest
+
+    # 작업이 수행할 단계(step)들을 순서대로 나열합니다.
+    steps:
+      # 1. 소스 코드를 가상 환경으로 내려받습니다. (체크아웃)
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Java(JDK)를 설치합니다.
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      # 3. gradlew 파일에 실행 권한을 부여합니다.
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      # 4. Gradle wrapper를 사용해 프로젝트를 빌드하고 테스트를 실행합니다.
+      #    'build' 명령어는 test도 포함하여 실행합니다.
+      - name: Build and test with Gradle
+        run: ./gradlew build
