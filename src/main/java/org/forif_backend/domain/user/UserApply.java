@@ -29,12 +29,6 @@ public class UserApply extends BaseTimeEntity {
     @Column(nullable = false)
     private int applySemester;
 
-    @Column(length = 50)
-    private String applyDate;
-
-    @Column(length = 100)
-    private String applyPath;
-
     @Column(nullable = false)
     private int primaryStudy;
 
