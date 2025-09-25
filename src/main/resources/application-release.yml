@@ -1,7 +1,7 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: {RDS_URL}/forif
+    url: ${RDS_URL}/forif
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
 
