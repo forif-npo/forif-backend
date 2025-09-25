@@ -48,7 +48,8 @@ public enum ErrorCode {
     
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR031-409", "이미 가입된 사용자입니다."),
-    
+    USER_APPLY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR032-409", "이번학기 스터디에 이미 지원 했습니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "서버 내부 오류가 발생했습니다.");
     
