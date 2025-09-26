@@ -27,7 +27,7 @@ public class UserService {
      */
     public void applyStudy(User user, StudyApplyRequest request) {
         // 이번 학기에 지원한 스터디 있는지 확인
-        if(userRepository.existUserApply(DateUtils.getCurrentYear(), DateUtils.getCurrentSemester())) {
+        if(userRepository.existUserApply(DateUtils.getCurrentYear(), DateUtils.getCurrentSemester(), user)) {
             throw new ForifException(ErrorCode.USER_APPLY_ALREADY_EXISTS);
         }
 

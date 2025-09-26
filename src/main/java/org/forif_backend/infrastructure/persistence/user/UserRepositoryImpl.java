@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.stereotype.Repository;
@@ -23,12 +24,13 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public boolean existUserApply(int year, int semester) {
+    public boolean existUserApply(int year, int semester, User applier) {
         Integer isExist = queryFactory.selectOne()
                 .from(userApply)
                 .where(
                         userApply.applyYear.eq(year),
-                        userApply.applySemester.eq(semester)
+                        userApply.applySemester.eq(semester),
+                        userApply.applier.eq(applier)
                 )
                 .fetchFirst();
         return isExist != null;
