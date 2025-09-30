@@ -35,7 +35,7 @@ public class UserService {
     /**
      * 부원 회원가입 (Google OAuth 이메일 인증 + 직접 입력)
      */
-    public ApiResponse<UserSignUpResponse> memberSignUp(UserSignUpRequest request, String googleAccessToken) {
+    public ApiResponse<UserSignUpResponse> userSignUp(UserSignUpRequest request, String googleAccessToken) {
         // 1. Google에서 이메일만 가져오기 (트랜잭션 밖에서 수행)
         String email = getEmailFromGoogleToken(googleAccessToken);
         
@@ -45,7 +45,7 @@ public class UserService {
         }
         
         // 3. 트랜잭션 내에서 DB 작업 수행
-        UserSignUpResponse response = createMemberWithTransaction(request, email);
+        UserSignUpResponse response = createUserWithTransaction(request, email);
         return ApiResponse.success(response);
     }
 
@@ -53,7 +53,7 @@ public class UserService {
      * 트랜잭션 내에서 회원 생성
      */
     @Transactional
-    private UserSignUpResponse createMemberWithTransaction(UserSignUpRequest request, String email) {
+    private UserSignUpResponse createUserWithTransaction(UserSignUpRequest request, String email) {
         // 1. 중복 확인
         if (userRepository.findById(request.studentId()).isPresent()) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 학번입니다.");
@@ -63,7 +63,7 @@ public class UserService {
         }
 
         // 2. 사용자 생성 (Google 이메일 + 직접 입력 정보)
-        User user = User.createMember(
+        User user = User.createUser(
             request.studentId(),
             request.userName(),         // 직접 입력
             email,                      // Google에서 가져온 이메일
@@ -83,7 +83,7 @@ public class UserService {
     /**
      * 부원 로그인 (Google OAuth 이메일 기반)
      */
-    public ApiResponse<UserSignInResponse> memberSignIn(UserSignInRequest request) {
+    public ApiResponse<UserSignInResponse> userSignIn(UserSignInRequest request) {
         // 1. Google에서 이메일만 가져오기
         String email = getEmailFromGoogleToken(request.accessToken());
         

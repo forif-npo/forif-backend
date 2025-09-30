@@ -39,7 +39,7 @@ public class User extends BaseTimeEntity {
         this.department = department;
     }
 
-    public static User createMember(Long id, String userName, String email, String phoneNum, String department) {
+    public static User createUser(Long id, String userName, String email, String phoneNum, String department) {
         return new User(id, userName, email, phoneNum, department);
     }
 }

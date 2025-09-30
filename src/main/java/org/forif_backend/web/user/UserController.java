@@ -18,11 +18,11 @@ public class UserController {
      * 부원 회원가입 
      */
     @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<UserSignUpResponse>> memberSignUp(
+    public ResponseEntity<ApiResponse<UserSignUpResponse>> userSignUp(
             @RequestHeader("Authorization") String googleAccessToken,
             @RequestBody UserSignUpRequest request
     ) {
-        ApiResponse<UserSignUpResponse> response = userService.memberSignUp(request, googleAccessToken);
+        ApiResponse<UserSignUpResponse> response = userService.userSignUp(request, googleAccessToken);
         return ResponseEntity.ok(response);
     }
 
@@ -30,8 +30,8 @@ public class UserController {
      * 부원 로그인 
      */
     @PostMapping("/signin")
-    public ResponseEntity<ApiResponse<UserSignInResponse>> memberSignIn(@RequestBody UserSignInRequest request) {
-        ApiResponse<UserSignInResponse> response = userService.memberSignIn(request);
+    public ResponseEntity<ApiResponse<UserSignInResponse>> userSignIn(@RequestBody UserSignInRequest request) {
+        ApiResponse<UserSignInResponse> response = userService.userSignIn(request);
         return ResponseEntity.ok(response);
     }
 
