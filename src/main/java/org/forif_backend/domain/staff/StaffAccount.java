@@ -14,12 +14,12 @@ import org.forif_backend.domain.user.User;
 public class StaffAccount extends BaseTimeEntity {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "staff_account_id")
+    @Column(name = "user_id")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @MapsId
+    @JoinColumn(name = "user_id")
     private User user;
 
     @Column(length = 100, nullable = false)
@@ -51,6 +51,6 @@ public class StaffAccount extends BaseTimeEntity {
      * User ID 반환
      */
     public Long getUserId() {
-        return this.user.getId();
+        return this.id;
     }
 }
