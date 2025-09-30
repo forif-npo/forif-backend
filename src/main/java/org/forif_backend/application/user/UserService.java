@@ -5,6 +5,7 @@ import org.forif_backend.application.study.StudyService;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserRepository;
@@ -18,7 +19,7 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final StudyService studyService;
+    private final StudyRepository studyRepository;
 
     /**
      * 스터디 지원 메서드
@@ -32,8 +33,10 @@ public class UserService {
         }
 
         // 지원 스터디 존재 확인
-        studyService.getStudy(request.primaryStudyId());
-        Optional.ofNullable(request.secondaryStudyId()).ifPresent(studyService::getStudy);
+        studyRepository.findStudyById(request.primaryStudyId())
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        Optional.ofNullable(request.secondaryStudyId()).ifPresent(secondaryStudyId -> studyRepository.findStudyById(secondaryStudyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND)));
 
         // 지원 정보 생성
         UserApply userApply = UserApply.applyStudy(request, user);
