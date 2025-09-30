@@ -46,28 +46,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // 2. 토큰이 없으면 다음 필터로 진행
                 if(token == null) {
-                    log.debug("토큰이 없습니다. URI: {}", request.getRequestURI());
+                    log.info("토큰이 없습니다. URI: {}", request.getRequestURI());
                     filterChain.doFilter(request, response);
                     return;
                 }
 
                 // 3. 토큰이 유효한지 검증
                 if(!jwtProvider.validateToken(token)) {
-                    log.warn("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
+                    log.error("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
                     filterChain.doFilter(request, response);
                     return;
                 }
 
                 // 4. 토큰 만료 여부 확인
                 if(jwtProvider.isExpired(token)) {
-                    log.warn("토큰이 만료되었습니다. URI: {}", request.getRequestURI());
+                    log.info("토큰이 만료되었습니다. URI: {}", request.getRequestURI());
                     filterChain.doFilter(request, response);
                     return;
                 }
 
                 // 5. 토큰에서 사용자 ID 추출 및 인증 정보 설정
                 setAuthentication(token, request);
-                log.debug("JWT 인증 성공. ID: {}", jwtProvider.getUserIdFromToken(token));
+                log.info("JWT 인증 성공. ID: {}", jwtProvider.getUserIdFromToken(token));
 
             } catch (Exception e) {
                 log.error("JWT 인증 실패: {}", e.getMessage(), e);

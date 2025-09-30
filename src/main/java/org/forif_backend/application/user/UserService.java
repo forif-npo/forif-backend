@@ -39,9 +39,8 @@ public class UserService {
     /**
      * 부원 회원가입 (Google OAuth 이메일 인증 + 직접 입력)
      */
-    @Transactional
     public MemberSignUpResponse memberSignUp(MemberSignUpRequest request, String googleAccessToken) {
-        // 1. Google에서 이메일만 가져오기
+        // 1. Google에서 이메일만 가져오기 (트랜잭션 밖에서 수행)
         String email = getEmailFromGoogleToken(googleAccessToken);
         
         // 2. 한양대 이메일 도메인 검증
@@ -49,7 +48,16 @@ public class UserService {
             throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 가입 가능합니다.");
         }
         
-        // 3. 중복 확인
+        // 3. 트랜잭션 내에서 DB 작업 수행
+        return createMemberWithTransaction(request, email);
+    }
+
+    /**
+     * 트랜잭션 내에서 회원 생성
+     */
+    @Transactional
+    private MemberSignUpResponse createMemberWithTransaction(MemberSignUpRequest request, String email) {
+        // 1. 중복 확인
         if (userRepository.findById(request.studentId()).isPresent()) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 학번입니다.");
         }
@@ -57,7 +65,7 @@ public class UserService {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 이메일입니다.");
         }
 
-        // 4. 사용자 생성 (Google 이메일 + 직접 입력 정보)
+        // 2. 사용자 생성 (Google 이메일 + 직접 입력 정보)
         User user = User.createMember(
             request.studentId(),
             request.userName(),         // 직접 입력
@@ -68,11 +76,11 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
         
-        return MemberSignUpResponse.of(
-            savedUser.getId(),
-            savedUser.getUserName(), 
-            savedUser.getEmail()
-        );
+        return MemberSignUpResponse.builder()
+            .userId(savedUser.getId())
+            .userName(savedUser.getUserName())
+            .email(savedUser.getEmail())
+            .build();
     }
 
     /**
