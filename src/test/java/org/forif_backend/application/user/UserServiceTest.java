@@ -49,7 +49,7 @@ public class UserServiceTest {
                 "1지망",
                 2,
                 "2지망");
-        userService.applyStudy(user, studyApplyRequest);
+        userService.applyStudy(1L, studyApplyRequest);
 
         // then
         List<UserApply> userApply = userApplyJpaRepository.findByApplier(user);
@@ -82,12 +82,12 @@ public class UserServiceTest {
                 "1지망",
                 2,
                 "2지망");
-        userService.applyStudy(user, studyApplyRequest);
+        userService.applyStudy(1L, studyApplyRequest);
 
         // then
         // 두번 지원하면 실패
         Assertions.assertThatThrownBy(() -> {
-            userService.applyStudy(user, studyApplyRequest);
+            userService.applyStudy(1L, studyApplyRequest);
         }).hasMessage(ErrorCode.USER_APPLY_ALREADY_EXISTS.getMessage());
     }
 }

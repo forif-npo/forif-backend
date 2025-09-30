@@ -7,6 +7,8 @@ import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 import static org.forif_backend.domain.user.QUserApply.userApply;
 
 @Repository
@@ -17,6 +19,10 @@ public class UserRepositoryImpl implements UserRepository {
     private final JPAQueryFactory queryFactory;
     private final UserApplyJpaRepository userApplyJpaRepository;
 
+    @Override
+    public Optional<User> findUserById(Long id) {
+        return userJpaRepository.findById(id);
+    }
 
     @Override
     public void createUserApply(UserApply userApply) {

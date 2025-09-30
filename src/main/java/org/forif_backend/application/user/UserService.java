@@ -23,10 +23,13 @@ public class UserService {
 
     /**
      * 스터디 지원 메서드
-     * @param user
-     * @param request
+     * @param userId 유저ID
+     * @param request 요청 dto
      */
-    public void applyStudy(User user, StudyApplyRequest request) {
+    public void applyStudy(Long userId, StudyApplyRequest request) {
+        // 유저 조회
+        User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+
         // 이번 학기에 지원한 스터디 있는지 확인
         if(userRepository.existUserApply(DateUtils.getCurrentYear(), DateUtils.getCurrentSemester(), user)) {
             throw new ForifException(ErrorCode.USER_APPLY_ALREADY_EXISTS);
