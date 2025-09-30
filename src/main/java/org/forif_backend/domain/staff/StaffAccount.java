@@ -22,27 +22,35 @@ public class StaffAccount extends BaseTimeEntity {
     @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
 
-    @Column(length = 50, nullable = false, unique = true)
-    private String loginId;
-
     @Column(length = 100, nullable = false)
     private String password;
 
     @Column(length = 50, nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 30, nullable = false)
-    private String role;
+    private StaffRole role;
 
-    private StaffAccount(User user, String loginId, String password, String name, String role) {
+    private StaffAccount(User user, String password, String name, StaffRole role) {
         this.user = user;
-        this.loginId = loginId;
         this.password = password;
         this.name = name;
         this.role = role;
     }
 
-    public static StaffAccount createMentor(User user, String loginId, String password, String name) {
-        return new StaffAccount(user, loginId, password, name, "MENTOR");
+    public static StaffAccount createMentor(User user, String password, String name) {
+        return new StaffAccount(user, password, name, StaffRole.MENTOR);
+    }
+
+    public static StaffAccount createAdmin(User user, String password, String name) {
+        return new StaffAccount(user, password, name, StaffRole.ADMIN);
+    }
+    
+    /**
+     * User ID 반환
+     */
+    public Long getUserId() {
+        return this.user.getId();
     }
 }

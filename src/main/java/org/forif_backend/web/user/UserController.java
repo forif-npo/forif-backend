@@ -17,31 +17,22 @@ public class UserController {
     /**
      * 부원 회원가입 
      */
-    @PostMapping("/member/signup")
-    public ResponseEntity<ApiResponse<MemberSignUpResponse>> memberSignUp(
+    @PostMapping("/signup")
+    public ResponseEntity<ApiResponse<UserSignUpResponse>> memberSignUp(
             @RequestHeader("Authorization") String googleAccessToken,
-            @RequestBody MemberSignUpRequest request
+            @RequestBody UserSignUpRequest request
     ) {
-        MemberSignUpResponse response = userService.memberSignUp(request, googleAccessToken);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        ApiResponse<UserSignUpResponse> response = userService.memberSignUp(request, googleAccessToken);
+        return ResponseEntity.ok(response);
     }
 
     /**
      * 부원 로그인 
      */
-    @PostMapping("/member/signin")
-    public ResponseEntity<ApiResponse<SignInResponse>> memberSignIn(@RequestBody MemberSignInRequest request) {
-        SignInResponse response = userService.memberSignIn(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
-
-    /**
-     * 멘토 로그인 (ID/비밀번호) 
-     */
-    @PostMapping("/mentor/signin")
-    public ResponseEntity<ApiResponse<SignInResponse>> mentorSignIn(@RequestBody MentorSignInRequest request) {
-        SignInResponse response = userService.mentorSignIn(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @PostMapping("/signin")
+    public ResponseEntity<ApiResponse<UserSignInResponse>> memberSignIn(@RequestBody UserSignInRequest request) {
+        ApiResponse<UserSignInResponse> response = userService.memberSignIn(request);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -49,8 +40,8 @@ public class UserController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshAccessToken(@RequestBody RefreshTokenRequest request) {
-        AccessTokenResponse response = userService.refreshAccessToken(request.refreshToken());
-        return ResponseEntity.ok(ApiResponse.success(response));
+        ApiResponse<AccessTokenResponse> response = userService.refreshAccessToken(request.refreshToken());
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -60,9 +51,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<GoogleUserInfo>> getGoogleUserInfo(
             @RequestHeader("Authorization") String googleAccessToken
     ) {
-        GoogleUserInfo response = userService.getGoogleUserInfo(googleAccessToken);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        ApiResponse<GoogleUserInfo> response = userService.getGoogleUserInfo(googleAccessToken);
+        return ResponseEntity.ok(response);
     }
-
-    // 멘토 계정 생성 API 구현 필요
 }

@@ -4,7 +4,7 @@ import java.util.Optional;
 
 public interface StaffAccountRepository {
     
-    Optional<StaffAccount> findByLoginId(String loginId);
+    Optional<StaffAccount> findByUserId(Long userId);
     
     StaffAccount save(StaffAccount staffAccount);
     

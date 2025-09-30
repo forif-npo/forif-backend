@@ -1,6 +1,6 @@
 package org.forif_backend.web.user.dto;
 
-public record MemberSignUpRequest(
+public record UserSignUpRequest(
     Long studentId,     // 학번 
     String userName,    // 이름 
     String phoneNum,    // 전화번호 

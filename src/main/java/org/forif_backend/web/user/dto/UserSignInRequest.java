@@ -1,6 +1,6 @@
 package org.forif_backend.web.user.dto;
 
-public record MemberSignInRequest(
+public record UserSignInRequest(
     String accessToken  // Google OAuth Access Token
 ) {
 }

@@ -16,8 +16,8 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     private final JPAQueryFactory queryFactory;
 
     @Override
-    public Optional<StaffAccount> findByLoginId(String loginId) {
-        return staffAccountJpaRepository.findByLoginId(loginId);
+    public Optional<StaffAccount> findByUserId(Long userId) {
+        return staffAccountJpaRepository.findByUser_Id(userId);
     }
 
     // 미사용

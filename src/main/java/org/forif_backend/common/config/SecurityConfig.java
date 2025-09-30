@@ -34,11 +34,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/api/v1/auth/**",
-                    "/api/v1/users/member/signup",
-                    "/api/v1/users/member/signin",
-                    "/api/v1/users/mentor/signin",
+                    "/api/v1/users/signup",
+                    "/api/v1/users/signin",
                     "/api/v1/users/refresh",
-                    "/api/v1/users/google/userinfo"
+                    "/api/v1/users/google/userinfo",
+                    "/api/v1/staff/signin"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
