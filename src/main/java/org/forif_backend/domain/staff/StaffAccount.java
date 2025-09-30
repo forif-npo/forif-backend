@@ -33,4 +33,16 @@ public class StaffAccount extends BaseTimeEntity {
 
     @Column(length = 30, nullable = false)
     private String role;
+
+    private StaffAccount(User user, String loginId, String password, String name, String role) {
+        this.user = user;
+        this.loginId = loginId;
+        this.password = password;
+        this.name = name;
+        this.role = role;
+    }
+
+    public static StaffAccount createMentor(User user, String loginId, String password, String name) {
+        return new StaffAccount(user, loginId, password, name, "MENTOR");
+    }
 }
