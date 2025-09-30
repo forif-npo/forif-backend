@@ -50,7 +50,7 @@ public class UserService {
         }
         
         // 3. 중복 확인
-        if (userRepository.findById(request.getStudentId()).isPresent()) {
+        if (userRepository.findById(request.studentId()).isPresent()) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 학번입니다.");
         }
         if (userRepository.existsByEmail(email)) {
@@ -59,11 +59,11 @@ public class UserService {
 
         // 4. 사용자 생성 (Google 이메일 + 직접 입력 정보)
         User user = User.createMember(
-            request.getStudentId(),
-            request.getUserName(),      // 직접 입력
+            request.studentId(),
+            request.userName(),         // 직접 입력
             email,                      // Google에서 가져온 이메일
-            request.getPhoneNum(),      // 직접 입력
-            request.getDepartment()     // 직접 입력
+            request.phoneNum(),         // 직접 입력
+            request.department()        // 직접 입력
         );
 
         User savedUser = userRepository.save(user);
@@ -80,7 +80,7 @@ public class UserService {
      */
     public SignInResponse memberSignIn(MemberSignInRequest request) {
         // 1. Google에서 이메일만 가져오기
-        String email = getEmailFromGoogleToken(request.getAccessToken());
+        String email = getEmailFromGoogleToken(request.accessToken());
         
         // 2. 한양대 이메일 도메인 검증
         if (!email.endsWith("@hanyang.ac.kr")) {
@@ -108,10 +108,10 @@ public class UserService {
      * 멘토 로그인 (ID/비밀번호)
      */
     public SignInResponse mentorSignIn(MentorSignInRequest request) {   
-        StaffAccount staffAccount = staffAccountRepository.findByLoginId(request.getLoginId())
+        StaffAccount staffAccount = staffAccountRepository.findByLoginId(request.loginId())
             .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND, "등록되지 않은 멘토입니다."));
 
-        if (!passwordEncoder.matches(request.getPassword(), staffAccount.getPassword())) {
+        if (!passwordEncoder.matches(request.password(), staffAccount.getPassword())) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 

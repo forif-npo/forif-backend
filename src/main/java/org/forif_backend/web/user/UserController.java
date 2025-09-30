@@ -49,7 +49,7 @@ public class UserController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshAccessToken(@RequestBody RefreshTokenRequest request) {
-        AccessTokenResponse response = userService.refreshAccessToken(request.getRefreshToken());
+        AccessTokenResponse response = userService.refreshAccessToken(request.refreshToken());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

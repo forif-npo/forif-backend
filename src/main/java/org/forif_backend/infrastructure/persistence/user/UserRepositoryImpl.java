@@ -35,6 +35,7 @@ public class UserRepositoryImpl implements UserRepository {
         return userJpaRepository.existsByEmail(email);
     }
 
+    // 미사용
     @Override
     public void deleteById(Long id) {
         userJpaRepository.deleteById(id);

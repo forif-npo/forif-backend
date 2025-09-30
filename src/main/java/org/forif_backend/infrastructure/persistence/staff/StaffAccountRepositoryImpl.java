@@ -20,11 +20,13 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
         return staffAccountJpaRepository.findByLoginId(loginId);
     }
 
+    // 미사용
     @Override
     public StaffAccount save(StaffAccount staffAccount) {
         return staffAccountJpaRepository.save(staffAccount);
     }
 
+    // 미사용
     @Override
     public Optional<StaffAccount> findById(Long id) {
         return staffAccountJpaRepository.findById(id);
