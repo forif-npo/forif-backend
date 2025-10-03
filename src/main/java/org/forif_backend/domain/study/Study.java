@@ -4,11 +4,15 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.forif_backend.common.BaseTimeEntity;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 @Table(name = "tb_study")
 public class Study extends BaseTimeEntity {
 
@@ -32,8 +36,16 @@ public class Study extends BaseTimeEntity {
     @Column(length = 50)
     private String secondaryMentorName;
 
-    @Column(length = 100)
-    private StudyTag tag;
+    @ManyToMany
+    @JoinTable(
+        name = "tb_study_tag_mapping",
+        joinColumns = @JoinColumn(name = "study_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<StudyTag> tags = new ArrayList<>();
+
+    @Column
+    private RecruitStatus recruitStatus;
 
     @Column(length = 300)
     private String oneLiner;
