@@ -1,12 +1,14 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import jakarta.persistence.EntityManager;
 
 import org.springframework.stereotype.Repository;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 
+import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.QStudy;
 import org.forif_backend.domain.study.QStudyTag;
 import org.forif_backend.domain.study.RecruitStatus;
@@ -59,7 +61,7 @@ public class StudyQueryRepository {
         return study.actSemester.eq(semester);
     }
 
-    private BooleanExpression difficultiesIn(List<Integer> difficulties) {
+    private BooleanExpression difficultiesIn(List<StudyDifficulty> difficulties) {
         if (difficulties == null || difficulties.isEmpty()) {
             return null;
         }

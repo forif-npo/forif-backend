@@ -10,7 +10,7 @@ import lombok.Getter;
 public class StudySearchCond {
     private final Integer year;
     private final Integer semester;
-    private final List<Integer> difficulties;
+    private final List<StudyDifficulty> difficulties;
     private final List<String> studyTagNames;
     private final RecruitStatus recruitStatus;
     private final String searchKeyword;

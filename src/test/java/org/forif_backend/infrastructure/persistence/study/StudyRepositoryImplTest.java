@@ -3,7 +3,6 @@ package org.forif_backend.infrastructure.persistence.study;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
@@ -13,6 +12,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
@@ -68,14 +68,14 @@ public class StudyRepositoryImplTest {
     void getStudies_withDifficulties_returnsFilteredStudies() {
         // given
         StudySearchCond cond = StudySearchCond.builder()
-                .difficulties(Arrays.asList(1, 2, 3))
+                .difficulties(Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_EASY, StudyDifficulty.NORMAL))
                 .build();
 
         // when
         List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
 
         // then
-        assertThat(result).allMatch(study -> Arrays.asList(1, 2, 3).contains(study.getDifficulty()));
+        assertThat(result).allMatch(study -> Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_EASY, StudyDifficulty.NORMAL).contains(study.getDifficulty()));
     }
 
     @Test
@@ -137,7 +137,7 @@ public class StudyRepositoryImplTest {
         StudySearchCond cond = StudySearchCond.builder()
                 .year(2022)
                 .semester(1)
-                .difficulties(Arrays.asList(1, 4))
+                .difficulties(Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_HARD))
                 .searchKeyword("Java")
                 .build();
 
@@ -147,7 +147,7 @@ public class StudyRepositoryImplTest {
         // then
         assertThat(result).allMatch(study -> study.getActYear() == 2022 &&
                 study.getActSemester() == 1 &&
-                Arrays.asList(1, 4).contains(study.getDifficulty()) &&
+                Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_HARD).contains(study.getDifficulty()) &&
                 study.getStudyName().contains("Java"));
     }
 
