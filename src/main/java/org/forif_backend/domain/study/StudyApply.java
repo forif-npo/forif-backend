@@ -6,6 +6,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
+import org.forif_backend.web.user.dto.StudyApplyRequest;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter
@@ -29,13 +34,25 @@ public class StudyApply extends BaseTimeEntity {
     @Column(length = 50)
     private String studyName;
 
-    @Column(length = 100)
-    private String tag;
+    @Column(length = 50)
+    private String subTitle;
 
-    @Column(length = 300)
-    private String oneLiner;
+    private String thumbnailImage;
 
-    @Column(length = 5000)
+    @ManyToMany
+    @JoinTable(
+            name = "tb_study_tag_mapping",
+            joinColumns = @JoinColumn(name = "study_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<StudyTag> tags = new ArrayList<>();
+
+    private Boolean isOnline;
+
+    @Column(length = 500)
+    private String goal;
+
+    @Column(length = 500)
     private String explanation;
 
     @Column(length = 50)
@@ -49,11 +66,69 @@ public class StudyApply extends BaseTimeEntity {
     @Column(length = 50)
     private String location;
 
+    @Column(length = 50)
+    private String locationDetail;
+
     private Integer difficulty;
+
+    @Column(length = 100)
+    private String selectionCriteria;
+
+    private Integer capacity;
+
+    private Boolean requiresInterview;
+
+    private String interviewDate;
 
     private Integer acceptanceStatus;
 
     private Integer actYear;
 
     private Integer actSemester;
+
+    public StudyApply(User primaryMentor, User secondaryMentor, String thumbnailImage, String studyName, String subTitle, List<StudyTag> tags, Boolean isOnline, String goal, String explanation, String startTime, String endTime, Integer weekDay, String location, String locationDetail, Integer difficulty, String selectionCriteria, Integer capacity, Boolean requiresInterview, String interviewDate) {
+        this.primaryMentor = primaryMentor;
+        this.secondaryMentor = secondaryMentor;
+        this.thumbnailImage = thumbnailImage;
+        this.studyName = studyName;
+        this.subTitle = subTitle;
+        this.tags = tags;
+        this.isOnline = isOnline;
+        this.goal = goal;
+        this.explanation = explanation;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.weekDay = weekDay;
+        this.location = location;
+        this.locationDetail = locationDetail;
+        this.difficulty = difficulty;
+        this.selectionCriteria = selectionCriteria;
+        this.capacity = capacity;
+        this.requiresInterview = requiresInterview;
+        this.interviewDate = interviewDate;
+    }
+
+    public static StudyApply create(User primaryMentor, CreateStudyApplyRequest request, List<StudyTag> tags, String thumbnailImage) {
+        return new StudyApply(
+                primaryMentor,
+                null,
+                thumbnailImage,
+                request.title(),
+                request.subTitle(),
+                tags,
+                request.isOnline(),
+                request.goal(),
+                request.explanation(),
+                request.startTime(),
+                request.endTime(),
+                request.weekDay(),
+                request.studyLocation(),
+                request.studyLocationDetail(),
+                request.difficulty(),
+                request.selectionCriteria(),
+                request.capacity(),
+                request.requiresInterview(),
+                request.interviewDate()
+        );
+    }
 }
