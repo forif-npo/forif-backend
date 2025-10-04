@@ -6,13 +6,13 @@ import io.netty.handler.timeout.WriteTimeoutHandler;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
-import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.*;
+import org.forif_backend.web.user.dto.GoogleUserInfo;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -33,88 +33,71 @@ public class UserService {
     private final JwtProvider jwtProvider;
 
     /**
-     * 부원 회원가입 (Google OAuth 이메일 인증 + 직접 입력)
-     */
-    public ApiResponse<UserSignUpResponse> userSignUp(UserSignUpRequest request, String googleAccessToken) {
-        // 1. Google에서 이메일만 가져오기 (트랜잭션 밖에서 수행)
-        String email = getEmailFromGoogleToken(googleAccessToken);
-        
-        // 2. 한양대 이메일 도메인 검증
-        if (!email.endsWith("@hanyang.ac.kr")) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 가입 가능합니다.");
-        }
-        
-        // 3. 트랜잭션 내에서 DB 작업 수행
-        UserSignUpResponse response = createUserWithTransaction(request, email);
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * 트랜잭션 내에서 회원 생성
+     * 부원 회원가입
      */
     @Transactional
-    private UserSignUpResponse createUserWithTransaction(UserSignUpRequest request, String email) {
-        // 1. 중복 확인
-        if (userRepository.findById(request.studentId()).isPresent()) {
+    public UserSignUpResult userSignUp(UserSignUpCommand command) {
+        // 1. 한양대 이메일 도메인 검증
+        if (!command.email().endsWith("@hanyang.ac.kr")) {
+            throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 가입 가능합니다.");
+        }
+
+        // 2. 중복 확인
+        if (userRepository.findById(command.studentId()).isPresent()) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 학번입니다.");
         }
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(command.email())) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 이메일입니다.");
         }
 
-        // 2. 사용자 생성 (Google 이메일 + 직접 입력 정보)
+        // 3. 사용자 생성
         User user = User.createUser(
-            request.studentId(),
-            request.userName(),         // 직접 입력
-            email,                      // Google에서 가져온 이메일
-            request.phoneNum(),         // 직접 입력
-            request.department()        // 직접 입력
+            command.studentId(),
+            command.userName(),
+            command.email(),
+            command.phoneNum(),
+            command.department()
         );
 
         User savedUser = userRepository.save(user);
-        
-        return UserSignUpResponse.builder()
-            .userId(savedUser.getId())
-            .userName(savedUser.getUserName())
-            .email(savedUser.getEmail())
-            .build();
+
+        return new UserSignUpResult(
+            savedUser.getId(),
+            savedUser.getUserName(),
+            savedUser.getEmail()
+        );
     }
 
     /**
-     * 부원 로그인 (Google OAuth 이메일 기반)
+     * 부원 로그인
      */
-    public ApiResponse<UserSignInResponse> userSignIn(UserSignInRequest request) {
-        // 1. Google에서 이메일만 가져오기
-        String email = getEmailFromGoogleToken(request.accessToken());
-        
-        // 2. 한양대 이메일 도메인 검증
-        if (!email.endsWith("@hanyang.ac.kr")) {
+    public UserSignInResult userSignIn(UserSignInCommand command) {
+        // 1. 한양대 이메일 도메인 검증
+        if (!command.email().endsWith("@hanyang.ac.kr")) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 로그인 가능합니다.");
         }
-        
-        // 3. 기존 사용자 조회
-        User user = userRepository.findByEmail(email)
+
+        // 2. 기존 사용자 조회
+        User user = userRepository.findByEmail(command.email())
             .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND, "등록되지 않은 사용자입니다. 먼저 회원가입을 진행해주세요."));
 
-        // 4. JWT 토큰 생성
+        // 3. JWT 토큰 생성
         String accessToken = jwtProvider.generateAccessToken(user.getId().toString());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId().toString());
 
-        UserSignInResponse response = UserSignInResponse.builder()
-            .accessToken(accessToken)
-            .refreshToken(refreshToken)
-            .userId(user.getId())
-            .userName(user.getUserName())
-            .build();
-            
-        return ApiResponse.success(response);
+        return new UserSignInResult(
+            accessToken,
+            refreshToken,
+            user.getId(),
+            user.getUserName()
+        );
     }
 
 
     /**
      * Google OAuth Access Token으로 사용자 이메일 조회
      */
-    private String getEmailFromGoogleToken(String token) {
+    public String getEmailFromGoogleToken(String token) {
         HttpClient httpClient = HttpClient.create()
             .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 3000)
             .responseTimeout(Duration.ofMillis(5000))
@@ -151,20 +134,20 @@ public class UserService {
     /**
      * Refresh Token으로 새로운 Access Token 발급
      */
-    public ApiResponse<AccessTokenResponse> refreshAccessToken(String refreshToken) {
+    public RefreshTokenResult refreshAccessToken(RefreshTokenCommand command) {
         // 1. Refresh Token 유효성 검증
-        if (!jwtProvider.validateToken(refreshToken)) {
+        if (!jwtProvider.validateToken(command.refreshToken())) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "유효하지 않은 Refresh Token입니다.");
         }
 
         // 2. Refresh Token 만료 확인
-        if (jwtProvider.isExpired(refreshToken)) {
+        if (jwtProvider.isExpired(command.refreshToken())) {
             throw new ForifException(ErrorCode.BAD_REQUEST, "Refresh Token이 만료되었습니다. 다시 로그인해주세요.");
         }
 
         // 3. 토큰에서 사용자 ID 추출
-        String userId = jwtProvider.getUserIdFromToken(refreshToken);
-        
+        String userId = jwtProvider.getUserIdFromToken(command.refreshToken());
+
         // 4. 사용자 존재 여부 확인
         if (!userRepository.findById(Long.parseLong(userId)).isPresent()) {
             throw new ForifException(ErrorCode.USER_NOT_FOUND, "존재하지 않는 사용자입니다.");
@@ -173,25 +156,6 @@ public class UserService {
         // 5. 새로운 Access Token 발급
         String newAccessToken = jwtProvider.generateAccessToken(userId);
 
-        AccessTokenResponse response = AccessTokenResponse.builder()
-            .accessToken(newAccessToken)
-            .build();
-            
-        return ApiResponse.success(response);
-    }
-
-    /**
-     * Google 토큰으로 사용자 정보 조회 (회원가입 폼용)
-     */
-    public ApiResponse<GoogleUserInfo> getGoogleUserInfo(String googleAccessToken) {
-        String email = getEmailFromGoogleToken(googleAccessToken);
-        
-        // 한양대 이메일 도메인 검증
-        if (!email.endsWith("@hanyang.ac.kr")) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 사용 가능합니다.");
-        }
-        
-        GoogleUserInfo response = new GoogleUserInfo(email);
-        return ApiResponse.success(response);
+        return new RefreshTokenResult(newAccessToken);
     }
 }

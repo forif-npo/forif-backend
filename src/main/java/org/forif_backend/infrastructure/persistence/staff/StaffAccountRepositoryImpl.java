@@ -1,6 +1,5 @@
 package org.forif_backend.infrastructure.persistence.staff;
 
-import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
@@ -13,7 +12,6 @@ import java.util.Optional;
 public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     private final StaffAccountJpaRepository staffAccountJpaRepository;
-    private final JPAQueryFactory queryFactory;
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {

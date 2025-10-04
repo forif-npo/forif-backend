@@ -2,6 +2,7 @@ package org.forif_backend.web.user;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.UserService;
+import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.user.dto.*;
 import org.springframework.http.ResponseEntity;
@@ -15,24 +16,43 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 부원 회원가입 
+     * 부원 회원가입
+     * 프론트엔드에서 Google OAuth로 획득한 이메일을 함께 전송
      */
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserSignUpResponse>> userSignUp(
-            @RequestHeader("Authorization") String googleAccessToken,
             @RequestBody UserSignUpRequest request
     ) {
-        ApiResponse<UserSignUpResponse> response = userService.userSignUp(request, googleAccessToken);
-        return ResponseEntity.ok(response);
+        // 1. Web DTO → Application Command 변환
+        UserSignUpCommand command = UserDtoMapper.toCommand(request);
+
+        // 2. Service 호출
+        UserSignUpResult result = userService.userSignUp(command);
+
+        // 3. Application Result → Web DTO 변환
+        UserSignUpResponse response = UserDtoMapper.toResponse(result);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
-     * 부원 로그인 
+     * 부원 로그인
      */
     @PostMapping("/signin")
     public ResponseEntity<ApiResponse<UserSignInResponse>> userSignIn(@RequestBody UserSignInRequest request) {
-        ApiResponse<UserSignInResponse> response = userService.userSignIn(request);
-        return ResponseEntity.ok(response);
+        // 1. Google에서 이메일 가져오기
+        String email = userService.getEmailFromGoogleToken(request.accessToken());
+
+        // 2. Web DTO → Application Command 변환
+        UserSignInCommand command = UserDtoMapper.toCommand(email);
+
+        // 3. Service 호출
+        UserSignInResult result = userService.userSignIn(command);
+
+        // 4. Application Result → Web DTO 변환
+        UserSignInResponse response = UserDtoMapper.toResponse(result);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
@@ -40,18 +60,15 @@ public class UserController {
      */
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshAccessToken(@RequestBody RefreshTokenRequest request) {
-        ApiResponse<AccessTokenResponse> response = userService.refreshAccessToken(request.refreshToken());
-        return ResponseEntity.ok(response);
-    }
+        // 1. Web DTO → Application Command 변환
+        RefreshTokenCommand command = UserDtoMapper.toCommand(request);
 
-    /**
-     * Google 토큰으로 사용자 정보 조회 (회원가입 폼용)
-     */
-    @PostMapping("/google/userinfo")
-    public ResponseEntity<ApiResponse<GoogleUserInfo>> getGoogleUserInfo(
-            @RequestHeader("Authorization") String googleAccessToken
-    ) {
-        ApiResponse<GoogleUserInfo> response = userService.getGoogleUserInfo(googleAccessToken);
-        return ResponseEntity.ok(response);
+        // 2. Service 호출
+        RefreshTokenResult result = userService.refreshAccessToken(command);
+
+        // 3. Application Result → Web DTO 변환
+        AccessTokenResponse response = UserDtoMapper.toResponse(result);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

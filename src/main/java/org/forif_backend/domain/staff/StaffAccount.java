@@ -14,7 +14,6 @@ import org.forif_backend.domain.user.User;
 public class StaffAccount extends BaseTimeEntity {
 
     @Id
-    @Column(name = "user_id")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -46,9 +45,10 @@ public class StaffAccount extends BaseTimeEntity {
     public static StaffAccount createAdmin(User user, String password, String name) {
         return new StaffAccount(user, password, name, StaffRole.ADMIN);
     }
-    
+
     /**
      * User ID 반환
+     * StaffAccountService에서 사용
      */
     public Long getUserId() {
         return this.id;

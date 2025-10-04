@@ -78,4 +78,14 @@ public class JwtProvider {
                 .getExpiration()
                 .before(new Date());
     }
+
+    // 토큰 만료 시간 가져오기
+    public Date getExpirationDate(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
 }
