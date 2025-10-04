@@ -44,4 +44,28 @@ public class UserRepositoryImpl implements UserRepository {
     public void deleteById(Long id) {
         userJpaRepository.deleteById(id);
     }
+
+    // FW-1-0 feature
+    @Override
+    public Optional<User> findUserById(Long id) {
+        return userJpaRepository.findById(id);
+    }
+
+    @Override
+    public void createUserApply(UserApply userApply) {
+        userApplyJpaRepository.save(userApply);
+    }
+
+    @Override
+    public boolean existUserApply(int year, int semester, User applier) {
+        Integer isExist = queryFactory.selectOne()
+                .from(userApply)
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        userApply.applier.eq(applier)
+                )
+                .fetchFirst();
+        return isExist != null;
+    }
 }

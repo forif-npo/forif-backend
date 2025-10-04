@@ -13,4 +13,9 @@ public interface UserRepository {
     boolean existsByEmail(String email);
 
     void deleteById(Long id);
+
+    // FW-1-0 feature
+    Optional<User> findUserById(Long id);
+    void createUserApply(UserApply userApply);
+    boolean existUserApply(int year, int semester, User applier);
 }
