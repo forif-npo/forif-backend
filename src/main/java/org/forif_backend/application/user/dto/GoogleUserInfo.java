@@ -1,4 +1,4 @@
-package org.forif_backend.web.user.dto;
+package org.forif_backend.application.user.dto;
 
 public record GoogleUserInfo(
     String email

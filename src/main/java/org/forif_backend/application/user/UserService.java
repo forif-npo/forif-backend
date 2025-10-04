@@ -12,7 +12,6 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.GoogleUserInfo;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
