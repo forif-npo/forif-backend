@@ -8,11 +8,11 @@ import org.forif_backend.common.exception.ForifException;
 @Getter
 @RequiredArgsConstructor
 public enum StudyDifficulty {
-    EASY("easy", 1),
-    SEMI_EASY("semi_easy", 2),
-    NORMAL("normal", 3),
-    SEMI_HARD("semi_hard", 4),
-    HARD("hard", 5);
+    EASY("EASY", 1),
+    SEMI_EASY("SEMI_EASY", 2),
+    NORMAL("NORMAL", 3),
+    SEMI_HARD("SEMI_HARD", 4),
+    HARD("HARD", 5);
 
     private final String value;
     private final Integer level;
