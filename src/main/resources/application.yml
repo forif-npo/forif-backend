@@ -18,6 +18,13 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+aws:
+  s3:
+    bucket-name: ${S3_BUCKET_NAME}
+    region: ${S3_REGION}
+    presigned-url:
+      expiration-minutes: 10
+
 springdoc:
   swagger-ui:
     groups-order: desc

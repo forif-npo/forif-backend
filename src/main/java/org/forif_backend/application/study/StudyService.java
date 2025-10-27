@@ -85,10 +85,13 @@ public class StudyService {
         String content;
         if (reference.type() == ReferenceType.FILE) { // 참고자료 타입이 파일인 경우
             MultipartFile file = referenceFiles.get(reference.fileKey());
+
             // 업로드용 presigned url 생성
             FileInfo fileInfo = filePort.generatePresignedUploadUrl(file);
+
             // 반환값에 추가
             referenceUploadInfos.add(fileInfo);
+
             content = fileInfo.objectKey();
         } else { // 참고자료 타입이 url인 경우
             content = reference.url();
