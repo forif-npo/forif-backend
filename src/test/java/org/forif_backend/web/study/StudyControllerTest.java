@@ -33,7 +33,7 @@ class StudyControllerTest {
     private StudyService studyService;
 
     @Test
-    @DisplayName("GET /api/v2/studies - 정상 요청")
+    @DisplayName("GET /api/v1/studies - 정상 요청")
     void getStudies_success() throws Exception {
         // given
         Study study1 = new Study();
@@ -58,7 +58,7 @@ class StudyControllerTest {
                 .thenReturn(studies);
 
         // when & then
-        mockMvc.perform(get("/api/v2/studies")
+        mockMvc.perform(get("/api/v1/studies")
                 .param("offset", "0")
                 .param("limit", "10"))
             .andExpect(status().isOk())
@@ -66,7 +66,7 @@ class StudyControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v2/studies - 모든 파라미터 포함 요청")
+    @DisplayName("GET /api/v1/studies - 모든 파라미터 포함 요청")
     void getStudies_withAllParameters() throws Exception {
         // given
         List<Study> studies = new ArrayList<>();
@@ -76,7 +76,7 @@ class StudyControllerTest {
                 .thenReturn(studies);
 
         // when & then
-        mockMvc.perform(get("/api/v2/studies")
+        mockMvc.perform(get("/api/v1/studies")
                 .param("offset", "0")
                 .param("limit", "10")
                 .param("year", "2024")
@@ -89,9 +89,9 @@ class StudyControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v2/studies - 잘못된 difficulty 값")
+    @DisplayName("GET /api/v1/studies - 잘못된 difficulty 값")
     void getStudies_invalidDifficulty() throws Exception {
-        mockMvc.perform(get("/api/v2/studies")
+        mockMvc.perform(get("/api/v1/studies")
                 .param("offset", "0")
                 .param("limit", "10")
                 .param("difficulties", "invalid"))
@@ -99,9 +99,9 @@ class StudyControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v2/studies - 잘못된 recruitStatus 값")
+    @DisplayName("GET /api/v1/studies - 잘못된 recruitStatus 값")
     void getStudies_invalidRecruitStatus() throws Exception {
-        mockMvc.perform(get("/api/v2/studies")
+        mockMvc.perform(get("/api/v1/studies")
                 .param("offset", "0")
                 .param("limit", "10")
                 .param("recruit_status", "invalid"))

@@ -21,7 +21,7 @@ import org.forif_backend.web.study.dto.StudyResponse;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v2/studies")
+@RequestMapping("/api/v1/studies")
 public class StudyController {
 
     private final StudyService studyService;
