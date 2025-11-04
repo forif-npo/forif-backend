@@ -13,7 +13,7 @@ public class StudyService {
     
     private final StudyRepository studyRepository;
     
-    public List<Study> getStudies(Long offset, Long limit, Integer year, Integer semester,
+    public List<Study> getStudies(Long page, Long pageSize, Integer year, Integer semester,
                                      List<StudyDifficulty> difficulties, List<String> tags,
                                      RecruitStatus recruitStatus, String search) {
         
@@ -28,7 +28,7 @@ public class StudyService {
             .build();
         
         // Get studies from repository
-        List<Study> studies = studyRepository.getStudies(searchCond, offset, limit);
+        List<Study> studies = studyRepository.getStudies(searchCond, page, pageSize);
         
         return studies;
     }

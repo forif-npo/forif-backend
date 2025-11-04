@@ -5,13 +5,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.common.dto.request.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import org.forif_backend.application.study.StudyService;
 import org.forif_backend.common.dto.response.ApiResponse;
-import org.forif_backend.common.exception.ErrorCode;
-import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.Study;
@@ -28,8 +27,7 @@ public class StudyController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<StudiesResponse>> getStudies(
-            @RequestParam(defaultValue = "0") Long offset,
-            @RequestParam(defaultValue = "20") Long limit,
+            @ModelAttribute PageRequest pageRequest,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer semester,
             @RequestParam(required = false) List<StudyDifficulty> difficulties,
@@ -42,7 +40,7 @@ public class StudyController {
 
         // Search studies for condition
         List<Study> studies = studyService.getStudies(
-                offset, limit, year, semester, difficulties, tagList, recruitStatus, search);
+                pageRequest.getPage(), pageRequest.getPageSize(), year, semester, difficulties, tagList, recruitStatus, search);
 
         // Convert Study entities to response DTOs
         StudiesResponse response = buildResponse(studies);

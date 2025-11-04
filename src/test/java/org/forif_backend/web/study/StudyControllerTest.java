@@ -59,8 +59,8 @@ class StudyControllerTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/studies")
-                .param("offset", "0")
-                .param("limit", "10"))
+                .param("page", "0")
+                .param("page_size", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.studies[0].study_name").value("Spring Boot 스터디"));
     }
@@ -77,8 +77,8 @@ class StudyControllerTest {
 
         // when & then
         mockMvc.perform(get("/api/v1/studies")
-                .param("offset", "0")
-                .param("limit", "10")
+                .param("page", "0")
+                .param("page_size", "10")
                 .param("year", "2024")
                 .param("semester", "2")
                 .param("difficulties", "EASY", "NORMAL")
@@ -92,8 +92,8 @@ class StudyControllerTest {
     @DisplayName("GET /api/v1/studies - 잘못된 difficulty 값")
     void getStudies_invalidDifficulty() throws Exception {
         mockMvc.perform(get("/api/v1/studies")
-                .param("offset", "0")
-                .param("limit", "10")
+                .param("page", "0")
+                .param("page_size", "10")
                 .param("difficulties", "invalid"))
                 .andExpect(status().isBadRequest());
     }
@@ -102,8 +102,8 @@ class StudyControllerTest {
     @DisplayName("GET /api/v1/studies - 잘못된 recruitStatus 값")
     void getStudies_invalidRecruitStatus() throws Exception {
         mockMvc.perform(get("/api/v1/studies")
-                .param("offset", "0")
-                .param("limit", "10")
+                .param("page", "0")
+                .param("page_size", "10")
                 .param("recruit_status", "invalid"))
                 .andExpect(status().isBadRequest());
     }
