@@ -1,9 +1,13 @@
 package org.forif_backend.web.study.dto;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import lombok.Builder;
 import lombok.Getter;
 
-import java.util.List;
+import org.forif_backend.domain.study.Study;
+import org.forif_backend.domain.study.StudyTag;
 
 @Getter
 @Builder
@@ -24,4 +28,33 @@ public class StudyResponse {
     private String imgUrl;
     private Integer actYear;
     private Integer actSemester;
+
+    public static StudyResponse from(Study study) {
+        List<String> tagNames = study.getTags().stream()
+                .map(StudyTag::getName)
+                .collect(Collectors.toList());
+
+        String recruitStatusValue = study.getRecruitStatus() != null
+                ? study.getRecruitStatus().getValue()
+                : null;
+
+        return StudyResponse.builder()
+                .id(study.getId())
+                .studyName(study.getStudyName())
+                .primaryMentorName(study.getPrimaryMentorName())
+                .secondaryMentorName(study.getSecondaryMentorName())
+                .tags(tagNames)
+                .recruitStatus(recruitStatusValue)
+                .oneLiner(study.getOneLiner())
+                .explanation(study.getExplanation())
+                .startTime(study.getStartTime())
+                .endTime(study.getEndTime())
+                .weekDay(study.getWeekDay())
+                .location(study.getLocation())
+                .difficulty(study.getDifficulty().getValue())
+                .imgUrl(study.getImgUrl())
+                .actYear(study.getActYear())
+                .actSemester(study.getActSemester())
+                .build();
+    }
 }
