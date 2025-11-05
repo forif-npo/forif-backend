@@ -1,14 +1,16 @@
-package org.forif_backend.domain.study;
+package org.forif_backend.domain.studyApply;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.StudyTag;
 import org.forif_backend.domain.user.User;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.studyApply.dto.CreateStudyApplyRequest;
 
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -78,15 +80,15 @@ public class StudyApply extends BaseTimeEntity {
 
     private Boolean requiresInterview;
 
-    private String interviewDate;
+    private ZonedDateTime interviewDate;
 
-    private Integer acceptanceStatus;
+    private Boolean acceptanceStatus;
 
     private Integer actYear;
 
     private Integer actSemester;
 
-    public StudyApply(User primaryMentor, User secondaryMentor, String thumbnailImage, String studyName, String subTitle, List<StudyTag> tags, Boolean isOnline, String goal, String explanation, String startTime, String endTime, Integer weekDay, String location, String locationDetail, Integer difficulty, String selectionCriteria, Integer capacity, Boolean requiresInterview, String interviewDate) {
+    public StudyApply(User primaryMentor, User secondaryMentor, String thumbnailImage, String studyName, String subTitle, List<StudyTag> tags, Boolean isOnline, String goal, String explanation, String startTime, String endTime, Integer weekDay, String location, String locationDetail, Integer difficulty, String selectionCriteria, Integer capacity, Boolean requiresInterview, ZonedDateTime interviewDate) {
         this.primaryMentor = primaryMentor;
         this.secondaryMentor = secondaryMentor;
         this.thumbnailImage = thumbnailImage;
@@ -106,6 +108,9 @@ public class StudyApply extends BaseTimeEntity {
         this.capacity = capacity;
         this.requiresInterview = requiresInterview;
         this.interviewDate = interviewDate;
+        this.acceptanceStatus = false;
+        this.actYear = DateUtils.getCurrentYear();
+        this.actSemester = DateUtils.getCurrentSemester();
     }
 
     public static StudyApply create(User primaryMentor, CreateStudyApplyRequest request, List<StudyTag> tags, String thumbnailImage) {

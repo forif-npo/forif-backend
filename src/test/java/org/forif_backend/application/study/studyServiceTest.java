@@ -1,19 +1,18 @@
 package org.forif_backend.application.study;
 
 import org.assertj.core.api.Assertions;
-import org.forif_backend.application.study.dto.CreateStudyApplyResponse;
-import org.forif_backend.application.user.UserService;
-import org.forif_backend.domain.study.ReferenceType;
-import org.forif_backend.domain.study.StudyApply;
-import org.forif_backend.domain.study.StudyApplyPlan;
-import org.forif_backend.domain.study.StudyApplyReference;
+import org.forif_backend.application.studyApply.dto.CreateStudyApplyInfo;
+import org.forif_backend.application.studyApply.dto.StudyApplyService;
+import org.forif_backend.domain.studyApply.ReferenceType;
+import org.forif_backend.domain.studyApply.StudyApply;
+import org.forif_backend.domain.studyApply.StudyApplyPlan;
+import org.forif_backend.domain.studyApply.StudyApplyReference;
 import org.forif_backend.domain.user.User;
-import org.forif_backend.infrastructure.persistence.study.StudyApplyJpaRepository;
-import org.forif_backend.infrastructure.persistence.study.StudyApplyPlanJpaRepository;
-import org.forif_backend.infrastructure.persistence.study.StudyApplyReferenceJpaRepository;
-import org.forif_backend.infrastructure.persistence.user.UserApplyJpaRepository;
+import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyJpaRepository;
+import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyPlanJpaRepository;
+import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyReferenceJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
+import org.forif_backend.web.studyApply.dto.CreateStudyApplyRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,10 +20,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 @SpringBootTest
 public class studyServiceTest {
@@ -32,7 +29,7 @@ public class studyServiceTest {
     private UserJpaRepository userJpaRepository;
 
     @Autowired
-    private StudyService studyService;
+    private StudyApplyService studyApplyService;
 
     @Autowired
     private StudyApplyJpaRepository studyApplyJpaRepository;
@@ -83,16 +80,16 @@ public class studyServiceTest {
                 2,
                 "18:00",
                 "20:00",
-                List.of(new CreateStudyApplyRequest.Plan(1, "2025-11-05", "기획", "기획하기"), new CreateStudyApplyRequest.Plan(2, "2025-11-12", "개발", "개발하기")),
+                List.of(new CreateStudyApplyRequest.Plan(1, ZonedDateTime.now(), "기획", "기획하기"), new CreateStudyApplyRequest.Plan(2, ZonedDateTime.now(), "개발", "개발하기")),
                 3,
                 "잘하는 순으로 뽑습니다.",
                 6,
                 true,
-                "2025-11-05",
-                List.of(new CreateStudyApplyRequest.Reference(ReferenceType.FILE, null, reference.getName()), new CreateStudyApplyRequest.Reference(ReferenceType.URL, "https://forif.com", null))
+                ZonedDateTime.now(),
+                List.of(new CreateStudyApplyRequest.Reference(ReferenceType.FILE, null, reference.getOriginalFilename()), new CreateStudyApplyRequest.Reference(ReferenceType.URL, "https://forif.com", null))
         );
 
-        CreateStudyApplyResponse studyApplyResponse = studyService.createStudyApply(user.getId(), createStudyApplyRequest, thumbnail, Map.of(reference.getName(), reference));
+        CreateStudyApplyInfo studyApplyResponse = studyApplyService.createStudyApply(user.getId(), createStudyApplyRequest, thumbnail, List.of(reference));
 
         //then
         StudyApply findStudyApply = studyApplyJpaRepository.findByPrimaryMentor(user).get();

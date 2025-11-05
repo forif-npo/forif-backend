@@ -1,9 +1,10 @@
-package org.forif_backend.web.study.dto;
+package org.forif_backend.web.studyApply.dto;
 
 import jakarta.validation.constraints.*;
-import org.forif_backend.domain.study.ReferenceType;
+import org.forif_backend.domain.studyApply.ReferenceType;
 import org.hibernate.validator.constraints.Length;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 public record CreateStudyApplyRequest(
@@ -33,7 +34,7 @@ public record CreateStudyApplyRequest(
         @NotBlank
         @Pattern(regexp = "^([01][0-9]|2[0-3]):[0-5][0-9]$", message = "시간 형식은 HH:MM으로 입력해야 합니다.")
         String endTime,                 // 종료 시간
-        List<Plan> studyPlanList,  // 주차별 계획
+        List<Plan> studyPlanList,       // 주차별 계획
         @NotNull
         Integer difficulty,             // 난이도
         @NotBlank
@@ -44,18 +45,18 @@ public record CreateStudyApplyRequest(
         Integer capacity,               // 모집 인원
         @NotNull
         Boolean requiresInterview,      // 면접 여부
-        String interviewDate,           // 면접 날짜
+        ZonedDateTime interviewDate,    // 면접 날짜
         List<Reference> references      // 참고자료
 ) {
     public record Reference(
             ReferenceType type,         // 유형
             String url,                 // 유형이 url일 경우 url 문자열
-            String fileKey              // 유형이 파일일 경우 Map<String, MultipartFile> 의 key 문자열
+            String fileName             // 유형이 파일일 경우 첨부한 파일의 originalName
     ) {}
 
     public record Plan(
             Integer weekNum,            // 주차
-            String date,                // 날짜
+            ZonedDateTime date,         // 날짜
             String topic,               // 주제
             String content              // 내용
     ) {}

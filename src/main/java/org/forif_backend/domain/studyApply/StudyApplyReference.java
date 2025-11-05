@@ -1,4 +1,4 @@
-package org.forif_backend.domain.study;
+package org.forif_backend.domain.studyApply;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;

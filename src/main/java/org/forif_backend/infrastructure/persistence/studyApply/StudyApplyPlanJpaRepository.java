@@ -1,7 +1,7 @@
-package org.forif_backend.infrastructure.persistence.study;
+package org.forif_backend.infrastructure.persistence.studyApply;
 
-import org.forif_backend.domain.study.StudyApply;
-import org.forif_backend.domain.study.StudyApplyPlan;
+import org.forif_backend.domain.studyApply.StudyApply;
+import org.forif_backend.domain.studyApply.StudyApplyPlan;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

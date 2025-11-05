@@ -1,12 +1,13 @@
-package org.forif_backend.domain.study;
+package org.forif_backend.domain.studyApply;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
+import org.forif_backend.web.studyApply.dto.CreateStudyApplyRequest;
 
+import java.time.ZonedDateTime;
 import java.util.UUID;
 
 @Entity
@@ -30,7 +31,7 @@ public class StudyApplyPlan extends BaseTimeEntity {
     private int weekNum;
 
     @Column(nullable = false)
-    private String date;
+    private ZonedDateTime date;
 
     @Column(length = 300)
     private String topic;
@@ -38,7 +39,7 @@ public class StudyApplyPlan extends BaseTimeEntity {
     @Column(length = 1000)
     private String content;
 
-    public StudyApplyPlan(StudyApply studyApply, int weekNum, String date, String topic, String content) {
+    public StudyApplyPlan(StudyApply studyApply, int weekNum, ZonedDateTime date, String topic, String content) {
         this.studyApply = studyApply;
         this.weekNum = weekNum;
         this.date = date;
