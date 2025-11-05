@@ -22,7 +22,7 @@ public record CreateStudyApplyRequest(
         @NotNull
         Boolean isOnline,               // 온라인 진행 여부
         @NotNull
-        String studyLocation,           // 진행 장소 id
+        String studyLocation,           // 진행 장소
         @NotBlank
         String studyLocationDetail,     // 강의실(호)
         @NotNull

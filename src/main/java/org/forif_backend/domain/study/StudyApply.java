@@ -41,8 +41,8 @@ public class StudyApply extends BaseTimeEntity {
 
     @ManyToMany
     @JoinTable(
-            name = "tb_study_tag_mapping",
-            joinColumns = @JoinColumn(name = "study_id"),
+            name = "tb_study_apply_tag_mapping",
+            joinColumns = @JoinColumn(name = "study_apply_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
     private List<StudyTag> tags = new ArrayList<>();

@@ -1,4 +1,4 @@
-package org.forif_backend.infra.file;
+package org.forif_backend.infrastructure.external.file;
 
 import org.assertj.core.api.Assertions;
 import org.forif_backend.application.file.dto.FileInfo;
