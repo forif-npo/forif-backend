@@ -9,4 +9,5 @@ public interface StudyRepository {
     void saveStudyApply(StudyApply studyApply);
     void saveAllStudyApplyPlan(List<StudyApplyPlan> studyApplyPlans);
     void saveAllStudyApplyReference(List<StudyApplyReference> studyApplyReferences);
+    List<Study> getStudies(StudySearchCond cond, Long offset, Long limit);
 }

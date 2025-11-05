@@ -1,12 +1,12 @@
 package org.forif_backend.application.study;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.study.dto.CreateStudyApplyResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
-import org.forif_backend.common.util.FileUtils;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -14,10 +14,9 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
+
 
 @Service
 @RequiredArgsConstructor
@@ -97,5 +96,25 @@ public class StudyService {
             content = reference.url();
         }
         return StudyApplyReference.create(studyApply, reference.type(), content);
+    }
+
+    public List<Study> getStudies(Long page, Long pageSize, Integer year, Integer semester,
+                                  List<StudyDifficulty> difficulties, List<String> tags,
+                                  RecruitStatus recruitStatus, String search) {
+
+        // Build search condition
+        StudySearchCond searchCond = StudySearchCond.builder()
+                .year(year)
+                .semester(semester)
+                .difficulties(difficulties)
+                .studyTagNames(tags)
+                .recruitStatus(recruitStatus)
+                .searchKeyword(search)
+                .build();
+
+        // Get studies from repository
+        List<Study> studies = studyRepository.getStudies(searchCond, page, pageSize);
+
+        return studies;
     }
 }

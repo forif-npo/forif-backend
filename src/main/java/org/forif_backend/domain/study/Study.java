@@ -1,17 +1,18 @@
 package org.forif_backend.domain.study;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
 import java.util.ArrayList;
 import java.util.List;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import org.forif_backend.common.BaseTimeEntity;
 
 @Entity
 @Getter
+@Setter
 @NoArgsConstructor
 @Table(name = "tb_study")
 public class Study extends BaseTimeEntity {
@@ -64,7 +65,7 @@ public class Study extends BaseTimeEntity {
     @Column(length = 50)
     private String location;
 
-    private Integer difficulty;
+    private StudyDifficulty difficulty;
 
     @Column(length = 300)
     private String imgUrl;

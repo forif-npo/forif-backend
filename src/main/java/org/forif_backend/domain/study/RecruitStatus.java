@@ -8,8 +8,8 @@ import org.forif_backend.common.exception.ForifException;
 @Getter
 @RequiredArgsConstructor
 public enum RecruitStatus {
-    APPLICABLE("applicable"),
-    CLOSED("closed");
+    APPLICABLE("APPLICABLE"),
+    CLOSED("CLOSED");
     
     private final String value;
     
@@ -19,7 +19,7 @@ public enum RecruitStatus {
         }
         
         for (RecruitStatus status : RecruitStatus.values()) {
-            if (status.value.equals(value)) {
+            if (status.value.equalsIgnoreCase(value)) {
                 return status;
             }
         }
