@@ -26,8 +26,8 @@ public class S3FileClient implements FilePort {
     private final Duration presignedUrlDuration;
 
     public S3FileClient(S3Presigner s3Presigner,
-                        @Value("${aws.s3.bucket-name}") String bucketName,
-                        @Value("${aws.presigned-url.expiration-minutes}") long expirationMinutes) {
+                        @Value("${spring.cloud.aws.s3.bucket-name}") String bucketName,
+                        @Value("${spring.cloud.aws.presigned-url.expiration-minutes}") long expirationMinutes) {
         this.s3Presigner = s3Presigner;
         this.bucketName = bucketName;
         this.presignedUrlDuration = Duration.ofMinutes(expirationMinutes);
