@@ -1,7 +1,6 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import jakarta.persistence.EntityManager;
 
 import org.springframework.stereotype.Repository;
