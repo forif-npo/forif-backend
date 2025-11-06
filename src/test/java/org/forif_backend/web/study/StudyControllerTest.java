@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 
+import org.forif_backend.application.study.dto.StudyDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,23 +37,25 @@ class StudyControllerTest {
     @DisplayName("GET /api/v1/studies - 정상 요청")
     void getStudies_success() throws Exception {
         // given
-        Study study1 = new Study();
-        study1.setId(1);
-        study1.setStudyName("Spring Boot 스터디");
-        study1.setPrimaryMentorName("김멘토");
-        study1.setDifficulty(StudyDifficulty.EASY);
-        study1.setRecruitStatus(RecruitStatus.APPLICABLE);
-        study1.setTags(new ArrayList<>());
+        StudyDto study1 = StudyDto.builder()
+                .id(1)
+                .studyName("Spring Boot 스터디")
+                .primaryMentorName("김멘토")
+                .difficulty(StudyDifficulty.EASY)
+                .recruitStatus(RecruitStatus.APPLICABLE)
+                .tags(new ArrayList<>())
+                .build();
 
-        Study study2 = new Study();
-        study2.setId(2);
-        study2.setStudyName("React 심화");
-        study2.setPrimaryMentorName("이멘토");
-        study2.setDifficulty(StudyDifficulty.NORMAL);
-        study2.setRecruitStatus(RecruitStatus.CLOSED);
-        study2.setTags(new ArrayList<>());
+        StudyDto study2 = StudyDto.builder()
+                .id(2)
+                .studyName("React 심화")
+                .primaryMentorName("이멘토")
+                .difficulty(StudyDifficulty.NORMAL)
+                .recruitStatus(RecruitStatus.CLOSED)
+                .tags(new ArrayList<>())
+                .build();
 
-        List<Study> studies = Arrays.asList(study1, study2);
+        List<StudyDto> studies = Arrays.asList(study1, study2);
 
         when(studyService.getStudies(anyLong(), anyLong(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(studies);
@@ -62,14 +65,20 @@ class StudyControllerTest {
                 .param("page", "0")
                 .param("page_size", "10"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.studies[0].study_name").value("Spring Boot 스터디"));
+            .andExpect(jsonPath("$.data.studies[0].id").value(1))
+            .andExpect(jsonPath("$.data.studies[0].study_name").value("Spring Boot 스터디"))
+            .andExpect(jsonPath("$.data.studies[0].primary_mentor_name").value("김멘토"))
+            .andExpect(jsonPath("$.data.studies[0].difficulty").value("EASY"))
+            .andExpect(jsonPath("$.data.studies[0].recruit_status").value("APPLICABLE"))
+            .andExpect(jsonPath("$.data.studies[0].tags").value(new ArrayList<>()))
+            .andExpect(jsonPath("$.data.studies[1].study_name").value("React 심화"));
     }
 
     @Test
     @DisplayName("GET /api/v1/studies - 모든 파라미터 포함 요청")
     void getStudies_withAllParameters() throws Exception {
         // given
-        List<Study> studies = new ArrayList<>();
+        List<StudyDto> studies = new ArrayList<>();
 
         when(studyService.getStudies(eq(0L), eq(10L), eq(2024), eq(2),
                 any(List.class), any(List.class), any(RecruitStatus.class), eq("spring")))

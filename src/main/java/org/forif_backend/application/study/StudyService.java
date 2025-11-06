@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.domain.study.*;
 
 @Service
@@ -13,7 +14,7 @@ public class StudyService {
     
     private final StudyRepository studyRepository;
     
-    public List<Study> getStudies(Long page, Long pageSize, Integer year, Integer semester,
+    public List<StudyDto> getStudies(Long page, Long pageSize, Integer year, Integer semester,
                                      List<StudyDifficulty> difficulties, List<String> tags,
                                      RecruitStatus recruitStatus, String search) {
         
@@ -29,7 +30,8 @@ public class StudyService {
         
         // Get studies from repository
         List<Study> studies = studyRepository.getStudies(searchCond, page, pageSize);
+        List<StudyDto> studiesDto = studies.stream().map(StudyDto::from).toList();
         
-        return studies;
+        return studiesDto;
     }
 }

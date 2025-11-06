@@ -2,9 +2,9 @@ package org.forif_backend.web.study;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.application.study.dto.StudyDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,9 +13,7 @@ import org.forif_backend.application.study.StudyService;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.RecruitStatus;
-import org.forif_backend.domain.study.Study;
 import org.forif_backend.web.study.dto.StudiesResponse;
-import org.forif_backend.web.study.dto.StudyResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -38,10 +36,10 @@ public class StudyController {
         List<String> tagList = tags != null ? Arrays.asList(tags) : null;
 
         // Search studies for condition
-        List<Study> studies = studyService.getStudies(
+        List<StudyDto> studies = studyService.getStudies(
                 pageRequest.getPage(), pageRequest.getPageSize(), year, semester, difficulties, tagList, recruitStatus, search);
 
-        // Convert Study entities to response DTOs
+        // Convert Study service DTOs to api response DTOs
         StudiesResponse response = StudiesResponse.from(studies);
 
         return ResponseEntity.ok(ApiResponse.success(response));

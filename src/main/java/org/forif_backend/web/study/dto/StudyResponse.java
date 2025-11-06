@@ -6,8 +6,8 @@ import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Getter;
 
-import org.forif_backend.domain.study.Study;
-import org.forif_backend.domain.study.StudyTag;
+import org.forif_backend.application.study.dto.StudyDto;
+import org.forif_backend.application.study.dto.StudyTagDto;
 
 @Getter
 @Builder
@@ -29,9 +29,9 @@ public class StudyResponse {
     private Integer actYear;
     private Integer actSemester;
 
-    public static StudyResponse from(Study study) {
+    public static StudyResponse from(StudyDto study) {
         List<String> tagNames = study.getTags().stream()
-                .map(StudyTag::getName)
+                .map(StudyTagDto::getName)
                 .collect(Collectors.toList());
 
         String recruitStatusValue = study.getRecruitStatus() != null
