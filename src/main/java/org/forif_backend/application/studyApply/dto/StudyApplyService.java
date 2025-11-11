@@ -37,7 +37,7 @@ public class StudyApplyService {
     @Transactional
     public CreateStudyApplyInfo createStudyApply(Long MentorId, CreateStudyApplyRequest createStudyApplyRequest, MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         // 유저 조회
-        User mentor = userRepository.findById(MentorId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+        User mentor = userRepository.findUserById(MentorId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
         // 스터디 태그 조회
         List<StudyTag> tags = studyRepository.findAllStudyTagById(createStudyApplyRequest.studyTagId());

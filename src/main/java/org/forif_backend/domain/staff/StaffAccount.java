@@ -14,12 +14,16 @@ import org.forif_backend.domain.user.User;
 public class StaffAccount extends BaseTimeEntity {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "staff_account_id")
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
+
+    @Column(length = 50, nullable = false, unique = true)
+    private String loginId;
 
     @Column(length = 100, nullable = false)
     private String password;
@@ -27,30 +31,6 @@ public class StaffAccount extends BaseTimeEntity {
     @Column(length = 50, nullable = false)
     private String name;
 
-    @Enumerated(EnumType.STRING)
     @Column(length = 30, nullable = false)
-    private StaffRole role;
-
-    private StaffAccount(User user, String password, String name, StaffRole role) {
-        this.user = user;
-        this.password = password;
-        this.name = name;
-        this.role = role;
-    }
-
-    public static StaffAccount createMentor(User user, String password, String name) {
-        return new StaffAccount(user, password, name, StaffRole.MENTOR);
-    }
-
-    public static StaffAccount createAdmin(User user, String password, String name) {
-        return new StaffAccount(user, password, name, StaffRole.ADMIN);
-    }
-
-    /**
-     * User ID 반환
-     * StaffAccountService에서 사용
-     */
-    public Long getUserId() {
-        return this.id;
-    }
+    private String role;
 }
