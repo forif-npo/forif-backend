@@ -1,5 +1,6 @@
 package org.forif_backend.infrastructure.persistence.config;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,6 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Disabled("Redis infrastructure test - not needed in CI/CD")
 @SpringBootTest
 @ActiveProfiles("local")
 class RedisConnectionTest {
