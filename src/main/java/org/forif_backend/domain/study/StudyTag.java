@@ -47,7 +47,7 @@ public enum StudyTag {
             case "design" -> DESIGN;
             case "algorithm" -> ALGORITHM;
             case "blockchain" -> BLOCKCHAIN;
-            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "해당하는 StudyTag가 없습니다. value: " + value);
+            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         };
     }
 }

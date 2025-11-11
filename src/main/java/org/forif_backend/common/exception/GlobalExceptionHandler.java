@@ -13,18 +13,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForifException.class)
     public ResponseEntity<ApiResponse<?>> handleForifException(ForifException e) {
         ErrorCode errorCode = e.getErrorCode();
-        log.warn("ForifException caught: code={}, message={}", errorCode.getCode(), e.getMessage());
+        log.error("ForifException caught: code={}, message={}", errorCode.getCode(), e.getMessage());
 
         // 예외에 상세 데이터가 포함되어 있는지 확인
         ApiResponse<?> response;
 
+        // 실제 예외 메시지가 있으면 그것을 사용, 없으면 ErrorCode의 기본 메시지 사용
+        String message = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
+
         if (e.getErrorDataList() != null && !e.getErrorDataList().isEmpty()) {
             // 상세 데이터가 있으면 data 필드에 담아 반환
-            response = ApiResponse.error(errorCode.getCode(), errorCode.getMessage(), e.getErrorDataList());
+            response = ApiResponse.error(errorCode.getCode(), message, e.getErrorDataList());
 
         } else {
             // 상세 데이터가 없으면 기존처럼 data 필드는 null로 반환
-            response = ApiResponse.error(errorCode.getCode(), errorCode.getMessage());
+            response = ApiResponse.error(errorCode.getCode(), message);
 
         }
         return new ResponseEntity<>(response, errorCode.getHttpStatus());

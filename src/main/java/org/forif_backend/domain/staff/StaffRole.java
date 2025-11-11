@@ -1,27 +1,25 @@
-package org.forif_backend.domain.study;
+package org.forif_backend.domain.staff;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 
-@Getter
 @RequiredArgsConstructor
-public enum AttendanceStatus {
-    PRESENT("present", "출석"),
-    ABSENT("absent", "결석");
+@Getter
+public enum StaffRole {
+
+    MENTOR("MENTOR", "멘토"),
+    ADMIN("ADMIN", "운영진");
 
     private final String value;
-
     private final String label;
 
-    public static AttendanceStatus fromValue(String value) {
-
+    public static  StaffRole fromValue(String value) {
         return switch (value) {
-            case "present" -> PRESENT;
-            case "absent" -> ABSENT;
+            case "MENTOR" -> MENTOR;
+            case "ADMIN" -> ADMIN;
             default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         };
-
     }
 }
