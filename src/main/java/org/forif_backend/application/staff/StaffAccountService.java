@@ -26,10 +26,10 @@ public class StaffAccountService {
      */
     public StaffSignInResult staffSignIn(StaffSignInCommand command) {
         StaffAccount staffAccount = staffAccountRepository.findByUserId(command.userId())
-            .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND, "등록되지 않은 스태프입니다."));
+            .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if (!passwordEncoder.matches(command.password(), staffAccount.getPassword())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
+            throw new ForifException(ErrorCode.PASSWORD_MISMATCH);
         }
 
         String role = staffAccount.getRole().getValue();

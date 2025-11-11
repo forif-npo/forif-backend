@@ -30,15 +30,15 @@ public class UserService {
     public UserSignUpResult userSignUp(UserSignUpCommand command) {
         // 1. 한양대 이메일 도메인 검증
         if (!command.email().endsWith("@hanyang.ac.kr")) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 가입 가능합니다.");
+            throw new ForifException(ErrorCode.INVALID_EMAIL_DOMAIN);
         }
 
         // 2. 중복 확인
         if (userRepository.existsById(command.studentId())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 학번입니다.");
+            throw new ForifException(ErrorCode.STUDENT_ID_ALREADY_EXISTS);
         }
         if (userRepository.existsByEmail(command.email())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "이미 가입된 이메일입니다.");
+            throw new ForifException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
         // 3. 사용자 생성
@@ -74,12 +74,12 @@ public class UserService {
     public UserSignInResult userSignIn(UserSignInCommand command) {
         // 1. 한양대 이메일 도메인 검증
         if (!command.email().endsWith("@hanyang.ac.kr")) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "한양대 이메일(@hanyang.ac.kr)만 로그인 가능합니다.");
+            throw new ForifException(ErrorCode.INVALID_EMAIL_DOMAIN);
         }
 
         // 2. 기존 사용자 조회
         User user = userRepository.findByEmail(command.email())
-            .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND, "등록되지 않은 사용자입니다. 먼저 회원가입을 진행해주세요."));
+            .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
         // 3. JWT 토큰 생성
         String role = "USER";

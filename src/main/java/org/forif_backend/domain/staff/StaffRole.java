@@ -19,7 +19,7 @@ public enum StaffRole {
         return switch (value) {
             case "MENTOR" -> MENTOR;
             case "ADMIN" -> ADMIN;
-            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "해당하는 StaffRole가 없습니다. value: " + value);
+            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         };
     }
 }

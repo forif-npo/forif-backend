@@ -38,12 +38,12 @@ public class RefreshTokenService {
     public TokenPair rotateRefreshToken(String oldRefreshToken, String role) {
         // 1. 기존 Refresh Token 검증
         if (!jwtProvider.validateToken(oldRefreshToken)) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "유효하지 않거나 만료된 Refresh Token입니다.");
+            throw new ForifException(ErrorCode.INVALID_TOKEN);
         }
 
         // 2. Redis에 저장된 토큰인지 확인
         if (!refreshTokenStore.exists(oldRefreshToken)) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "유효하지 않거나 만료된 Refresh Token입니다.");
+            throw new ForifException(ErrorCode.INVALID_TOKEN);
         }
 
         // 3. 토큰에서 사용자 ID 추출

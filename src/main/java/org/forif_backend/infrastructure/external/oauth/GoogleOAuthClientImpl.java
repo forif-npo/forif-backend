@@ -54,10 +54,10 @@ public class GoogleOAuthClientImpl implements GoogleOAuthClient {
             return response.email();
         } catch (WebClientResponseException e) {
             log.error("Error while retrieving user email: {}", e.getResponseBodyAsString(), e);
-            throw new ForifException(ErrorCode.BAD_REQUEST, "유효하지 않은 Google 토큰입니다.");
+            throw new ForifException(ErrorCode.INVALID_TOKEN);
         } catch (Exception e) {
             log.error("Unexpected error while retrieving user email", e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "사용자 이메일을 가져오는 중 오류가 발생했습니다.");
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
