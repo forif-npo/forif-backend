@@ -6,6 +6,7 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.infrastructure.persistence.user.UserApplyJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
+import org.forif_backend.mock.DefaultMockitoTest;
 import org.forif_backend.web.user.dto.StudyApplyRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,10 +19,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@Transactional
-@Rollback
-public class UserServiceTest {
+public class UserServiceTest extends DefaultMockitoTest {
     @Autowired
     UserService userService;
 

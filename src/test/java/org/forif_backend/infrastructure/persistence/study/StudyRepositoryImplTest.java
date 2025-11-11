@@ -5,10 +5,8 @@ import java.util.Comparator;
 import java.util.List;
 
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import org.forif_backend.mock.DefaultMockitoTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.jdbc.Sql;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,10 +20,7 @@ import org.forif_backend.domain.study.StudyTag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@Transactional
-@Rollback
-public class StudyRepositoryImplTest {
+public class StudyRepositoryImplTest extends DefaultMockitoTest {
     @Autowired
     private StudyRepository studyRepository;
 

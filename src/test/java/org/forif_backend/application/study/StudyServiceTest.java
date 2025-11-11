@@ -12,23 +12,18 @@ import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyJpaRepo
 import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyPlanJpaRepository;
 import org.forif_backend.infrastructure.persistence.studyApply.StudyApplyReferenceJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
+import org.forif_backend.mock.DefaultMockitoTest;
 import org.forif_backend.web.studyApply.dto.CreateStudyApplyRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import java.time.ZonedDateTime;
 import java.util.List;
 
-@Rollback
-@Transactional
-@SpringBootTest
-public class studyServiceTest {
+public class StudyServiceTest extends DefaultMockitoTest {
     @Autowired
     private UserJpaRepository userJpaRepository;
 
