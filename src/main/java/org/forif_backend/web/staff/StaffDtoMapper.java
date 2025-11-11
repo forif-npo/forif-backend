@@ -24,10 +24,7 @@ public class StaffDtoMapper {
     public static StaffSignInResponse toResponse(StaffSignInResult result) {
         return StaffSignInResponse.builder()
             .accessToken(result.accessToken())
-            .refreshToken(result.refreshToken())
-            .staffRole(result.staffRole())
-            .userId(result.userId())
-            .staffName(result.staffName())
+            .role(result.role())
             .build();
     }
 }

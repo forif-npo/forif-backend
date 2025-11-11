@@ -34,18 +34,15 @@ public class UserDtoMapper {
      */
     public static UserSignUpResponse toResponse(UserSignUpResult result) {
         return UserSignUpResponse.builder()
-            .userId(result.userId())
-            .userName(result.userName())
-            .email(result.email())
+            .accessToken(result.accessToken())
+            .role(result.role())
             .build();
     }
 
     public static UserSignInResponse toResponse(UserSignInResult result) {
         return UserSignInResponse.builder()
             .accessToken(result.accessToken())
-            .refreshToken(result.refreshToken())
-            .userId(result.userId())
-            .userName(result.userName())
+            .role(result.role())
             .build();
     }
 

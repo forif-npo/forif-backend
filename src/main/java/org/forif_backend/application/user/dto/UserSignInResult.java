@@ -7,7 +7,6 @@ package org.forif_backend.application.user.dto;
 public record UserSignInResult(
     String accessToken,
     String refreshToken,
-    Long userId,
-    String userName
+    String role
 ) {
 }

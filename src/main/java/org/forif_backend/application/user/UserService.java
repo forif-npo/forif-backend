@@ -3,6 +3,7 @@ package org.forif_backend.application.user;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
@@ -20,6 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * 부원 회원가입
@@ -50,10 +52,19 @@ public class UserService {
 
         User savedUser = userRepository.save(user);
 
+        // 4. JWT 토큰 생성
+        String role = "USER";
+        String userId = savedUser.getId().toString();
+        String accessToken = jwtProvider.generateAccessToken(userId, role);
+        String refreshToken = jwtProvider.generateRefreshToken(userId);
+
+        // 5. Refresh Token을 Redis에 저장
+        refreshTokenService.saveRefreshToken(userId, refreshToken);
+
         return new UserSignUpResult(
-            savedUser.getId(),
-            savedUser.getUserName(),
-            savedUser.getEmail()
+            accessToken,
+            refreshToken,
+            role
         );
     }
 
@@ -71,14 +82,18 @@ public class UserService {
             .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND, "등록되지 않은 사용자입니다. 먼저 회원가입을 진행해주세요."));
 
         // 3. JWT 토큰 생성
-        String accessToken = jwtProvider.generateAccessToken(user.getId().toString());
-        String refreshToken = jwtProvider.generateRefreshToken(user.getId().toString());
+        String role = "USER";
+        String userId = user.getId().toString();
+        String accessToken = jwtProvider.generateAccessToken(userId, role);
+        String refreshToken = jwtProvider.generateRefreshToken(userId);
+
+        // 4. Refresh Token을 Redis에 저장
+        refreshTokenService.saveRefreshToken(userId, refreshToken);
 
         return new UserSignInResult(
             accessToken,
             refreshToken,
-            user.getId(),
-            user.getUserName()
+            role
         );
     }
 
@@ -91,25 +106,15 @@ public class UserService {
     }
 
     /**
-     * Refresh Token으로 새로운 Access Token 발급
+     * Refresh Token으로 새로운 Access Token 발급 (토큰 로테이션 적용)
      */
     public RefreshTokenResult refreshAccessToken(RefreshTokenCommand command) {
-        // 1. Refresh Token 유효성 및 만료 검증
-        if (!jwtProvider.validateToken(command.refreshToken())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "유효하지 않거나 만료된 Refresh Token입니다.");
-        }
+        // 1. 토큰에서 role 추출 (로테이션 전)
+        String role = jwtProvider.getRoleFromToken(command.refreshToken());
 
-        // 2. 토큰에서 사용자 ID 추출
-        String userId = jwtProvider.getUserIdFromToken(command.refreshToken());
+        // 2. Refresh Token 로테이션 (기존 토큰 무효화 + 새 토큰 발급)
+        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(command.refreshToken(), role);
 
-        // 3. 사용자 존재 여부 확인
-        if (!userRepository.findById(Long.parseLong(userId)).isPresent()) {
-            throw new ForifException(ErrorCode.USER_NOT_FOUND, "존재하지 않는 사용자입니다.");
-        }
-
-        // 4. 새로운 Access Token 발급
-        String newAccessToken = jwtProvider.generateAccessToken(userId);
-
-        return new RefreshTokenResult(newAccessToken);
+        return new RefreshTokenResult(tokenPair.accessToken(), tokenPair.refreshToken());
     }
 }

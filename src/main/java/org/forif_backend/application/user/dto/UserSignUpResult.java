@@ -5,8 +5,8 @@ package org.forif_backend.application.user.dto;
  * Application 계층 DTO
  */
 public record UserSignUpResult(
-    Long userId,
-    String userName,
-    String email
+    String accessToken,
+    String refreshToken,
+    String role
 ) {
 }

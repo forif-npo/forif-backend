@@ -32,15 +32,14 @@ public class StaffAccountService {
             throw new ForifException(ErrorCode.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
         }
 
-        String accessToken = jwtProvider.generateAccessToken(staffAccount.getUserId().toString());
+        String role = staffAccount.getRole().getValue();
+        String accessToken = jwtProvider.generateAccessToken(staffAccount.getUserId().toString(), role);
         String refreshToken = jwtProvider.generateRefreshToken(staffAccount.getUserId().toString());
 
         return new StaffSignInResult(
             accessToken,
             refreshToken,
-            staffAccount.getRole().getValue(),
-            staffAccount.getUserId(),
-            staffAccount.getName()
+            role
         );
     }
 }

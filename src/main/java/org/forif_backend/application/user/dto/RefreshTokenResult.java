@@ -5,6 +5,7 @@ package org.forif_backend.application.user.dto;
  * Application 계층 DTO
  */
 public record RefreshTokenResult(
-    String accessToken
+    String accessToken,
+    String refreshToken
 ) {
 }

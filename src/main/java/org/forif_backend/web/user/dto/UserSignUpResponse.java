@@ -4,8 +4,7 @@ import lombok.Builder;
 
 @Builder
 public record UserSignUpResponse(
-    Long userId,
-    String userName,
-    String email
+    String accessToken,
+    String role  // "USER"
 ) {
 }

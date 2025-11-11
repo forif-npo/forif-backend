@@ -5,8 +5,6 @@ import lombok.Builder;
 @Builder
 public record UserSignInResponse(
     String accessToken,
-    String refreshToken,
-    Long userId,
-    String userName
+    String role  // "USER"
 ) {
 }

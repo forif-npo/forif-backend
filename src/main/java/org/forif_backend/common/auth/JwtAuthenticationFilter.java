@@ -23,6 +23,8 @@ import jakarta.servlet.FilterChain;
 import java.io.IOException;
 import java.util.List;
 
+import org.forif_backend.application.auth.TokenBlacklistService;
+
 /**
  * JWT 토큰 기반 인증을 처리하는 Spring Security 필터
  * HTTP 요청에서 JWT 토큰을 추출하고 검증하여 사용자 인증을 수행합니다.
@@ -33,6 +35,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final TokenBlacklistService tokenBlacklistService;
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int BEARER_PREFIX_LENGTH = 7;
 
@@ -65,7 +68,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                // 5. 토큰에서 사용자 ID 추출 및 인증 정보 설정
+                // 5. 블랙리스트 확인 (로그아웃된 토큰인지 검증)
+                if(tokenBlacklistService.isTokenBlacklisted(token)) {
+                    log.warn("블랙리스트에 등록된 토큰입니다. URI: {}", request.getRequestURI());
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // 6. 토큰에서 사용자 ID 추출 및 인증 정보 설정
                 setAuthentication(token, request);
                 log.info("JWT 인증 성공. ID: {}", jwtProvider.getUserIdFromToken(token));
 
