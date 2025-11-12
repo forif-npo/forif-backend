@@ -11,17 +11,15 @@ import org.forif_backend.web.user.dto.StudyApplyRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class UserServiceTest extends DefaultMockitoTest {
+public class UserApplyServiceTest extends DefaultMockitoTest {
     @Autowired
-    UserService userService;
+    UserApplyService userApplyService;
 
     @Autowired
     UserApplyJpaRepository userApplyJpaRepository;
@@ -47,7 +45,7 @@ public class UserServiceTest extends DefaultMockitoTest {
                 "1지망",
                 2,
                 "2지망");
-        userService.applyStudy(1L, studyApplyRequest);
+        userApplyService.applyStudy(1L, studyApplyRequest);
 
         // then
         List<UserApply> userApply = userApplyJpaRepository.findByApplier(user);
@@ -80,12 +78,12 @@ public class UserServiceTest extends DefaultMockitoTest {
                 "1지망",
                 2,
                 "2지망");
-        userService.applyStudy(1L, studyApplyRequest);
+        userApplyService.applyStudy(1L, studyApplyRequest);
 
         // then
         // 두번 지원하면 실패
         Assertions.assertThatThrownBy(() -> {
-            userService.applyStudy(1L, studyApplyRequest);
+            userApplyService.applyStudy(1L, studyApplyRequest);
         }).hasMessage(ErrorCode.USER_APPLY_ALREADY_EXISTS.getMessage());
     }
 }
