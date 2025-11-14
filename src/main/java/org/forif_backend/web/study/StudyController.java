@@ -50,12 +50,12 @@ public class StudyController {
      * @return 멘토가 개설한 스터디 리스트
      */
     @GetMapping("/me/created")
-    public ResponseEntity<List<StudyResponse>> getMyCreatedStudies(@RequestParam Long mentorId)
+    public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyCreatedStudies(@RequestParam Long mentorId)
     {
         //TODO: 멘토 ID 인증 로직 추가 필요
 
         List<StudyDto> studies = studyService.getMyCreatedStudies(mentorId);
 
-        return ResponseEntity.ok(StudyResponse.fromList(studies));
+        return ResponseEntity.ok(ApiResponse.success(StudyResponse.fromList(studies)));
     }
 }
