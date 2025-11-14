@@ -5,6 +5,8 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.dto.StudyDto;
+import org.forif_backend.domain.study.Study;
+import org.forif_backend.web.study.dto.StudyResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,7 +15,6 @@ import org.forif_backend.application.study.StudyService;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.RecruitStatus;
-import org.forif_backend.web.study.dto.StudiesResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,7 +24,7 @@ public class StudyController {
     private final StudyService studyService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<StudiesResponse>> getStudies(
+    public ResponseEntity<ApiResponse<List<StudyResponse>>> getStudies(
             @ModelAttribute PageRequest pageRequest,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer semester,
@@ -39,9 +40,22 @@ public class StudyController {
         List<StudyDto> studies = studyService.getStudies(
                 pageRequest.getPage(), pageRequest.getPageSize(), year, semester, difficulties, tagList, recruitStatus, search);
 
-        // Convert Study service DTOs to api response DTOs
-        StudiesResponse response = StudiesResponse.from(studies);
 
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(StudyResponse.fromList(studies)));
+    }
+
+    /**
+     * 멘토가 개설한 스터디 조회
+     * @param mentorId 멘토 ID (임시로 파라미터로 받음)
+     * @return 멘토가 개설한 스터디 리스트
+     */
+    @GetMapping("/me/created")
+    public ResponseEntity<List<StudyResponse>> getMyCreatedStudies(@RequestParam Long mentorId)
+    {
+        //TODO: 멘토 ID 인증 로직 추가 필요
+
+        List<StudyDto> studies = studyService.getMyCreatedStudies(mentorId);
+
+        return ResponseEntity.ok(StudyResponse.fromList(studies));
     }
 }
