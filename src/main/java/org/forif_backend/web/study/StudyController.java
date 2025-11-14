@@ -1,20 +1,18 @@
 package org.forif_backend.web.study;
 
-import java.util.Arrays;
-import java.util.List;
-
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.application.study.StudyService;
 import org.forif_backend.application.study.dto.StudyDto;
-import org.forif_backend.domain.study.Study;
+import org.forif_backend.common.dto.request.PageRequest;
+import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.domain.study.RecruitStatus;
+import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.web.study.dto.StudyResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import org.forif_backend.common.dto.request.PageRequest;
-import org.forif_backend.application.study.StudyService;
-import org.forif_backend.common.dto.response.ApiResponse;
-import org.forif_backend.domain.study.StudyDifficulty;
-import org.forif_backend.domain.study.RecruitStatus;
+import java.util.Arrays;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
