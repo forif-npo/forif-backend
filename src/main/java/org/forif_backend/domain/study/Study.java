@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.domain.user.User;
 
 @Entity
 @Getter
@@ -31,11 +32,19 @@ public class Study extends BaseTimeEntity {
     @Column(length = 50)
     private String studyName;
 
-    @Column(length = 50)
-    private String primaryMentorName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_mentor_id")
+    private User primaryMentor;
 
-    @Column(length = 50)
-    private String secondaryMentorName;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "secondary_mentor_id")
+    private User secondaryMentor;
+
+//    @Column(length = 50)
+//    private String primaryMentorName;
+//
+//    @Column(length = 50)
+//    private String secondaryMentorName;
 
     @ManyToMany
     @JoinTable(

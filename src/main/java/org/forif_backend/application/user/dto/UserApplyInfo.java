@@ -2,14 +2,18 @@ package org.forif_backend.application.user.dto;
 
 import lombok.Builder;
 
+import java.time.ZonedDateTime;
+
 @Builder
 public record UserApplyInfo(
         String applierName,
-        String applierId,
+        String applierStudentId,
         String primaryStudyName,
         String secondaryStudyName,
-        String applyComment,
-        String applyDate,
-        String applyStatus
+        String primaryStudyComment,
+        String secondaryStudyComment,
+        ZonedDateTime applyDate,
+        String primaryStudyStatus,
+        String secondaryStudyStatus
 ) {
 }

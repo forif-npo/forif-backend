@@ -1,12 +1,18 @@
 package org.forif_backend.infrastructure.persistence.user;
 
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.common.type.SortDirection;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.forif_backend.domain.user.QUserApply.userApply;
@@ -42,5 +48,32 @@ public class UserRepositoryImpl implements UserRepository {
         return isExist != null;
     }
 
+    @Override
+    public List<UserApply> findUserApply(Integer studyId, Long page, Long pageSize, UserApplyStatus statusFilter, SortDirection applyDateDirection) {
+        return queryFactory.selectFrom(userApply)
+                .leftJoin(userApply.applier).fetchJoin()
+                .where(filterByStudyAndStatus(studyId, statusFilter))
+                .orderBy(getSortOrder(applyDateDirection))
+                .offset(page * pageSize)
+                .limit(pageSize)
+                .fetch();
+    }
 
+    private BooleanExpression filterByStudyAndStatus(Integer studyId, UserApplyStatus statusFilter) {
+        BooleanExpression primaryCondition = userApply.primaryStudy.eq(studyId);
+        if (statusFilter != null) {
+            primaryCondition = primaryCondition.and(userApply.primaryStatus.eq(statusFilter.ordinal()));
+        }
+
+        BooleanExpression secondaryCondition = userApply.secondaryStudy.eq(studyId);
+        if (statusFilter != null) {
+            secondaryCondition = secondaryCondition.and(userApply.secondaryStatus.eq(statusFilter.ordinal()));
+        }
+
+        return primaryCondition.or(secondaryCondition);
+    }
+
+    private OrderSpecifier<?> getSortOrder(SortDirection direction) {
+        return new OrderSpecifier<>(direction.toOrder(), userApply.createdAt);
+    }
 }

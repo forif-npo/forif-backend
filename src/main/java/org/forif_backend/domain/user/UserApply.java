@@ -42,9 +42,11 @@ public class UserApply extends BaseTimeEntity {
 
     private Integer payStatus;
 
-    private Integer primaryStatus;
+    @Enumerated(EnumType.STRING)
+    private UserApplyStatus primaryStatus;
 
-    private Integer secondaryStatus;
+    @Enumerated(EnumType.STRING)
+    private UserApplyStatus secondaryStatus;
 
     private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro) {
         this.applier = applier;
@@ -54,6 +56,8 @@ public class UserApply extends BaseTimeEntity {
         this.primaryIntro = primaryIntro;
         this.secondaryStudy = secondaryStudy;
         this.secondaryIntro = secondaryIntro;
+        this.primaryStatus = UserApplyStatus.PENDING;
+        this.secondaryStatus = UserApplyStatus.PENDING;
     }
 
     public static UserApply applyStudy(StudyApplyRequest request, User applier) {
