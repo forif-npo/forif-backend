@@ -3,11 +3,11 @@ package org.forif_backend.domain.study;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 
-@Entity
+
 @Getter
-@RequiredArgsConstructor
 public enum StudyTag {
     DATABASE("database", "데이터베이스"),
     BASIC("basic", "프로그래밍 기초"),
@@ -32,6 +32,11 @@ public enum StudyTag {
      * 사용자 UI에 표시될 때 사용되는 설명 값 (가변)
      */
     private final String label;
+
+    StudyTag(String value, String label) {
+        this.value = value;
+        this.label = label;
+    }
 
     public static  StudyTag fromValue(String value) {
         return switch (value) {
