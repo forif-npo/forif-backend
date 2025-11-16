@@ -1,10 +1,11 @@
 package org.forif_backend.domain.study;
 
+import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import org.forif_backend.common.exception.ErrorCode;
-import org.forif_backend.common.exception.ForifException;
+import lombok.NoArgsConstructor;
 
+@Entity
 @Getter
 @RequiredArgsConstructor
 public enum StudyTag {
