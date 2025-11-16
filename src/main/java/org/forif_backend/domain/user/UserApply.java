@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.web.user.dto.StudyApplyRequest;
 
 @Entity
@@ -32,10 +33,14 @@ public class UserApply extends BaseTimeEntity {
     @Column(nullable = false)
     private int primaryStudy;
 
+    @Column(nullable = false)
+    private String primaryStudyName;
+
     @Column(length = 2000)
     private String primaryIntro;
 
     private Integer secondaryStudy;
+    private String secondaryStudyName;
 
     @Column(length = 2000)
     private String secondaryIntro;
@@ -48,7 +53,7 @@ public class UserApply extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private UserApplyStatus secondaryStatus;
 
-    private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro) {
+    private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro, String primaryStudyName, String secondaryStudyName) {
         this.applier = applier;
         this.applyYear = applyYear;
         this.applySemester = applySemester;
@@ -58,9 +63,11 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryIntro = secondaryIntro;
         this.primaryStatus = UserApplyStatus.PENDING;
         this.secondaryStatus = UserApplyStatus.PENDING;
+        this.primaryStudyName = primaryStudyName;
+        this.secondaryStudyName = secondaryStudyName;
     }
 
-    public static UserApply applyStudy(StudyApplyRequest request, User applier) {
+    public static UserApply applyStudy(StudyApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
         return new UserApply(
                 applier,
                 DateUtils.getCurrentYear(),
@@ -68,7 +75,9 @@ public class UserApply extends BaseTimeEntity {
                 request.primaryStudyId(),
                 request.primaryStudyApplyReason(),
                 request.secondaryStudyId(),
-                request.secondaryStudyApplyReason()
+                request.secondaryStudyApplyReason(),
+                primaryStudy.getStudyName(),
+                secondaryStudy == null ? null : secondaryStudy.getStudyName()
         );
     }
 }

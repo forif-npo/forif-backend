@@ -40,11 +40,11 @@ public class Study extends BaseTimeEntity {
     @JoinColumn(name = "secondary_mentor_id")
     private User secondaryMentor;
 
-//    @Column(length = 50)
-//    private String primaryMentorName;
-//
-//    @Column(length = 50)
-//    private String secondaryMentorName;
+    @Column(length = 50)
+    private String primaryMentorName;
+
+    @Column(length = 50)
+    private String secondaryMentorName;
 
     @ManyToMany
     @JoinTable(

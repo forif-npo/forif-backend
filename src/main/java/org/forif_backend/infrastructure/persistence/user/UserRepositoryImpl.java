@@ -62,12 +62,12 @@ public class UserRepositoryImpl implements UserRepository {
     private BooleanExpression filterByStudyAndStatus(Integer studyId, UserApplyStatus statusFilter) {
         BooleanExpression primaryCondition = userApply.primaryStudy.eq(studyId);
         if (statusFilter != null) {
-            primaryCondition = primaryCondition.and(userApply.primaryStatus.eq(statusFilter.ordinal()));
+            primaryCondition = primaryCondition.and(userApply.primaryStatus.eq(statusFilter));
         }
 
         BooleanExpression secondaryCondition = userApply.secondaryStudy.eq(studyId);
         if (statusFilter != null) {
-            secondaryCondition = secondaryCondition.and(userApply.secondaryStatus.eq(statusFilter.ordinal()));
+            secondaryCondition = secondaryCondition.and(userApply.secondaryStatus.eq(statusFilter));
         }
 
         return primaryCondition.or(secondaryCondition);

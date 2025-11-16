@@ -39,13 +39,14 @@ public class UserApplyService {
         }
 
         // 지원 스터디 존재 확인
-        studyRepository.findStudyById(request.primaryStudyId())
+        Study primaryStudy = studyRepository.findStudyById(request.primaryStudyId())
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
-        Optional.ofNullable(request.secondaryStudyId()).ifPresent(secondaryStudyId -> studyRepository.findStudyById(secondaryStudyId)
-                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND)));
+        Study secondaryStudy = Optional.ofNullable(request.secondaryStudyId())
+                .map(secondaryStudyId -> studyRepository.findStudyById(secondaryStudyId)
+                        .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND))).orElse(null);
 
         // 지원 정보 생성
-        UserApply userApply = UserApply.applyStudy(request, user);
+        UserApply userApply = UserApply.applyStudy(request, user, primaryStudy, secondaryStudy);
 
         // 지원
         userRepository.createUserApply(userApply);
@@ -88,7 +89,7 @@ public class UserApplyService {
                 .secondaryStudyStatus(userApply.getSecondaryStatus().name())
                 .applierStudentId(userApply.getApplier().getId().toString()) //학번?
                 .applierName(userApply.getApplier().getUserName())
-                .primaryStudyName(userApply.getpri)
-                .secondaryStudyName()
+                .primaryStudyName(userApply.getPrimaryStudyName())
+                .secondaryStudyName(userApply.getSecondaryStudyName()).build();
     }
 }
