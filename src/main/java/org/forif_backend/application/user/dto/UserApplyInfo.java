@@ -24,7 +24,7 @@ public record UserApplyInfo(
                 .secondaryStudyComment(userApply.getSecondaryIntro())
                 .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))
                 .primaryStudyStatus(userApply.getPrimaryStatus().name())
-                .secondaryStudyStatus(userApply.getSecondaryStatus().name())
+                .secondaryStudyStatus(userApply.getSecondaryStatus() != null ? userApply.getSecondaryStatus().name() : null)
                 .applierStudentId(userApply.getApplier().getId().toString()) //TODO: 학번?
                 .applierName(userApply.getApplier().getUserName())
                 .primaryStudyName(userApply.getPrimaryStudyName())

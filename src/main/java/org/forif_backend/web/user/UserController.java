@@ -35,7 +35,7 @@ public class UserController {
     @GetMapping("/apply/{studyId}")
     public ResponseEntity<ApiResponse<List<UserApplyResponse>>> getUserApply(@AuthenticationPrincipal Long userId,
                                                                      @PathVariable("studyId") Integer studyId,
-                                                                     @RequestParam(value = "page", required = false, defaultValue = "1") Long page,
+                                                                     @RequestParam(value = "page", required = false, defaultValue = "0") Long page,
                                                                      @RequestParam(value = "pageSize", required = false, defaultValue = "20") Long pageSize,
                                                                      @RequestParam(value = "statusFilter", required = false) UserApplyStatus userApplyStatus,
                                                                      @RequestParam(value = "applyDateDirection", required = false, defaultValue = "DESC") SortDirection sortDirection) {

@@ -71,8 +71,9 @@ public class UserApplyService {
         Study study = studyRepository.findStudyById(studyId).orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         // 유저 권한 확인(멘토인지, 운영진?)
-        if(!study.getPrimaryMentor().getId().equals(userId)) {
-            throw new ForifException(ErrorCode.UNAUTHORIZED_ACCESS);
+        // TODO: 운영진 필요시 추가
+        if(!study.getPrimaryMentor().getId().equals(userId) && !study.getSecondaryMentor().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
         }
 
         // 해당 스터디 지원 정보 조회
