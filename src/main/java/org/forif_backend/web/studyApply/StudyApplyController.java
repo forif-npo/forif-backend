@@ -3,7 +3,7 @@ package org.forif_backend.web.studyApply;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.studyApply.dto.CreateStudyApplyInfo;
-import org.forif_backend.application.studyApply.dto.StudyApplyService;
+import org.forif_backend.application.studyApply.StudyApplyService;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.studyApply.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.studyApply.dto.CreateStudyApplyResponse;

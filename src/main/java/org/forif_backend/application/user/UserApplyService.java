@@ -77,19 +77,6 @@ public class UserApplyService {
 
         // 해당 스터디 지원 정보 조회
         return userRepository.findUserApply(studyId, page, pageSize, statusFilter, applyDateDirection).stream()
-                .map(this::toUserApplyInfo).toList();
-    }
-
-    private UserApplyInfo toUserApplyInfo(UserApply userApply) {
-        return UserApplyInfo.builder()
-                .primaryStudyComment(userApply.getPrimaryIntro())
-                .secondaryStudyComment(userApply.getSecondaryIntro())
-                .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))
-                .primaryStudyStatus(userApply.getPrimaryStatus().name())
-                .secondaryStudyStatus(userApply.getSecondaryStatus().name())
-                .applierStudentId(userApply.getApplier().getId().toString()) //학번?
-                .applierName(userApply.getApplier().getUserName())
-                .primaryStudyName(userApply.getPrimaryStudyName())
-                .secondaryStudyName(userApply.getSecondaryStudyName()).build();
+                .map(UserApplyInfo::toUserApplyInfo).toList();
     }
 }

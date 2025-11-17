@@ -1,6 +1,8 @@
 package org.forif_backend.application.user.dto;
 
 import lombok.Builder;
+import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.user.UserApply;
 
 import java.time.ZonedDateTime;
 
@@ -16,4 +18,16 @@ public record UserApplyInfo(
         String primaryStudyStatus,
         String secondaryStudyStatus
 ) {
+    public static UserApplyInfo toUserApplyInfo(UserApply userApply) {
+        return UserApplyInfo.builder()
+                .primaryStudyComment(userApply.getPrimaryIntro())
+                .secondaryStudyComment(userApply.getSecondaryIntro())
+                .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))
+                .primaryStudyStatus(userApply.getPrimaryStatus().name())
+                .secondaryStudyStatus(userApply.getSecondaryStatus().name())
+                .applierStudentId(userApply.getApplier().getId().toString()) //TODO: 학번?
+                .applierName(userApply.getApplier().getUserName())
+                .primaryStudyName(userApply.getPrimaryStudyName())
+                .secondaryStudyName(userApply.getSecondaryStudyName()).build();
+    }
 }
