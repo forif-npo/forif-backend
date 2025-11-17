@@ -10,7 +10,7 @@ import java.util.List;
 @Repository
 @RequiredArgsConstructor
 public class MentorStudyRepositoryImpl implements MentorStudyRepository {
-    private final JPAQueryFactory queryFactory;  // 직접 주입
+    private final JPAQueryFactory queryFactory;
 
     private final QMentorStudy mentorStudy = QMentorStudy.mentorStudy;
     private final QStudy study = QStudy.study;
