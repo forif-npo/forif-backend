@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.web.user.dto.UserSignInRequest;
 import org.forif_backend.web.user.dto.UserSignUpRequest;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("local")
+@Disabled("통합 테스트로, 실제 Google API 호출이 필요하여 로컬에서만 실행")
 @Transactional
 class UserControllerTest {
 
