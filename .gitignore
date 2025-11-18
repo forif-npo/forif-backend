@@ -38,3 +38,7 @@ out/
 
 forif-web.pem
 .env
+.claude
+
+# API Specification
+apiSpecification.md
