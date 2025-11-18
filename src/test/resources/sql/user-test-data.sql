@@ -1,0 +1,1 @@
+INSERT INTO tb_user (user_id, user_name, email, created_at, updated_at) VALUES (1, 'test-user', 'test@test.com', '2025-09-26', '2025-09-26');
