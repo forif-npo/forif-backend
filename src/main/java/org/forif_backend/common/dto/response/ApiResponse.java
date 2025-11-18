@@ -1,7 +1,5 @@
 package org.forif_backend.common.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 /**
  * 모든 API 응답을 위한 표준 형식 Record
  * @param timestamp 응답 시간
@@ -10,7 +8,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  * @param message 성공 또는 실패 메시지
  * @param <T> 데이터의 타입
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiResponse<T>(
         long timestamp,
         T data,

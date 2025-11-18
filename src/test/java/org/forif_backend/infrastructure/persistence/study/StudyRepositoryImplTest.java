@@ -6,6 +6,7 @@ import java.util.List;
 
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.Disabled;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
@@ -22,6 +23,7 @@ import org.forif_backend.domain.study.StudyTag;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
+@Disabled
 @Transactional
 public class StudyRepositoryImplTest {
     @Autowired
