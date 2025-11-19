@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForifException.class)
     public ResponseEntity<ApiResponse<?>> handleForifException(ForifException e) {
         ErrorCode errorCode = e.getErrorCode();
-        log.error("ForifException caught: code={}, message={}", errorCode.getCode(), e.getMessage());
+        log.warn("ForifException caught: code={}, message={}", errorCode.getCode(), e.getMessage());
 
         // 예외에 상세 데이터가 포함되어 있는지 확인
         ApiResponse<?> response;

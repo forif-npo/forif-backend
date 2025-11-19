@@ -12,7 +12,6 @@ import org.forif_backend.common.BaseTimeEntity;
 @Table(name = "tb_user")
 public class User extends BaseTimeEntity {
 
-    // 학번
     @Id
     @Column(name = "user_id")
     private Long id;
