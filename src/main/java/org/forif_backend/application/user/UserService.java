@@ -25,37 +25,9 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final StudyRepository studyRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
-
-    /**
-     * 스터디 지원 메서드
-     * @param userId 유저ID
-     * @param request 요청 dto
-     */
-    public void applyStudy(Long userId, StudyApplyRequest request) {
-        // 유저 조회
-        User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
-        // 이번 학기에 지원한 스터디 있는지 확인
-        if(userRepository.existUserApply(DateUtils.getCurrentYear(), DateUtils.getCurrentSemester(), user)) {
-            throw new ForifException(ErrorCode.USER_APPLY_ALREADY_EXISTS);
-        }
-
-        // 지원 스터디 존재 확인
-        studyRepository.findStudyById(request.primaryStudyId())
-                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
-        Optional.ofNullable(request.secondaryStudyId()).ifPresent(secondaryStudyId -> studyRepository.findStudyById(secondaryStudyId)
-                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND)));
-
-        // 지원 정보 생성
-        UserApply userApply = UserApply.applyStudy(request, user);
-
-        // 지원
-        userRepository.createUserApply(userApply);
-
-    }
 
     /**
      * 부원 회원가입

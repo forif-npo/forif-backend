@@ -19,11 +19,9 @@ import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.web.user.dto.StudyApplyRequest;
 import org.forif_backend.web.user.dto.UserApplyResponse;
-import org.springframework.data.repository.query.Param;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
