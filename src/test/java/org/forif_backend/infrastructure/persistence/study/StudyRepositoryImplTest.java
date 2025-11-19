@@ -34,6 +34,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("전체 스터디를 조회한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withNoCondition_returnsAllStudies() {
         // given
@@ -49,6 +50,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("개설 년도와 학기로 스터디를 필터링한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withYearAndSemester_returnsFilteredStudies() {
         // given
@@ -66,6 +68,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("난이도로 스터디를 필터링한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withDifficulties_returnsFilteredStudies() {
         // given
@@ -97,6 +100,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("모집 상태로 스터디를 필터링한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withRecruitStatus_returnsFilteredStudies() {
         // given
@@ -113,6 +117,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("태그 이름으로 스터디를 필터링한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withStudyTagNames_returnsFilteredStudies() {
         // given
@@ -133,6 +138,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("복합 조건으로 스터디를 조회한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withMultipleConditions_returnsFilteredStudies() {
         // given
@@ -155,6 +161,7 @@ public class StudyRepositoryImplTest {
 
     @Test
     @DisplayName("offset과 limit을 사용하여 페이징 처리한다")
+    @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
     void getStudies_withPaging_returnsPagedResults() {
         // given

@@ -2,7 +2,7 @@ package org.forif_backend.application.study;
 
 import org.assertj.core.api.Assertions;
 import org.forif_backend.application.studyApply.dto.CreateStudyApplyInfo;
-import org.forif_backend.application.studyApply.dto.StudyApplyService;
+import org.forif_backend.application.studyApply.StudyApplyService;
 import org.forif_backend.domain.studyApply.ReferenceType;
 import org.forif_backend.domain.studyApply.StudyApply;
 import org.forif_backend.domain.studyApply.StudyApplyPlan;
