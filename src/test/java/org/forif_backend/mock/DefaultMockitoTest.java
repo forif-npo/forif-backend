@@ -16,7 +16,11 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-@SpringBootTest
+@SpringBootTest(properties = { // 테스트용 임의값
+        "spring.data.redis.host=localhost",
+        "spring.data.redis.port=6379",
+        "jwt.secret=D7s8f9G0h1j2k3L4z5x6c7v8b9n0m1Q2W3E4R5T6Y7u="
+})
 @Transactional
 @Rollback
 public class DefaultMockitoTest {
