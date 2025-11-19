@@ -1,8 +1,9 @@
-package org.forif_backend.application.studyApply.dto;
+package org.forif_backend.application.studyApply;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.studyApply.dto.CreateStudyApplyInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.study.*;
