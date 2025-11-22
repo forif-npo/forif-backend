@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyTagDto;
 import org.junit.jupiter.api.Disabled;
+import org.forif_backend.application.study.dto.StudyTagDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -123,5 +124,39 @@ class StudyControllerTest {
                         .param("page_size", "10")
                         .param("recruit_status", "invalid"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/studies/me/created - 내가 개설한 스터디 조회")
+    void getMyCreatedStudies_success() throws Exception {
+        // given
+        StudyDto study1 = StudyDto.builder()
+                .id(1)
+                .studyName("내 스터디 1")
+                .primaryMentorName("나")
+                .difficulty(StudyDifficulty.EASY)
+                .recruitStatus(RecruitStatus.APPLICABLE)
+                .tags(Arrays.asList(
+                        StudyTagDto.builder().id(1L).name("Java").build(),
+                        StudyTagDto.builder().id(2L).name("Spring").build()
+                ))
+                .actYear(2024)
+                .actSemester(2)
+                .build();
+
+        List<StudyDto> studies = Collections.singletonList(study1);
+
+        when(studyService.getMyCreatedStudies(anyLong()))
+                .thenReturn(studies);
+
+        // when & then
+        mockMvc.perform(get("/api/v1/studies/me/created")
+                        .param("mentorId", "1"))  // 임시 (나중에 @AuthenticationPrincipal로 변경)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].id").value(1))
+                .andExpect(jsonPath("$.data[0].study_name").value("내 스터디 1"))
+                .andExpect(jsonPath("$.data[0].tags").isArray())
+                .andExpect(jsonPath("$.data[0].tags[0]").value("Java"))
+                .andExpect(jsonPath("$.data[0].tags[1]").value("Spring"));
     }
 }

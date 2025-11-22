@@ -1,60 +1,64 @@
 package org.forif_backend.web.study.dto;
 
 import java.util.List;
-import java.util.stream.Collectors;
-
-import lombok.Builder;
-import lombok.Getter;
 
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyTagDto;
 
-@Getter
-@Builder
-public class StudyResponse {
-    private Integer id;
-    private String studyName;
-    private String primaryMentorName;
-    private String secondaryMentorName;
-    private List<String> tags;
-    private String recruitStatus;
-    private String oneLiner;
-    private String explanation;
-    private String startTime;
-    private String endTime;
-    private Integer weekDay;
-    private String location;
-    private String difficulty;
-    private String imgUrl;
-    private Integer actYear;
-    private Integer actSemester;
-
+public record StudyResponse(
+        Integer id,
+        String studyName,
+        String primaryMentorName,
+        String secondaryMentorName,
+        List<String> tags,
+        String recruitStatus,
+        String oneLiner,
+        String explanation,
+        String startTime,
+        String endTime,
+        Integer weekDay,
+        String location,
+        String difficulty,
+        String imgUrl,
+        Integer actYear,
+        Integer actSemester
+) {
     public static StudyResponse from(StudyDto study) {
         List<String> tagNames = study.getTags().stream()
                 .map(StudyTagDto::getName)
-                .collect(Collectors.toList());
+                .toList();
 
         String recruitStatusValue = study.getRecruitStatus() != null
                 ? study.getRecruitStatus().getValue()
                 : null;
 
-        return StudyResponse.builder()
-                .id(study.getId())
-                .studyName(study.getStudyName())
-                .primaryMentorName(study.getPrimaryMentorName())
-                .secondaryMentorName(study.getSecondaryMentorName())
-                .tags(tagNames)
-                .recruitStatus(recruitStatusValue)
-                .oneLiner(study.getOneLiner())
-                .explanation(study.getExplanation())
-                .startTime(study.getStartTime())
-                .endTime(study.getEndTime())
-                .weekDay(study.getWeekDay())
-                .location(study.getLocation())
-                .difficulty(study.getDifficulty().getValue())
-                .imgUrl(study.getImgUrl())
-                .actYear(study.getActYear())
-                .actSemester(study.getActSemester())
-                .build();
+        String difficultyValue = study.getDifficulty() != null
+                ? study.getDifficulty().getValue()
+                : null;
+
+        return new StudyResponse(
+                study.getId(),
+                study.getStudyName(),
+                study.getPrimaryMentorName(),
+                study.getSecondaryMentorName(),
+                tagNames,
+                recruitStatusValue,
+                study.getOneLiner(),
+                study.getExplanation(),
+                study.getStartTime(),
+                study.getEndTime(),
+                study.getWeekDay(),
+                study.getLocation(),
+                difficultyValue,
+                study.getImgUrl(),
+                study.getActYear(),
+                study.getActSemester()
+        );
+    }
+
+    public static List<StudyResponse> fromList(List<StudyDto> studies) {
+        return studies.stream()
+                .map(StudyResponse::from)
+                .toList();
     }
 }
