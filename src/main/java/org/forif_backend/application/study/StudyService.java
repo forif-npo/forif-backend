@@ -7,13 +7,16 @@ import org.springframework.stereotype.Service;
 
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.domain.study.*;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class StudyService {
     
     private final StudyRepository studyRepository;
-    
+    private final MentorStudyRepository mentorStudyRepository;
+
+    @Transactional(readOnly = true)
     public List<StudyDto> getStudies(Long page, Long pageSize, Integer year, Integer semester,
                                      List<StudyDifficulty> difficulties, List<String> tags,
                                      RecruitStatus recruitStatus, String search) {
@@ -30,8 +33,16 @@ public class StudyService {
         
         // Get studies from repository
         List<Study> studies = studyRepository.getStudies(searchCond, page, pageSize);
-        List<StudyDto> studiesDto = studies.stream().map(StudyDto::from).toList();
-        
-        return studiesDto;
+
+        return studies.stream().map(StudyDto::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudyDto> getMyCreatedStudies(Long mentorId) {
+
+        return mentorStudyRepository.findStudiesWithTagsByMentorId(mentorId)
+            .stream()
+            .map(StudyDto::from)
+            .toList();
     }
 }

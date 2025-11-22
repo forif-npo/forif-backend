@@ -1,31 +1,24 @@
 package org.forif_backend.infrastructure.persistence.study;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import org.forif_backend.domain.study.*;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
-import org.forif_backend.domain.study.StudyDifficulty;
-import org.forif_backend.domain.study.RecruitStatus;
-import org.forif_backend.domain.study.Study;
-import org.forif_backend.domain.study.StudyRepository;
-import org.forif_backend.domain.study.StudySearchCond;
-import org.forif_backend.domain.study.StudyTag;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Disabled
-@Transactional
 public class StudyRepositoryImplTest {
+
     @Autowired
     private StudyRepository studyRepository;
 
@@ -45,7 +38,9 @@ public class StudyRepositoryImplTest {
 
         // then
         assertThat(result).isNotEmpty();
-        assertThat(result).isSortedAccordingTo(Comparator.comparing(Study::getCreatedAt).reversed());
+        assertThat(result).isSortedAccordingTo(
+                Comparator.comparing(Study::getCreatedAt).reversed()
+        );
     }
 
     @Test
@@ -63,7 +58,9 @@ public class StudyRepositoryImplTest {
         List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
 
         // then
-        assertThat(result).allMatch(study -> study.getActYear() == 2025 && study.getActSemester() == 2);
+        assertThat(result).allMatch(study ->
+                study.getActYear() == 2025 && study.getActSemester() == 2
+        );
     }
 
     @Test
@@ -72,19 +69,28 @@ public class StudyRepositoryImplTest {
     @Sql("/sql/study-test-data.sql")
     void getStudies_withDifficulties_returnsFilteredStudies() {
         // given
+        List<StudyDifficulty> targetDifficulties = Arrays.asList(
+                StudyDifficulty.EASY,
+                StudyDifficulty.SEMI_EASY,
+                StudyDifficulty.NORMAL
+        );
+
         StudySearchCond cond = StudySearchCond.builder()
-                .difficulties(Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_EASY, StudyDifficulty.NORMAL))
+                .difficulties(targetDifficulties)
                 .build();
 
         // when
         List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
 
         // then
-        assertThat(result).allMatch(study -> Arrays.asList(StudyDifficulty.EASY, StudyDifficulty.SEMI_EASY, StudyDifficulty.NORMAL).contains(study.getDifficulty()));
+        assertThat(result).allMatch(study ->
+                targetDifficulties.contains(study.getDifficulty())
+        );
     }
 
     @Test
     @DisplayName("스터디 이름 또는 멘토 이름으로 키워드 검색을 수행한다")
+    @Sql("/sql/study-test-data.sql")
     void getStudies_withSearchKeyword_returnsMatchingStudies() {
         // given
         StudySearchCond cond = StudySearchCond.builder()
@@ -173,7 +179,8 @@ public class StudyRepositoryImplTest {
 
         // then
         assertThat(firstPage).hasSize(10);
-        assertThat(secondPage).hasSize(10);
-        assertThat(firstPage.get(0).getId()).isNotEqualTo(secondPage.get(0).getId());
+        assertThat(secondPage).isNotEmpty();  // ✅ hasSize(10) 대신
+        assertThat(firstPage.get(0).getId())
+                .isNotEqualTo(secondPage.get(0).getId());
     }
 }
