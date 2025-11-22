@@ -1,31 +1,22 @@
 package org.forif_backend.infrastructure.persistence.study;
 
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-
 import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
+import org.forif_backend.domain.study.*;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.jdbc.Sql;
-import org.springframework.transaction.annotation.Transactional;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
-import org.forif_backend.domain.study.StudyDifficulty;
-import org.forif_backend.domain.study.RecruitStatus;
-import org.forif_backend.domain.study.Study;
-import org.forif_backend.domain.study.StudyRepository;
-import org.forif_backend.domain.study.StudySearchCond;
-import org.forif_backend.domain.study.StudyTag;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @Disabled
-@Transactional
 public class StudyRepositoryImplTest {
 
     @Autowired
