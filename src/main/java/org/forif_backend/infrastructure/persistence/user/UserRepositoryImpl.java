@@ -88,6 +88,11 @@ public class UserRepositoryImpl implements UserRepository {
                 .fetch();
     }
 
+    @Override
+    public UserApply findUserApplyById(Long applyId) {
+        return userApplyJpaRepository.findByid(applyId);
+    }
+
     private BooleanExpression filterByStudyAndStatus(Integer studyId, UserApplyStatus statusFilter) {
         BooleanExpression primaryCondition = userApply.primaryStudy.eq(studyId);
         if (statusFilter != null) {

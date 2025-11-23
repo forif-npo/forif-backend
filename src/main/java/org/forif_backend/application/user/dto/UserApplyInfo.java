@@ -8,6 +8,7 @@ import java.time.ZonedDateTime;
 
 @Builder
 public record UserApplyInfo(
+        Long applyId,
         String applierName,
         String applierStudentId,
         String primaryStudyName,
@@ -18,8 +19,9 @@ public record UserApplyInfo(
         String primaryStudyStatus,
         String secondaryStudyStatus
 ) {
-    public static UserApplyInfo toUserApplyInfo(UserApply userApply) {
+    public static UserApplyInfo from(UserApply userApply) {
         return UserApplyInfo.builder()
+                .applyId(userApply.getId())
                 .primaryStudyComment(userApply.getPrimaryIntro())
                 .secondaryStudyComment(userApply.getSecondaryIntro())
                 .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))

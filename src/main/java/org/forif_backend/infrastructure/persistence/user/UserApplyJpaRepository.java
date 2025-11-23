@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
     List<UserApply> findByApplier(User applier);
+
+    UserApply findByid(Long id);
 }

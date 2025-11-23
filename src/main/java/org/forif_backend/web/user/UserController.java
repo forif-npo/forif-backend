@@ -189,7 +189,7 @@ public class UserController {
                                                                              @RequestParam(value = "statusFilter", required = false) UserApplyStatus userApplyStatus,
                                                                              @RequestParam(value = "applyDateDirection", required = false, defaultValue = "DESC") SortDirection sortDirection) {
         List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, page, pageSize, userApplyStatus, sortDirection);
-        List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::toUserApplyResponse).toList();
+        List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::from).toList();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

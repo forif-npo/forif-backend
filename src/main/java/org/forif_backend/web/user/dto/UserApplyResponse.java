@@ -7,6 +7,7 @@ import java.time.ZonedDateTime;
 
 @Builder
 public record UserApplyResponse(
+        Long applyId,
         String applierName,
         String applierStudentId,
         String primaryStudyName,
@@ -17,8 +18,9 @@ public record UserApplyResponse(
         String primaryStudyStatus,
         String secondaryStudyStatus
 ) {
-    public static UserApplyResponse toUserApplyResponse(UserApplyInfo userApplyInfo) {
+    public static UserApplyResponse from(UserApplyInfo userApplyInfo) {
         return UserApplyResponse.builder()
+                .applyId(userApplyInfo.applyId())
                 .applierName(userApplyInfo.applierName())
                 .applierStudentId(userApplyInfo.applierStudentId())
                 .primaryStudyName(userApplyInfo.primaryStudyName())

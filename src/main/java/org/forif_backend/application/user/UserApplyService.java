@@ -1,6 +1,7 @@
 package org.forif_backend.application.user;
 
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -78,6 +79,46 @@ public class UserApplyService {
 
         // 해당 스터디 지원 정보 조회
         return userRepository.findUserApply(studyId, page, pageSize, statusFilter, applyDateDirection).stream()
-                .map(UserApplyInfo::toUserApplyInfo).toList();
+                .map(UserApplyInfo::from).toList();
+    }
+
+    /**
+     * 지원 내역 상세 조회 메서드입니다.
+     * @param userId 유저 id
+     * @param studyId 스터디 id
+     * @param applyId 지원 id
+     * @return 지원 내역 상세
+     */
+    public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
+        // 스터디 조회
+        Study study = studyRepository.findStudyById(studyId).orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        // 유저 권한 확인(멘토인지)
+        if(!study.getPrimaryMentor().getId().equals(userId) && !study.getSecondaryMentor().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
+        }
+
+        // 지원내용 조회
+        UserApply userApply = userRepository.findUserApplyById(applyId);
+
+        // 지원내용 상세 내용 반환
+        return ApplyDetailInfo.builder()
+                .applyReason(getApplicationContentForStudy(userApply, studyId))
+                .build();
+    }
+
+    /**
+     * 조회 스터디에 따라 지원 내용을 조회하는 메서드입니다.
+     * @param userApply 지원 내역
+     * @param studyId 스터디 ID
+     * @return 지원 내용
+     */
+    private String getApplicationContentForStudy(UserApply userApply, Integer studyId) {
+        if(userApply.getPrimaryStudy() == studyId) {
+            return userApply.getPrimaryIntro();
+        }
+        else {
+            return userApply.getSecondaryIntro();
+        }
     }
 }
