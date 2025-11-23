@@ -65,20 +65,11 @@ public class UserApplyService {
      */
     public List<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, Long page, Long pageSize, UserApplyStatus statusFilter,
                                             SortDirection applyDateDirection) {
-        // 유저 조회
-        User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
-
-        // 스터디 조회
-        Study study = studyRepository.findStudyById(studyId).orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
-
-        // 유저 권한 확인(멘토인지, 운영진?)
-        // TODO: 운영진 필요시 추가
-        if(!study.getPrimaryMentor().getId().equals(userId) && !study.getSecondaryMentor().getId().equals(userId)) {
-            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
-        }
+        // 멘토일 경우 스터디 조회
+        Study study = getStudyIfMentor(userId, studyId);
 
         // 해당 스터디 지원 정보 조회
-        return userRepository.findUserApply(studyId, page, pageSize, statusFilter, applyDateDirection).stream()
+        return userRepository.findUserApply(study.getId(), page, pageSize, statusFilter, applyDateDirection).stream()
                 .map(UserApplyInfo::from).toList();
     }
 
@@ -90,21 +81,36 @@ public class UserApplyService {
      * @return 지원 내역 상세
      */
     public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
-        // 스터디 조회
-        Study study = studyRepository.findStudyById(studyId).orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
-
-        // 유저 권한 확인(멘토인지)
-        if(!study.getPrimaryMentor().getId().equals(userId) && !study.getSecondaryMentor().getId().equals(userId)) {
-            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
-        }
+        // 멘토일 경우 스터디 조회
+        Study study = getStudyIfMentor(userId, studyId);
 
         // 지원내용 조회
         UserApply userApply = userRepository.findUserApplyById(applyId);
 
         // 지원내용 상세 내용 반환
         return ApplyDetailInfo.builder()
-                .applyReason(getApplicationContentForStudy(userApply, studyId))
+                .applyReason(getApplicationContentForStudy(userApply, study.getId()))
                 .build();
+    }
+
+    /**
+     * 권한이 있을 경우 스터디를 조회하는 메서드
+     * @param userId 유저 ID
+     * @param studyId 스터디 ID
+     * @return 스터디
+     */
+    private Study getStudyIfMentor(Long userId, Integer studyId) {
+        // 스터디 조회
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        // 권한 확인
+        // TODO: 운영진으로 권한 확대?
+        if (!study.isMentor(userId)) {
+            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
+        }
+
+        return study;
     }
 
     /**
