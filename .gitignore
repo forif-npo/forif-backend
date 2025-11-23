@@ -42,3 +42,7 @@ forif-web.pem
 
 # API Specification
 apiSpecification.md
+
+.claude-code-style.md
+
+DB_structure.md

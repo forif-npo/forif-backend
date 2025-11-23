@@ -11,4 +11,5 @@ public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
     List<StudyTag> findAllStudyTagById(List<Long> tagIds);
     List<Study> getStudies(StudySearchCond cond, Long offset, Long limit);
+    List<Study> findStudiesByUserId(Long userId);
 }
