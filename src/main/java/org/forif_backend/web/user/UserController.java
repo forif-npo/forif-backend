@@ -192,4 +192,12 @@ public class UserController {
         List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::from).toList();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @GetMapping("/apply/{studyId}/{applyId}")
+    public ResponseEntity<ApiResponse<UserApplyDetailResponse>> getUserApplyDetail(@AuthenticationPrincipal Long userId,
+                                                                             @PathVariable("studyId") Integer studyId, @PathVariable("applyId") Long applyId) {
+        ApplyDetailInfo applyDetailInfo = userApplyService.getApplyDetailInfo(userId, studyId, applyId);
+        UserApplyDetailResponse response = UserApplyDetailResponse.from(applyDetailInfo);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }
