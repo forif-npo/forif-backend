@@ -30,4 +30,9 @@ public class StudyRepositoryImpl implements StudyRepository {
     public List<StudyTag> findAllStudyTagById(List<Long> tagIds) {
         return studyTagJpaRepository.findAllById(tagIds);
     }
+
+    @Override
+    public Optional<Study> findStudyByIdWithTags(Integer studyId) {
+        return studyJpaRepository.findByIdWithTags(studyId);
+    }
 }

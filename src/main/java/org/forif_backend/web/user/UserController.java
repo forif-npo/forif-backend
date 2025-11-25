@@ -192,4 +192,28 @@ public class UserController {
         List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::toUserApplyResponse).toList();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * 멘티 스터디 신청서 목록 조회
+     */
+    @GetMapping("/me/study-applications")
+    public ResponseEntity<ApiResponse<StudyApplicationsResponse>> getStudyApplications(
+            @AuthenticationPrincipal Long userId
+    ) {
+        GetStudyApplicationsResult result = userService.getStudyApplications(userId);
+        StudyApplicationsResponse response = UserDtoMapper.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 멘토 스터디 개설 신청서 목록 조회
+     */
+    @GetMapping("/me/study-creation-applications")
+    public ResponseEntity<ApiResponse<StudyCreationApplicationsResponse>> getStudyCreationApplications(
+            @AuthenticationPrincipal Long userId
+    ) {
+        GetStudyCreationApplicationsResult result = userService.getStudyCreationApplications(userId);
+        StudyCreationApplicationsResponse response = UserDtoMapper.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

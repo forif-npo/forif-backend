@@ -51,4 +51,12 @@ public class UserDtoMapper {
             .accessToken(result.accessToken())
             .build();
     }
+
+    public static StudyApplicationsResponse toResponse(GetStudyApplicationsResult result) {
+        return new StudyApplicationsResponse(result.applications());
+    }
+
+    public static StudyCreationApplicationsResponse toResponse(GetStudyCreationApplicationsResult result) {
+        return new StudyCreationApplicationsResponse(result.applications());
+    }
 }

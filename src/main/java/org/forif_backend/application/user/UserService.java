@@ -9,15 +9,18 @@ import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
-import org.forif_backend.domain.user.GoogleOAuthClient;
-import org.forif_backend.domain.user.User;
-import org.forif_backend.domain.user.UserApply;
-import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.domain.studyApply.StudyApply;
+import org.forif_backend.domain.studyApply.StudyApplyRepository;
+import org.forif_backend.domain.user.*;
 import org.forif_backend.web.user.dto.StudyApplyRequest;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +28,9 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserApplyRepository userApplyRepository;
+    private final StudyApplyRepository studyApplyRepository;
+    private final StudyRepository studyRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
@@ -125,5 +131,118 @@ public class UserService {
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(command.refreshToken(), role);
 
         return new RefreshTokenResult(tokenPair.accessToken(), tokenPair.refreshToken());
+    }
+
+    /**
+     * 멘티 스터디 신청서 목록 조회
+     */
+    public GetStudyApplicationsResult getStudyApplications(Long userId) {
+        List<UserApply> userApplies = userApplyRepository.findAllUserApplyByUserId(userId);
+
+        List<StudyApplicationDto> applications = userApplies.stream()
+                .map(userApply -> {
+                    Study primaryStudy = studyRepository.findStudyByIdWithTags(userApply.getPrimaryStudy())
+                            .orElse(null);
+                    ApplicationDetailDto primaryApplication = createApplicationDetailDto(
+                            "PRIMARY", primaryStudy, userApply.getPrimaryStatus(), userApply.getPrimaryIntro()
+                    );
+
+                    ApplicationDetailDto secondaryApplication = null;
+                    if (userApply.getSecondaryStudy() != null) {
+                        Study secondaryStudy = studyRepository.findStudyByIdWithTags(userApply.getSecondaryStudy())
+                                .orElse(null);
+                        secondaryApplication = createApplicationDetailDto(
+                                "SECONDARY", secondaryStudy, userApply.getSecondaryStatus(), userApply.getSecondaryIntro()
+                        );
+                    }
+
+                    return new StudyApplicationDto(
+                            userApply.getId(),
+                            userApply.getApplyYear(),
+                            userApply.getApplySemester(),
+                            userApply.getCreatedAt().toLocalDate(),
+                            userApply.getApplier().getDepartment(),
+                            userApply.getPayStatus(),
+                            primaryApplication,
+                            secondaryApplication
+                    );
+                })
+                .collect(Collectors.toList());
+
+        return new GetStudyApplicationsResult(applications);
+    }
+
+    /**
+     * 멘토 스터디 개설 신청서 목록 조회
+     */
+    public GetStudyCreationApplicationsResult getStudyCreationApplications(Long userId) {
+        List<StudyApply> studyApplies = studyApplyRepository.findAllStudyApplyByMentorId(userId);
+
+        List<StudyCreationApplicationDto> applications = studyApplies.stream()
+                .map(studyApply -> {
+                    boolean isPrimaryMentor = studyApply.getPrimaryMentor() != null &&
+                            studyApply.getPrimaryMentor().getId().equals(userId);
+                    String role = isPrimaryMentor ? "PRIMARY_MENTOR" : "SECONDARY_MENTOR";
+
+                    String partnerMentorName = null;
+                    if (isPrimaryMentor && studyApply.getSecondaryMentor() != null) {
+                        partnerMentorName = studyApply.getSecondaryMentor().getUserName();
+                    } else if (!isPrimaryMentor && studyApply.getPrimaryMentor() != null) {
+                        partnerMentorName = studyApply.getPrimaryMentor().getUserName();
+                    }
+
+                    List<String> tags = studyApply.getTags().stream()
+                            .map(tag -> tag.getName())
+                            .collect(Collectors.toList());
+
+                    return new StudyCreationApplicationDto(
+                            studyApply.getId(),
+                            studyApply.getStudyName(),
+                            tags,
+                            studyApply.getSubTitle(),
+                            studyApply.getExplanation(),
+                            studyApply.getStartTime(),
+                            studyApply.getEndTime(),
+                            studyApply.getWeekDay(),
+                            studyApply.getLocation(),
+                            studyApply.getDifficulty(),
+                            studyApply.getAcceptanceStatus() ? 1 : 0,
+                            studyApply.getActYear(),
+                            studyApply.getActSemester(),
+                            role,
+                            partnerMentorName,
+                            studyApply.getCreatedAt()
+                    );
+                })
+                .collect(Collectors.toList());
+
+        return new GetStudyCreationApplicationsResult(applications);
+    }
+
+    private ApplicationDetailDto createApplicationDetailDto(String priority, Study study, UserApplyStatus status, String intro) {
+        if (study == null) {
+            return null;
+        }
+
+        StudyInfoDto studyInfo = new StudyInfoDto(
+                study.getId(),
+                study.getStudyName(),
+                study.getPrimaryMentorName(),
+                study.getSecondaryMentorName(),
+                study.getTags().stream()
+                        .map(tag -> tag.getName())
+                        .collect(Collectors.toList()),
+                study.getOneLiner(),
+                study.getWeekDay(),
+                study.getStartTime(),
+                study.getEndTime(),
+                study.getLocation(),
+                study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
+                study.getImgUrl()
+        );
+
+        Integer statusValue = status != null ? status.ordinal() : null;
+
+        return new ApplicationDetailDto(priority, studyInfo, statusValue, intro);
     }
 }
