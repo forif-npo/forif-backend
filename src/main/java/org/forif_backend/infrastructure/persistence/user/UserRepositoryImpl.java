@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.common.type.SortDirection;
@@ -10,8 +11,10 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.support.PageableExecutionUtils;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -77,15 +80,28 @@ public class UserRepositoryImpl implements UserRepository {
     public void deleteById(Long id) {
         userJpaRepository.deleteById(id);
     }
+
     @Override
-    public List<UserApply> findUserApply(Integer studyId, Long page, Long pageSize, UserApplyStatus statusFilter, SortDirection applyDateDirection) {
-        return queryFactory.selectFrom(userApply)
+    public Page<UserApply> findUserApply(Integer studyId, Pageable pageable, UserApplyStatus statusFilter, SortDirection applyDateDirection) {
+        List<UserApply> content = queryFactory.selectFrom(userApply)
                 .leftJoin(userApply.applier).fetchJoin()
                 .where(filterByStudyAndStatus(studyId, statusFilter))
                 .orderBy(getSortOrder(applyDateDirection))
-                .offset(page * pageSize)
-                .limit(pageSize)
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
                 .fetch();
+
+        JPAQuery<Long> countQuery = queryFactory
+                .select(userApply.count())
+                .from(userApply)
+                .where(filterByStudyAndStatus(studyId, statusFilter));
+
+        return PageableExecutionUtils.getPage(content, pageable, countQuery::fetchOne);
+    }
+
+    @Override
+    public UserApply findUserApplyById(Long applyId) {
+        return userApplyJpaRepository.findByid(applyId);
     }
 
     private BooleanExpression filterByStudyAndStatus(Integer studyId, UserApplyStatus statusFilter) {

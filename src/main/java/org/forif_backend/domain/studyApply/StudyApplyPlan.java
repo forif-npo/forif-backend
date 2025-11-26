@@ -13,9 +13,7 @@ import java.util.UUID;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "tb_study_apply_plan", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"apply_id", "week_num"})
-})
+@Table(name = "tb_study_apply_plan")
 public class StudyApplyPlan extends BaseTimeEntity {
 
     @Id

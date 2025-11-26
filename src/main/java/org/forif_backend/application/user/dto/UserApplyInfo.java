@@ -2,32 +2,28 @@ package org.forif_backend.application.user.dto;
 
 import lombok.Builder;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.UserApply;
 
 import java.time.ZonedDateTime;
 
 @Builder
 public record UserApplyInfo(
+        Long applyId,
         String applierName,
-        String applierStudentId,
-        String primaryStudyName,
-        String secondaryStudyName,
-        String primaryStudyComment,
-        String secondaryStudyComment,
+        String studyName,
+        String studyComment,
         ZonedDateTime applyDate,
-        String primaryStudyStatus,
-        String secondaryStudyStatus
+        String studyStatus
 ) {
-    public static UserApplyInfo toUserApplyInfo(UserApply userApply) {
+    public static UserApplyInfo from(UserApply userApply, Study study) {
         return UserApplyInfo.builder()
-                .primaryStudyComment(userApply.getPrimaryIntro())
-                .secondaryStudyComment(userApply.getSecondaryIntro())
+                .applyId(userApply.getId())
                 .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))
-                .primaryStudyStatus(userApply.getPrimaryStatus().name())
-                .secondaryStudyStatus(userApply.getSecondaryStatus() != null ? userApply.getSecondaryStatus().name() : null)
-                .applierStudentId(userApply.getApplier().getId().toString()) //TODO: 학번?
                 .applierName(userApply.getApplier().getUserName())
-                .primaryStudyName(userApply.getPrimaryStudyName())
-                .secondaryStudyName(userApply.getSecondaryStudyName()).build();
+                .studyName(study.getStudyName())
+                .studyComment(study.getId() == userApply.getPrimaryStudy() ? userApply.getPrimaryIntro() : userApply.getSecondaryIntro())
+                .studyStatus(study.getId() == userApply.getPrimaryStudy() ? userApply.getPrimaryStatus().getStatusName() : userApply.getSecondaryStatus().getStatusName())
+                .build();
     }
 }

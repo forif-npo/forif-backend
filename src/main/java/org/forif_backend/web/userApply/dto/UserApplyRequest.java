@@ -1,10 +1,10 @@
-package org.forif_backend.web.user.dto;
+package org.forif_backend.web.userApply.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.hibernate.validator.constraints.Length;
 
-public record StudyApplyRequest(
+public record UserApplyRequest(
     @NotNull
     Integer primaryStudyId,
 

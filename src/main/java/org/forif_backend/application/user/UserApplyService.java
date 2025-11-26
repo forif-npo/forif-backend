@@ -1,7 +1,9 @@
 package org.forif_backend.application.user;
 
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
+import org.forif_backend.common.dto.response.PageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.type.SortDirection;
@@ -12,7 +14,10 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -29,7 +34,7 @@ public class UserApplyService {
      * @param userId 유저 id
      * @param request 요청 dto
      */
-    public void applyStudy(Long userId, StudyApplyRequest request) {
+    public void applyStudy(Long userId, UserApplyRequest request) {
         // 유저 조회
         User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -62,22 +67,70 @@ public class UserApplyService {
      * @param applyDateDirection 지원 날짜순 정렬 옵션 (DESC, ASC)
      * @return 지원자 정보 목록
      */
-    public List<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, Long page, Long pageSize, UserApplyStatus statusFilter,
-                                            SortDirection applyDateDirection) {
-        // 유저 조회
-        User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+    public Page<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, int page, int pageSize, UserApplyStatus statusFilter,
+                                                          SortDirection applyDateDirection) {
+        // 멘토일 경우 스터디 조회
+        Study study = getStudyIfMentor(userId, studyId);
 
+        // 페이지 객체 생성
+        Pageable pageable = PageRequest.of(page, pageSize);
+
+        // 해당 스터디 지원 정보 조회
+        return userRepository.findUserApply(study.getId(), pageable, statusFilter, applyDateDirection).map(apply -> UserApplyInfo.from(apply, study));
+    }
+
+    /**
+     * 지원 내역 상세 조회 메서드입니다.
+     * @param userId 유저 id
+     * @param studyId 스터디 id
+     * @param applyId 지원 id
+     * @return 지원 내역 상세
+     */
+    public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
+        // 멘토일 경우 스터디 조회
+        Study study = getStudyIfMentor(userId, studyId);
+
+        // 지원내용 조회
+        UserApply userApply = userRepository.findUserApplyById(applyId);
+
+        // 지원내용 상세 내용 반환
+        return ApplyDetailInfo.builder()
+                .applyReason(getApplicationContentForStudy(userApply, study.getId()))
+                .build();
+    }
+
+    /**
+     * 권한이 있을 경우 스터디를 조회하는 메서드
+     * @param userId 유저 ID
+     * @param studyId 스터디 ID
+     * @return 스터디
+     */
+    private Study getStudyIfMentor(Long userId, Integer studyId) {
         // 스터디 조회
-        Study study = studyRepository.findStudyById(studyId).orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        // 유저 권한 확인(멘토인지, 운영진?)
-        // TODO: 운영진 필요시 추가
-        if(!study.getPrimaryMentor().getId().equals(userId) && !study.getSecondaryMentor().getId().equals(userId)) {
+        // 권한 확인
+        // TODO: 운영진으로 권한 확대?
+        if (!study.isMentor(userId)) {
             throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
         }
 
-        // 해당 스터디 지원 정보 조회
-        return userRepository.findUserApply(studyId, page, pageSize, statusFilter, applyDateDirection).stream()
-                .map(UserApplyInfo::toUserApplyInfo).toList();
+        return study;
+    }
+
+    /**
+     * 조회 스터디에 따라 지원 내용을 조회하는 메서드입니다.
+     * @param userApply 지원 내역
+     * @param studyId 스터디 ID
+     * @return 지원 내용
+     */
+    private String getApplicationContentForStudy(UserApply userApply, Integer studyId) {
+        if(userApply.getPrimaryStudy() == studyId) {
+            return userApply.getPrimaryIntro();
+        }
+        else {
+            return userApply.getSecondaryIntro();
+        }
     }
 }

@@ -78,4 +78,16 @@ public class Study extends BaseTimeEntity {
 
     @Column(length = 300)
     private String imgUrl;
+
+    /**
+     * 해당 스터디 멘토 여부 확인 메서드
+     * @param userId 유저 ID
+     * @return 멘토 여부
+     */
+    public boolean isMentor(Long userId) {
+        boolean isPrimary = this.primaryMentor.getId().equals(userId);
+        boolean isSecondary = this.secondaryMentor != null && this.secondaryMentor.getId().equals(userId);
+
+        return isPrimary || isSecondary;
+    }
 }
