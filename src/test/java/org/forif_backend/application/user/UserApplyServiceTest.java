@@ -105,7 +105,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
 
         // when
         // 스터디 지원 내역 조회
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0L, 20L, null, SortDirection.ASC);
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0, 20, null, SortDirection.ASC).getContent();
 
         // then
         // 검증1: 지원 내역 조회 확인
@@ -127,7 +127,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
 
         // when
         // 스터디 지원 내역 조회
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0L, 20L, null, SortDirection.DESC);
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0, 20, null, SortDirection.DESC).getContent();
 
         // then
         // 검증1: 지원 내역 조회 확인
@@ -149,7 +149,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
 
         // when
         // 스터디 지원 내역 조회
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0L, 20L, UserApplyStatus.ACCEPT, SortDirection.DESC);
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, 0, 20, UserApplyStatus.ACCEPT, SortDirection.DESC).getContent();
 
         // then
         // 검증1: 지원 내역 조회 확인
@@ -174,7 +174,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         // when
         // 스터디 지원 내역 조회
         assertThatThrownBy(() -> {
-            userApplyService.getApplyInfo(mentorId, studyId, 0L, 20L, null, SortDirection.DESC); // 해당 스터디의 멘토가 아니면 오류 발생
+            userApplyService.getApplyInfo(mentorId, studyId, 0, 20, null, SortDirection.DESC); // 해당 스터디의 멘토가 아니면 오류 발생
         }).hasMessage(ErrorCode.NOT_STUDY_MENTOR.getMessage());
     }
 
@@ -193,7 +193,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         // when
         // 최신순 조회 (DESC), Page 0, Size 3
         // 예상 순서: User 56 -> 55 -> 54 -> 53 -> 52 -> 51 -> 50
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(mentorId, studyId, 0L, 3L, null, SortDirection.DESC);
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(mentorId, studyId, 0, 3, null, SortDirection.DESC).getContent();
 
         // then
         assertThat(applyInfo.size()).isEqualTo(3);
@@ -216,7 +216,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         // when
         // 최신순 조회 (DESC), Page 1, Size 3 (Offset 3)
         // 전체 7개 중 4, 5, 6번째 항목 (User 53, 52, 51)
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(mentorId, studyId, 1L, 3L, null, SortDirection.DESC);
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(mentorId, studyId, 1, 3, null, SortDirection.DESC).getContent();
 
         // then
         assertThat(applyInfo.size()).isEqualTo(3);

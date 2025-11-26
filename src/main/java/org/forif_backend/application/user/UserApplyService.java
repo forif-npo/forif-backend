@@ -3,6 +3,7 @@ package org.forif_backend.application.user;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
+import org.forif_backend.common.dto.response.PageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.type.SortDirection;
@@ -14,6 +15,9 @@ import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -63,14 +67,16 @@ public class UserApplyService {
      * @param applyDateDirection 지원 날짜순 정렬 옵션 (DESC, ASC)
      * @return 지원자 정보 목록
      */
-    public List<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, Long page, Long pageSize, UserApplyStatus statusFilter,
-                                            SortDirection applyDateDirection) {
+    public Page<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, int page, int pageSize, UserApplyStatus statusFilter,
+                                                          SortDirection applyDateDirection) {
         // 멘토일 경우 스터디 조회
         Study study = getStudyIfMentor(userId, studyId);
 
+        // 페이지 객체 생성
+        Pageable pageable = PageRequest.of(page, pageSize);
+
         // 해당 스터디 지원 정보 조회
-        return userRepository.findUserApply(study.getId(), page, pageSize, statusFilter, applyDateDirection).stream()
-                .map(userApply -> UserApplyInfo.from(userApply, study)).toList();
+        return userRepository.findUserApply(study.getId(), pageable, statusFilter, applyDateDirection).map(apply -> UserApplyInfo.from(apply, study));
     }
 
     /**

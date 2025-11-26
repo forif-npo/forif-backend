@@ -6,11 +6,13 @@ import org.forif_backend.application.user.UserApplyService;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.common.dto.response.PageResponse;
 import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
 import org.forif_backend.web.userApply.dto.UserApplyDetailResponse;
 import org.forif_backend.web.userApply.dto.UserApplyResponse;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,14 +33,15 @@ public class UserApplyController {
     }
 
     @GetMapping("/{studyId}")
-    public ResponseEntity<ApiResponse<List<UserApplyResponse>>> getUserApply(@AuthenticationPrincipal Long userId,
+    public ResponseEntity<ApiResponse<PageResponse<UserApplyResponse>>> getUserApply(@AuthenticationPrincipal Long userId,
                                                                              @PathVariable("studyId") Integer studyId,
-                                                                             @RequestParam(value = "page", required = false, defaultValue = "0") Long page,
-                                                                             @RequestParam(value = "pageSize", required = false, defaultValue = "20") Long pageSize,
+                                                                             @RequestParam(value = "page", required = false, defaultValue = "0") int page,
+                                                                             @RequestParam(value = "pageSize", required = false, defaultValue = "20") int pageSize,
                                                                              @RequestParam(value = "statusFilter", required = false) UserApplyStatus userApplyStatus,
                                                                              @RequestParam(value = "applyDateDirection", required = false, defaultValue = "DESC") SortDirection sortDirection) {
-        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, page, pageSize, userApplyStatus, sortDirection);
-        List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::from).toList();
+        Page<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, page, pageSize, userApplyStatus, sortDirection);
+        List<UserApplyResponse> responseContent = applyInfo.stream().map(UserApplyResponse::from).toList();
+        PageResponse<UserApplyResponse> response = PageResponse.<UserApplyResponse>builder().totalPages(applyInfo.getTotalPages()).totalElements(applyInfo.getTotalElements()).content(responseContent).build();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
