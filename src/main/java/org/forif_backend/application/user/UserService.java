@@ -8,16 +8,10 @@ import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
-import org.forif_backend.common.util.DateUtils;
-import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
-import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor

@@ -10,7 +10,7 @@ import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.infrastructure.persistence.user.UserApplyJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
 import org.forif_backend.mock.DefaultMockitoTest;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,11 +45,11 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
 
         // when
         // 스터디 지원
-        StudyApplyRequest studyApplyRequest = new StudyApplyRequest(1,
+        UserApplyRequest userApplyRequest = new UserApplyRequest(1,
                 "1지망",
                 2,
                 "2지망");
-        userApplyService.applyStudy(user.getId(), studyApplyRequest);
+        userApplyService.applyStudy(user.getId(), userApplyRequest);
 
         // then
         List<UserApply> userApply = userApplyJpaRepository.findByApplier(user);
@@ -78,16 +78,16 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
 
         // when
         // 스터디 지원
-        StudyApplyRequest studyApplyRequest = new StudyApplyRequest(1,
+        UserApplyRequest userApplyRequest = new UserApplyRequest(1,
                 "1지망",
                 2,
                 "2지망");
-        userApplyService.applyStudy(user.getId(), studyApplyRequest);
+        userApplyService.applyStudy(user.getId(), userApplyRequest);
 
         // then
         // 두번 지원하면 실패
         Assertions.assertThatThrownBy(() -> {
-            userApplyService.applyStudy(user.getId(), studyApplyRequest);
+            userApplyService.applyStudy(user.getId(), userApplyRequest);
         }).hasMessage(ErrorCode.USER_APPLY_ALREADY_EXISTS.getMessage());
     }
 
@@ -136,7 +136,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("스터디 지원 내역 조회 테스트: 지원내역을 정상적으로 불러온다.(최신순)")
+    @DisplayName("스터디 지원 내역 조회 테스트: 지원내역을 정상적으로 불러온다.(필터링)")
     @Sql(statements = {
             "ALTER TABLE tb_user ALTER COLUMN user_id RESTART WITH 1",
             "ALTER TABLE tb_study ALTER COLUMN study_id RESTART WITH 1"
@@ -154,7 +154,9 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         // then
         // 검증1: 지원 내역 조회 확인
         assertThat(applyInfo.size()).isEqualTo(1);
-        assertThat(applyInfo.get(0).primaryStudyStatus()).isEqualTo(UserApplyStatus.ACCEPT.toString());
+        assertThat(applyInfo.get(0).studyStatus()).isEqualTo(UserApplyStatus.ACCEPT.getStatusName());
+        assertThat(applyInfo.get(0).studyName()).isEqualTo("Forif 웹 개발 스터디");
+        assertThat(applyInfo.get(0).studyComment()).isEqualTo("동아리 대표 스터디라 꼭 참여하고 싶습니다.");
     }
 
     @Test

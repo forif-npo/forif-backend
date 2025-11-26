@@ -5,7 +5,7 @@ import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyRequest;
 
 @Entity
 @Getter
@@ -67,7 +67,7 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryStudyName = secondaryStudyName;
     }
 
-    public static UserApply applyStudy(StudyApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
+    public static UserApply applyStudy(UserApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
         return new UserApply(
                 applier,
                 DateUtils.getCurrentYear(),

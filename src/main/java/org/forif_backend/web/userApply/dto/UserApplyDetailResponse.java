@@ -1,4 +1,4 @@
-package org.forif_backend.web.user.dto;
+package org.forif_backend.web.userApply.dto;
 
 import lombok.Builder;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;

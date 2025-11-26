@@ -13,7 +13,7 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyRequest;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -30,7 +30,7 @@ public class UserApplyService {
      * @param userId 유저 id
      * @param request 요청 dto
      */
-    public void applyStudy(Long userId, StudyApplyRequest request) {
+    public void applyStudy(Long userId, UserApplyRequest request) {
         // 유저 조회
         User user = userRepository.findUserById(userId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -70,7 +70,7 @@ public class UserApplyService {
 
         // 해당 스터디 지원 정보 조회
         return userRepository.findUserApply(study.getId(), page, pageSize, statusFilter, applyDateDirection).stream()
-                .map(UserApplyInfo::from).toList();
+                .map(userApply -> UserApplyInfo.from(userApply, study)).toList();
     }
 
     /**
