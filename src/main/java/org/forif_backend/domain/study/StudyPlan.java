@@ -26,9 +26,24 @@ public class StudyPlan extends BaseTimeEntity {
     @Column(nullable = false)
     private int weekNum;
 
+    @Column
+    private java.time.ZonedDateTime date;
+
     @Column(length = 300)
     private String section;
 
     @Column(length = 500)
     private String content;
+
+    public StudyPlan(Study study, int weekNum, java.time.ZonedDateTime date, String topic, String content) {
+        this.study = study;
+        this.weekNum = weekNum;
+        this.date = date;
+        this.section = topic;
+        this.content = content;
+    }
+
+    public static StudyPlan create(int weekNum, java.time.ZonedDateTime date, String topic, String content, Study study) {
+        return new StudyPlan(study, weekNum, date, topic, content);
+    }
 }

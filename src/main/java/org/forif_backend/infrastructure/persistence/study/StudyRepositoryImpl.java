@@ -15,6 +15,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     private final StudyJpaRepository studyJpaRepository;
     private final StudyQueryRepository studyQueryRepository;
     private final StudyTagJpaRepository studyTagJpaRepository;
+    private final StudyPlanJpaRepository studyPlanJpaRepository;
+    private final StudyReferenceJpaRepository studyReferenceJpaRepository;
 
     @Override
     public Optional<Study> findStudyById(Integer studyId) {
@@ -39,5 +41,25 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public Optional<Study> findStudyByIdWithTags(Integer studyId) {
         return studyJpaRepository.findByIdWithTags(studyId);
+    }
+
+    @Override
+    public void saveStudy(Study study) {
+        studyJpaRepository.save(study);
+    }
+
+    @Override
+    public void saveAllStudyPlan(List<StudyPlan> plans) {
+        studyPlanJpaRepository.saveAll(plans);
+    }
+
+    @Override
+    public void saveAllStudyReference(List<StudyReference> references) {
+        studyReferenceJpaRepository.saveAll(references);
+    }
+
+    @Override
+    public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
+        return studyQueryRepository.findAllStudiesByMentorIdAndIsApplied(mentorId, isApplied);
     }
 }

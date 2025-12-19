@@ -17,7 +17,7 @@ public record StudyCreationApplicationDto(
         Integer weekDay,
         String location,
         Integer difficulty,
-        Integer acceptanceStatus,  // 승인 상태
+        Boolean isApplied,  // 신청 상태
         Integer actYear,
         Integer actSemester,
         String role,  // "PRIMARY_MENTOR" or "SECONDARY_MENTOR"

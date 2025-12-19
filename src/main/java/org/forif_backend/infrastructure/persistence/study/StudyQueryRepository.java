@@ -105,4 +105,17 @@ public class StudyQueryRepository {
                 .orderBy(study.actYear.desc(), study.actSemester.desc())
                 .fetch();
     }
+
+    public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(study.secondaryMentor.id.eq(mentorId)),
+                        isApplied != null ? study.isApplied.eq(isApplied) : null
+                )
+                .orderBy(study.createdAt.desc())
+                .fetch();
+    }
 }

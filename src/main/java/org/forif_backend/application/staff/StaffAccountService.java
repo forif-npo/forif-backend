@@ -2,6 +2,7 @@ package org.forif_backend.application.staff;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.auth.JwtProvider;
@@ -20,6 +21,7 @@ public class StaffAccountService {
     private final StaffAccountRepository staffAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
+    private final RefreshTokenService refreshTokenService;
 
     /**
      * 스태프(멘토/운영진) 로그인
@@ -33,8 +35,12 @@ public class StaffAccountService {
         }
 
         String role = staffAccount.getRole().getValue();
-        String accessToken = jwtProvider.generateAccessToken(staffAccount.getUserId().toString(), role);
-        String refreshToken = jwtProvider.generateRefreshToken(staffAccount.getUserId().toString());
+        String userId = staffAccount.getUserId().toString();
+        String accessToken = jwtProvider.generateAccessToken(userId, role);
+        String refreshToken = jwtProvider.generateRefreshToken(userId);
+
+        // Refresh Token을 Redis에 저장
+        refreshTokenService.saveRefreshToken(userId, refreshToken);
 
         return new StaffSignInResult(
             accessToken,

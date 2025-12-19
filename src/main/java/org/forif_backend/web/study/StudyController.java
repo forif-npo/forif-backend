@@ -9,6 +9,7 @@ import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.web.study.dto.StudyResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
@@ -44,15 +45,13 @@ public class StudyController {
 
     /**
      * 멘토가 개설한 스터디 조회
-     * @param mentorId 멘토 ID (임시로 파라미터로 받음)
+     * @param userId 멘토 ID (인증된 사용자)
      * @return 멘토가 개설한 스터디 리스트
      */
     @GetMapping("/me/created")
-    public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyCreatedStudies(@RequestParam Long mentorId)
+    public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyCreatedStudies(@AuthenticationPrincipal Long userId)
     {
-        //TODO: 멘토 ID 인증 로직 추가 필요
-
-        List<StudyDto> studies = studyService.getMyCreatedStudies(mentorId);
+        List<StudyDto> studies = studyService.getMyCreatedStudies(userId);
 
         return ResponseEntity.ok(ApiResponse.success(StudyResponse.fromList(studies)));
     }

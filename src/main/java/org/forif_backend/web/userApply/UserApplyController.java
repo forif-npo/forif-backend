@@ -21,7 +21,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/user-apply")
+@RequestMapping("/api/v1/users/apply")
 public class UserApplyController {
     private final UserApplyService userApplyService;
 
