@@ -38,3 +38,9 @@ out/
 
 forif-web.pem
 .env
+
+##
+.claude-code-style.md
+apiSpecification.md
+DB_structure.md
+.claude
