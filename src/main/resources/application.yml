@@ -7,10 +7,19 @@ spring:
     open-in-view: false
     properties:
       hibernate.format_sql: true
+      hibernate:
+        jdbc:
+          batch_size: 100
 
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+  cloud:
+    aws:
+      s3:
+        bucket-name: ${S3_BUCKET_NAME}
+      presigned-url:
+        expiration-minutes: 10
 
 jwt:
   secret: ${JWT_SECRET}

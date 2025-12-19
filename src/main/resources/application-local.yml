@@ -1,15 +1,24 @@
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${RDS_URL}/forif_dev
-    username: ${RDS_USERNAME}
-    password: ${RDS_PASSWORD}
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:localdb
+    username: sa
+    password:
 
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+jwt:
+  secret: ${JWT_SECRET}
 
 logging:
   level:
     org.hibernate.SQL: debug
+
