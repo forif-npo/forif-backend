@@ -30,4 +30,9 @@ public class StudyApplyRepositoryImpl implements StudyApplyRepository {
     public void saveAllStudyApplyReference(List<StudyApplyReference> studyApplyReferences) {
         studyApplyReferenceJpaRepository.saveAll(studyApplyReferences);
     }
+
+    @Override
+    public List<StudyApply> findAllStudyApplyByMentorId(Long mentorId) {
+        return studyApplyJpaRepository.findByMentorId(mentorId);
+    }
 }
