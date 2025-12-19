@@ -6,13 +6,22 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.auth.TokenBlacklistService;
+import org.forif_backend.application.study.StudyService;
+import org.forif_backend.application.study.dto.UserStudiesResult;
+import org.forif_backend.application.user.UserApplyService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
+import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.user.dto.*;
 import org.springframework.http.HttpHeaders;
+import org.forif_backend.common.type.SortDirection;
+import org.forif_backend.domain.user.UserApplyStatus;
+import org.forif_backend.web.user.dto.StudyApplyRequest;
+import org.forif_backend.web.user.dto.UserApplyResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +34,9 @@ public class UserController {
     private final TokenBlacklistService tokenBlacklistService;
     private final RefreshTokenService refreshTokenService;
     private final JwtProvider jwtProvider;
+    private final UserApplyService userApplyService;
+    private final StudyService studyService;
+
     /**
      * 부원 회원가입
      * 프론트엔드에서 Google OAuth로 획득한 이메일을 함께 전송
@@ -160,5 +172,39 @@ public class UserController {
             return authorization.substring(7);
         }
         return null;
+    }
+
+    @PostMapping("/apply")
+    public ResponseEntity<ApiResponse<Void>> applyStudy(@AuthenticationPrincipal Long userId,
+                                                        @Valid @RequestBody StudyApplyRequest studyApplyRequest) {
+        userApplyService.applyStudy(userId, studyApplyRequest);
+        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+    }
+
+    @GetMapping("/apply/{studyId}")
+    public ResponseEntity<ApiResponse<List<UserApplyResponse>>> getUserApply(@AuthenticationPrincipal Long userId,
+                                                                             @PathVariable("studyId") Integer studyId,
+                                                                             @RequestParam(value = "page", required = false, defaultValue = "0") Long page,
+                                                                             @RequestParam(value = "pageSize", required = false, defaultValue = "20") Long pageSize,
+                                                                             @RequestParam(value = "statusFilter", required = false) UserApplyStatus userApplyStatus,
+                                                                             @RequestParam(value = "applyDateDirection", required = false, defaultValue = "DESC") SortDirection sortDirection) {
+        List<UserApplyInfo> applyInfo = userApplyService.getApplyInfo(userId, studyId, page, pageSize, userApplyStatus, sortDirection);
+        List<UserApplyResponse> response = applyInfo.stream().map(UserApplyResponse::toUserApplyResponse).toList();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 수강 스터디 조회
+     * 부원이 현재 수강중인 스터디와 역대 수강한 스터디를 학기별로 그룹화하여 반환
+     */
+    @GetMapping("/me/studies")
+    public ResponseEntity<ApiResponse<UserStudiesResponse>> getUserStudies(@AuthenticationPrincipal Long userId) {
+        // 1. Service 호출
+        UserStudiesResult result = studyService.getUserStudies(userId);
+
+        // 2. Application Result → Web DTO 변환
+        UserStudiesResponse response = UserDtoMapper.toResponse(result);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
