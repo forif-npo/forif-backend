@@ -96,7 +96,7 @@ public class StaffAccountController {
     public ResponseEntity<ApiResponse<StaffInfoResponse>> getStaffInfo(
             @AuthenticationPrincipal Long userId
     ) {
-        StaffAccount staffAccount = staffAccountService.getStaffMe(userId);
+        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
         StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

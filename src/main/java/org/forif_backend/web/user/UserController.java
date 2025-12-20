@@ -233,7 +233,7 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(
             @AuthenticationPrincipal Long userId
     ) {
-        User user = userService.getUserMe(userId);
+        User user = userService.getUserInfo(userId);
         UserInfoResponse response = UserDtoMapper.toResponse(user);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

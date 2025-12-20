@@ -272,7 +272,8 @@ public class UserService {
     /**
      * 현재 로그인한 사용자 정보 조회
      */
-    public User getUserMe(Long userId) {
+    @Transactional
+    public User getUserInfo(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
     }
