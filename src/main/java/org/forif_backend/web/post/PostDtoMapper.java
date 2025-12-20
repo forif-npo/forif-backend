@@ -34,6 +34,7 @@ public class PostDtoMapper {
                 .content(dto.content())
                 .tag(dto.tag())
                 .createdAt(dto.createdAt().format(FORMATTER))
+                .imageUrls(dto.imageUrls())
                 .build();
     }
 

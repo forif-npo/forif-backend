@@ -24,6 +24,11 @@ public class PostFileRepositoryImpl implements PostFileRepository {
     }
 
     @Override
+    public List<PostFile> findByPostIdOrderByFileNum(Integer postId) {
+        return postFileJpaRepository.findByPost_IdOrderByFileNumAsc(postId);
+    }
+
+    @Override
     public void deleteByPostId(Integer postId) {
         postFileJpaRepository.deleteByPostId(postId);
     }

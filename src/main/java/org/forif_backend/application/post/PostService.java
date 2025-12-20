@@ -85,8 +85,10 @@ public class PostService {
 
         post.update(title, content, tag);
 
-        // PostFile 업데이트: 기존 이미지 삭제 후 새로운 이미지 저장
-        postFileRepository.deleteByPostId(postId);
+        // 기존 이미지를 S3에서 삭제
+        deletePostFiles(postId);
+
+        // 새로운 이미지 업로드 및 저장
         if (images != null && images.length > 0) {
             uploadAndSaveImages(post, images);
         }
@@ -103,8 +105,10 @@ public class PostService {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
-        // PostFile 먼저 삭제
-        postFileRepository.deleteByPostId(postId);
+        // S3와 DB에서 파일 삭제
+        deletePostFiles(postId);
+
+        // 게시글 삭제
         postRepository.deleteById(postId);
     }
 
@@ -188,6 +192,11 @@ public class PostService {
     }
 
     private PostDto convertToDto(Post post) {
+        List<PostFile> postFiles = postFileRepository.findByPostIdOrderByFileNum(post.getId());
+        List<String> imageUrls = postFiles.stream()
+                .map(postFile -> filePort.generatePresignedViewUrl(postFile.getFileUrl()).presignedUrl())
+                .toList();
+
         return PostDto.builder()
                 .postId(post.getId())
                 .authorId(post.getUser().getId())
@@ -197,6 +206,7 @@ public class PostService {
                 .content(post.getContent())
                 .tag(post.getTag())
                 .createdAt(post.getCreatedAt())
+                .imageUrls(imageUrls)
                 .build();
     }
 
@@ -207,15 +217,14 @@ public class PostService {
             // 파일 검증
             validateImageFile(image);
 
-            // S3에 업로드
-            FileInfo fileInfo = filePort.generatePresignedUploadUrl(image);
-            String fileUrl = fileInfo.presignedUrl();
+            // S3에 실제로 업로드하고 objectKey 받기
+            String objectKey = filePort.uploadFile(image);
 
             // 파일 타입 추출
             String fileType = extractFileType(image.getOriginalFilename());
 
-            // PostFile 저장
-            PostFile postFile = PostFile.createPostFile(post, i + 1, fileType, fileUrl);
+            // PostFile 저장 (objectKey를 fileUrl에 저장)
+            PostFile postFile = PostFile.createPostFile(post, i + 1, fileType, objectKey);
             postFileRepository.save(postFile);
         }
     }
@@ -229,6 +238,22 @@ public class PostService {
             return filename.substring(lastDotIndex + 1);
         }
         return "image";
+    }
+
+    private void deletePostFiles(Integer postId) {
+        List<PostFile> postFiles = postFileRepository.findByPostId(postId);
+
+        // S3에서 파일 삭제
+        for (PostFile postFile : postFiles) {
+            try {
+                filePort.deleteFile(postFile.getFileUrl());
+            } catch (Exception e) {
+                // 삭제 실패 시 로그만 남기고 계속 진행 (이미 삭제된 파일일 수 있음)
+            }
+        }
+
+        // DB에서 PostFile 삭제
+        postFileRepository.deleteByPostId(postId);
     }
 
     private void verifyAdminRole(Long userId) {

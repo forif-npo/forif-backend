@@ -7,5 +7,6 @@ import java.util.List;
 
 public interface PostFileJpaRepository extends JpaRepository<PostFile, Long> {
     List<PostFile> findByPostId(Integer postId);
+    List<PostFile> findByPost_IdOrderByFileNumAsc(Integer postId);
     void deleteByPostId(Integer postId);
 }

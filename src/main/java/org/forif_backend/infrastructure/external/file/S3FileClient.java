@@ -8,12 +8,14 @@ import org.forif_backend.common.exception.ForifException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.UUID;
 
@@ -22,13 +24,16 @@ import java.util.UUID;
 public class S3FileClient implements FilePort {
 
     private final S3Presigner s3Presigner;
+    private final S3Client s3Client;
     private final String bucketName;
     private final Duration presignedUrlDuration;
 
     public S3FileClient(S3Presigner s3Presigner,
+                        S3Client s3Client,
                         @Value("${spring.cloud.aws.s3.bucket-name}") String bucketName,
                         @Value("${spring.cloud.aws.presigned-url.expiration-minutes}") long expirationMinutes) {
         this.s3Presigner = s3Presigner;
+        this.s3Client = s3Client;
         this.bucketName = bucketName;
         this.presignedUrlDuration = Duration.ofMinutes(expirationMinutes);
     }
@@ -106,6 +111,61 @@ public class S3FileClient implements FilePort {
 
         } catch (Exception e) {
             log.error("조회용 Presigned URL 생성 중 오류 발생 (ObjectKey: {})", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * 파일을 S3에 직접 업로드합니다.
+     *
+     * @param file 업로드할 파일
+     * @return S3에 저장된 객체 키
+     */
+    @Override
+    public String uploadFile(MultipartFile file) {
+        String objectKey = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String contentType = file.getContentType();
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
+
+            log.info("파일 업로드 성공: {}", objectKey);
+            return objectKey;
+
+        } catch (IOException e) {
+            log.error("파일 읽기 중 오류 발생", e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        } catch (Exception e) {
+            log.error("S3 파일 업로드 중 오류 발생", e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+        }
+    }
+
+    /**
+     * S3에서 파일을 삭제합니다.
+     *
+     * @param objectKey 삭제할 S3 객체 키
+     */
+    @Override
+    public void deleteFile(String objectKey) {
+        try {
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
+
+            log.info("파일 삭제 성공: {}", objectKey);
+
+        } catch (Exception e) {
+            log.error("S3 파일 삭제 중 오류 발생 (ObjectKey: {})", objectKey, e);
             throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
         }
     }
