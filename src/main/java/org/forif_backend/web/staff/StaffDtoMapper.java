@@ -18,11 +18,28 @@ public class StaffDtoMapper {
         );
     }
 
+    public static StaffSignUpCommand toCommand(StaffSignupRequest request) {
+        return new StaffSignUpCommand(
+            request.userId(),
+            request.name(),
+            request.password(),
+            request.role(),
+            request.affiliation()
+        );
+    }
+
     /**
      * Application Result → Web DTO
      */
     public static StaffSignInResponse toResponse(StaffSignInResult result) {
         return StaffSignInResponse.builder()
+            .accessToken(result.accessToken())
+            .role(result.role())
+            .build();
+    }
+
+    public static StaffSignupResponse toResponse(StaffSignUpResult result) {
+        return StaffSignupResponse.builder()
             .accessToken(result.accessToken())
             .role(result.role())
             .build();

@@ -15,7 +15,7 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
-        return staffAccountJpaRepository.findByUser_Id(userId);
+        return staffAccountJpaRepository.findById(userId);
     }
 
     // 미사용
@@ -28,5 +28,10 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public Optional<StaffAccount> findById(Long id) {
         return staffAccountJpaRepository.findById(id);
+    }
+
+    @Override
+    public boolean existsById(Long userId) {
+        return staffAccountJpaRepository.existsById(userId);
     }
 }

@@ -9,4 +9,6 @@ public interface StaffAccountRepository {
     StaffAccount save(StaffAccount staffAccount);
     
     Optional<StaffAccount> findById(Long id);
+
+    boolean existsById(Long userId);
 }

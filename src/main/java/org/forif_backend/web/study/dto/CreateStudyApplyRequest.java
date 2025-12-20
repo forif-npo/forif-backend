@@ -7,7 +7,7 @@ import lombok.Setter;
 import org.forif_backend.domain.study.ReferenceType;
 import org.hibernate.validator.constraints.Length;
 
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -73,7 +73,7 @@ public class CreateStudyApplyRequest {
     @NotNull
     private Boolean requiresInterview;      // 면접 여부
 
-    private ZonedDateTime interviewDate;    // 면접 날짜
+    private LocalDateTime interviewDate;    // 면접 날짜
 
     private List<Reference> references;     // 참고자료
 
@@ -91,7 +91,7 @@ public class CreateStudyApplyRequest {
     @NoArgsConstructor
     public static class Plan {
         private Integer weekNum;            // 주차
-        private ZonedDateTime date;         // 날짜
+        private LocalDateTime date;         // 날짜
         private String topic;               // 주제
         private String content;             // 내용
     }

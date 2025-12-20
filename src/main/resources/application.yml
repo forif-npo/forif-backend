@@ -24,6 +24,12 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
 
+notification:
+  api-key: ${SMS_API_KEY}
+  api-secret: ${SMS_API_SECRET}
+  pf-id: ${SMS_PF_ID}
+  sender-number: ${SMS_SENDER_NUMBER}
+
 springdoc:
   swagger-ui:
     groups-order: desc

@@ -5,6 +5,7 @@ import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.UserApply;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Builder
@@ -13,13 +14,13 @@ public record UserApplyInfo(
         String applierName,
         String studyName,
         String studyComment,
-        ZonedDateTime applyDate,
+        LocalDateTime applyDate,
         String studyStatus
 ) {
     public static UserApplyInfo from(UserApply userApply, Study study) {
         return UserApplyInfo.builder()
                 .applyId(userApply.getId())
-                .applyDate(userApply.getCreatedAt().atZone(DateUtils.ZONE_SEOUL))
+                .applyDate(userApply.getCreatedAt())
                 .applierName(userApply.getApplier().getUserName())
                 .studyName(study.getStudyName())
                 .studyComment(study.getId() == userApply.getPrimaryStudy() ? userApply.getPrimaryIntro() : userApply.getSecondaryIntro())

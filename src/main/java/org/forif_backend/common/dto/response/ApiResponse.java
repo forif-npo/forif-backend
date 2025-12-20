@@ -1,5 +1,7 @@
 package org.forif_backend.common.dto.response;
 
+import org.forif_backend.common.exception.ErrorCode;
+
 /**
  * 모든 API 응답을 위한 표준 형식 Record
  * @param timestamp 응답 시간
@@ -23,6 +25,10 @@ public record ApiResponse<T>(
     // 성공 응답 (데이터 없이 메시지만 포함)
     public static <T> ApiResponse<T> successWithMsg(String message) {
         return new ApiResponse<>(System.currentTimeMillis(), null, null, message);
+    }
+
+    public static <T> ApiResponse<T> error(ErrorCode errorCode) {
+        return new ApiResponse<>(System.currentTimeMillis(), null, errorCode.getCode(), errorCode.getMessage());
     }
 
     // 실패 응답 (메시지만 포함)
