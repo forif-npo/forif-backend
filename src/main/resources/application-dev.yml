@@ -18,6 +18,18 @@ spring:
     hibernate:
       ddl-auto: validate
 
+  cloud:
+    aws:
+      credentials:
+        access-key: your-access-key
+        secret-key: your-secret-key
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket-name: forif-backend-dev
+
+
+
 logging:
   level:
     org.hibernate.SQL: debug

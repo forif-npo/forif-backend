@@ -46,4 +46,16 @@ public class Post extends BaseTimeEntity {
     public static Post createPost(User user, String postType, String title, String content, String tag) {
         return new Post(user, postType, title, content, tag);
     }
+
+    public void update(String title, String content, String tag) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (content != null) {
+            this.content = content;
+        }
+        if (tag != null) {
+            this.tag = tag;
+        }
+    }
 }
