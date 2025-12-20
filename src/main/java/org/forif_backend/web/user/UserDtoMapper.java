@@ -97,4 +97,10 @@ public class UserDtoMapper {
     public static StudyCreationApplicationsResponse toResponse(GetStudyCreationApplicationsResult result) {
         return new StudyCreationApplicationsResponse(result.applications());
     }
+
+    public static CertificateResponse toResponse(GetCertificateResult result) {
+        return CertificateResponse.builder()
+            .certificateUrl(result.certificateUrl())
+            .build();
+    }
 }

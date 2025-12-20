@@ -14,6 +14,8 @@ import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyUser;
+import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.*;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +32,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
+    private final StudyUserRepository studyUserRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
@@ -243,5 +246,26 @@ public class UserService {
         Integer statusValue = status != null ? status.ordinal() : null;
 
         return new ApplicationDetailDto(priority, studyInfo, statusValue, intro);
+    }
+
+    /**
+     * 인증서 조회
+     */
+    public GetCertificateResult getCertificate(Long userId, Integer studyId) {
+        // 1. StudyUser 조회
+        StudyUser studyUser = studyUserRepository.findByUserIdAndStudyId(userId, studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.CERTIFICATE_NOT_ISSUED));
+
+        // 2. certificate_status 확인 (0: 미발급, 1: 발급)
+        if (studyUser.getCertificateStatus() == null || studyUser.getCertificateStatus() == 0) {
+            throw new ForifException(ErrorCode.CERTIFICATE_NOT_ISSUED);
+        }
+
+        // 3. certificateUrl 확인
+        if (studyUser.getCertificateUrl() == null || studyUser.getCertificateUrl().isEmpty()) {
+            throw new ForifException(ErrorCode.CERTIFICATE_NOT_ISSUED);
+        }
+
+        return new GetCertificateResult(studyUser.getCertificateUrl());
     }
 }
