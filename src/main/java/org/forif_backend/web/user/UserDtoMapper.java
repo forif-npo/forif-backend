@@ -99,6 +99,12 @@ public class UserDtoMapper {
         return new StudyCreationApplicationsResponse(result.applications());
     }
 
+    public static CertificateResponse toResponse(GetCertificateResult result) {
+        return CertificateResponse.builder()
+            .certificateUrl(result.certificateUrl())
+            .build();
+    }
+
     public static UserInfoResponse toResponse(User user) {
         return UserInfoResponse.builder()
                 .userId(user.getId())

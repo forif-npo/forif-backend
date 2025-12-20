@@ -212,6 +212,20 @@ public class UserController {
     }
 
     /**
+     * 인증서 조회
+     * 특정 스터디에 대한 본인의 인증서 URL을 조회
+     */
+    @GetMapping("/me/certificates")
+    public ResponseEntity<ApiResponse<CertificateResponse>> getCertificate(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam("studyId") Integer studyId
+    ) {
+        GetCertificateResult result = userService.getCertificate(userId, studyId);
+        CertificateResponse response = UserDtoMapper.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
      * 현재 로그인한 사용자 정보 조회
      */
     @GetMapping("/me")

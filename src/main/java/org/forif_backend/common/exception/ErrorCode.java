@@ -50,6 +50,7 @@ public enum ErrorCode {
     STUDY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR029-404", "스터디 플랜이 없습니다."),
     WEEKLY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR030-404", "해당하는 스터디의 주간 계획을 찾을 수 없습니다."),
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR038-404", "등록되지 않은 스태프입니다."),
+    CERTIFICATE_NOT_ISSUED(HttpStatus.NOT_FOUND, "FOR019-404", "인증서가 발급되지 않았습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR031-409", "이미 가입된 사용자입니다."),
