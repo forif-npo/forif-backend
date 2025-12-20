@@ -4,6 +4,10 @@ spring:
     url: ${RDS_URL}/forif_dev
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
+    hikari:
+      data-source-properties:
+        rewriteBatchedStatements: true
+
 
   jpa:
     show-sql: true

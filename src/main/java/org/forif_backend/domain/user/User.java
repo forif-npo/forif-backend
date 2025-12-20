@@ -31,14 +31,15 @@ public class User extends BaseTimeEntity {
     @Column(length = 300)
     private String imgUrl;
 
-    // 생성자나 정적 팩토리 메서드로만 생성
-    private User(Long id, String userName, String email) {
+    private User(Long id, String userName, String email, String phoneNum, String department) {
         this.id = id;
         this.userName = userName;
         this.email = email;
+        this.phoneNum = phoneNum;
+        this.department = department;
     }
 
-    public static User createUser(Long id, String userName, String email) {
-        return new User(id, userName, email);
+    public static User createUser(Long id, String userName, String email, String phoneNum, String department) {
+        return new User(id, userName, email, phoneNum, department);
     }
 }

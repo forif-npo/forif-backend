@@ -21,7 +21,11 @@ public enum ErrorCode {
     PRIMARY_STUDY_REQUIRED(HttpStatus.BAD_REQUEST, "FOR010-400", "1순위 스터디를 무조건 선택해야 합니다."),
     USER_NOT_APPLIED_TO_STUDY(HttpStatus.BAD_REQUEST, "FOR011-400", "해당 스터디에 지원하지 않은 유저입니다."),
     STUDY_APPLICATION_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "FOR012-400", "스터디 지원 기간이 아닙니다."),
-    
+    INVALID_EMAIL_DOMAIN(HttpStatus.BAD_REQUEST, "FOR032-400", "한양대 이메일(@hanyang.ac.kr)만 사용 가능합니다."),
+    STUDENT_ID_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "FOR033-400", "이미 가입된 학번입니다."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "FOR034-400", "이미 가입된 이메일입니다."),
+    PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "FOR035-400", "비밀번호가 일치하지 않습니다."),
+
     // 401 Unauthorized
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "FOR013-401", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "FOR014-401", "토큰이 만료되었습니다."),
@@ -45,10 +49,12 @@ public enum ErrorCode {
     SECOND_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR028-404", "2순위 멘토를 찾을 수 없습니다."),
     STUDY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR029-404", "스터디 플랜이 없습니다."),
     WEEKLY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR030-404", "해당하는 스터디의 주간 계획을 찾을 수 없습니다."),
-    
+    STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR038-404", "등록되지 않은 스태프입니다."),
+
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR031-409", "이미 가입된 사용자입니다."),
-    
+    USER_APPLY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR032-409", "이번학기 스터디에 이미 지원 했습니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "서버 내부 오류가 발생했습니다.");
     

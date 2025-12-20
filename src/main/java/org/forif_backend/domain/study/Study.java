@@ -1,14 +1,20 @@
 package org.forif_backend.domain.study;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
+import java.util.ArrayList;
+import java.util.List;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.domain.user.User;
 
 @Entity
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Setter
+@NoArgsConstructor
 @Table(name = "tb_study")
 public class Study extends BaseTimeEntity {
 
@@ -26,14 +32,30 @@ public class Study extends BaseTimeEntity {
     @Column(length = 50)
     private String studyName;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "primary_mentor_id")
+    private User primaryMentor;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "secondary_mentor_id")
+    private User secondaryMentor;
+
     @Column(length = 50)
     private String primaryMentorName;
 
     @Column(length = 50)
     private String secondaryMentorName;
 
-    @Column(length = 100)
-    private StudyTag tag;
+    @ManyToMany
+    @JoinTable(
+        name = "tb_study_tag_mapping",
+        joinColumns = @JoinColumn(name = "study_id"),
+        inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private List<StudyTag> tags = new ArrayList<>();
+
+    @Column
+    private RecruitStatus recruitStatus;
 
     @Column(length = 300)
     private String oneLiner;
@@ -52,8 +74,46 @@ public class Study extends BaseTimeEntity {
     @Column(length = 50)
     private String location;
 
-    private Integer difficulty;
+    private StudyDifficulty difficulty;
 
     @Column(length = 300)
     private String imgUrl;
+
+    // StudyApply에서 통합된 필드들
+    @Column
+    private Boolean isApplied;
+
+    @Column(length = 50)
+    private String subTitle;
+
+    private String thumbnailImage;
+
+    private Boolean isOnline;
+
+    @Column(length = 500)
+    private String goal;
+
+    @Column(length = 50)
+    private String locationDetail;
+
+    @Column(length = 100)
+    private String selectionCriteria;
+
+    private Integer capacity;
+
+    private Boolean requiresInterview;
+
+    private java.time.ZonedDateTime interviewDate;
+
+    /**
+     * 해당 스터디 멘토 여부 확인 메서드
+     * @param userId 유저 ID
+     * @return 멘토 여부
+     */
+    public boolean isMentor(Long userId) {
+        boolean isPrimary = this.primaryMentor.getId().equals(userId);
+        boolean isSecondary = this.secondaryMentor != null && this.secondaryMentor.getId().equals(userId);
+
+        return isPrimary || isSecondary;
+    }
 }

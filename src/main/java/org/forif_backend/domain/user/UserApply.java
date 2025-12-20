@@ -1,10 +1,11 @@
 package org.forif_backend.domain.user;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.domain.study.Study;
+import org.forif_backend.web.userApply.dto.UserApplyRequest;
 
 @Entity
 @Getter
@@ -32,17 +33,51 @@ public class UserApply extends BaseTimeEntity {
     @Column(nullable = false)
     private int primaryStudy;
 
+    @Column(nullable = false)
+    private String primaryStudyName;
+
     @Column(length = 2000)
     private String primaryIntro;
 
     private Integer secondaryStudy;
+    private String secondaryStudyName;
 
     @Column(length = 2000)
     private String secondaryIntro;
 
     private Integer payStatus;
 
-    private Integer primaryStatus;
+    @Enumerated(EnumType.STRING)
+    private UserApplyStatus primaryStatus;
 
-    private Integer secondaryStatus;
+    @Enumerated(EnumType.STRING)
+    private UserApplyStatus secondaryStatus;
+
+    private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro, String primaryStudyName, String secondaryStudyName) {
+        this.applier = applier;
+        this.applyYear = applyYear;
+        this.applySemester = applySemester;
+        this.primaryStudy = primaryStudy;
+        this.primaryIntro = primaryIntro;
+        this.secondaryStudy = secondaryStudy;
+        this.secondaryIntro = secondaryIntro;
+        this.primaryStatus = UserApplyStatus.PENDING;
+        this.secondaryStatus = UserApplyStatus.PENDING;
+        this.primaryStudyName = primaryStudyName;
+        this.secondaryStudyName = secondaryStudyName;
+    }
+
+    public static UserApply applyStudy(UserApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
+        return new UserApply(
+                applier,
+                DateUtils.getCurrentYear(),
+                DateUtils.getCurrentSemester(),
+                request.primaryStudyId(),
+                request.primaryStudyApplyReason(),
+                request.secondaryStudyId(),
+                request.secondaryStudyApplyReason(),
+                primaryStudy.getStudyName(),
+                secondaryStudy == null ? null : secondaryStudy.getStudyName()
+        );
+    }
 }
