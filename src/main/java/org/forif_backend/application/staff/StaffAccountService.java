@@ -48,4 +48,12 @@ public class StaffAccountService {
             role
         );
     }
+
+    /**
+     * 현재 로그인한 스태프 정보 조회
+     */
+    public StaffAccount getStaffMe(Long userId) {
+        return staffAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+    }
 }

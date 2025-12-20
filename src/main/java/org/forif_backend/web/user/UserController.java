@@ -13,6 +13,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -205,6 +206,18 @@ public class UserController {
     ) {
         GetStudyCreationApplicationsResult result = userService.getStudyCreationApplications(userId);
         StudyCreationApplicationsResponse response = UserDtoMapper.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(
+            @AuthenticationPrincipal Long userId
+    ) {
+        User user = userService.getUserMe(userId);
+        UserInfoResponse response = UserDtoMapper.toResponse(user);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
