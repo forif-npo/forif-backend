@@ -29,7 +29,7 @@ public class StudyApplyController {
 
     /**
      * 스터디 개설 신청
-     * @param userIdStr 사용자 ID (문자열)
+     * @param userId 사용자 ID
      * @param requestJson 스터디 개설 신청 정보 (JSON 문자열)
      * @param thumbnail 썸네일 이미지
      * @param references 참고 자료 파일들
@@ -37,12 +37,11 @@ public class StudyApplyController {
      */
     @PostMapping
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> applyStudy(
-            @AuthenticationPrincipal String userIdStr,
+            @AuthenticationPrincipal Long userId,
             @RequestPart(name = "createStudyApplyRequest") String requestJson,
             @RequestPart(name = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(name = "references", required = false) List<MultipartFile> references
     ) throws Exception {
-
 
         // ObjectMapper 설정 (Java record 파싱을 위해)
         ObjectMapper mapper = new ObjectMapper();
@@ -52,9 +51,6 @@ public class StudyApplyController {
 
         // JSON 문자열을 DTO로 파싱
         CreateStudyApplyRequest createStudyApplyRequest = mapper.readValue(requestJson, CreateStudyApplyRequest.class);
-
-        // userId 변환
-        Long userId = Long.parseLong(userIdStr);
 
         CreateStudyApplyInfo info = studyService.createStudyApply(userId, createStudyApplyRequest, thumbnail, references);
         return ResponseEntity.ok().body(ApiResponse.success(StudyApplyMapper.from(info)));
