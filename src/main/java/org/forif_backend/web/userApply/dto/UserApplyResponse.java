@@ -3,6 +3,7 @@ package org.forif_backend.web.userApply.dto;
 import lombok.Builder;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Builder
@@ -11,7 +12,7 @@ public record UserApplyResponse(
         String applierName,
         String studyName,
         String studyComment,
-        ZonedDateTime applyDate,
+        LocalDateTime applyDate,
         String studyStatus
 ) {
     public static UserApplyResponse from(UserApplyInfo userApplyInfo) {

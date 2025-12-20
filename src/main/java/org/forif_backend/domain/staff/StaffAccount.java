@@ -31,19 +31,19 @@ public class StaffAccount extends BaseTimeEntity {
     @Column(length = 30, nullable = false)
     private StaffRole role;
 
-    private StaffAccount(User user, String password, String name, StaffRole role) {
+    @Column(length = 100, nullable = false)
+    private String affiliation; // 멘토일 경우 스터디명, 어드민일 경우 팀명 (예: 기획팀, 인공지능 스터디)
+
+    private StaffAccount(User user, String password, String name, StaffRole role, String affiliation) {
         this.user = user;
         this.password = password;
         this.name = name;
         this.role = role;
+        this.affiliation = affiliation;
     }
 
-    public static StaffAccount createMentor(User user, String password, String name) {
-        return new StaffAccount(user, password, name, StaffRole.MENTOR);
-    }
-
-    public static StaffAccount createAdmin(User user, String password, String name) {
-        return new StaffAccount(user, password, name, StaffRole.ADMIN);
+    public static StaffAccount createStaffAccount(User user, String password, String name, StaffRole role, String affiliation) {
+        return new StaffAccount(user, password, name, role, affiliation);
     }
 
     /**

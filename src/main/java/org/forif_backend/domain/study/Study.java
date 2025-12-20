@@ -1,6 +1,8 @@
 package org.forif_backend.domain.study;
 
 import jakarta.persistence.*;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -103,7 +105,7 @@ public class Study extends BaseTimeEntity {
 
     private Boolean requiresInterview;
 
-    private java.time.ZonedDateTime interviewDate;
+    private LocalDateTime interviewDate;
 
     /**
      * 해당 스터디 멘토 여부 확인 메서드

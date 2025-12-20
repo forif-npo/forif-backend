@@ -49,11 +49,14 @@ public enum ErrorCode {
     SECOND_MENTOR_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR028-404", "2순위 멘토를 찾을 수 없습니다."),
     STUDY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR029-404", "스터디 플랜이 없습니다."),
     WEEKLY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR030-404", "해당하는 스터디의 주간 계획을 찾을 수 없습니다."),
+    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR036-500", "알림톡 템플릿 조회에 실패했습니다."),
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR038-404", "등록되지 않은 스태프입니다."),
+    CERTIFICATE_NOT_ISSUED(HttpStatus.NOT_FOUND, "FOR019-404", "인증서가 발급되지 않았습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR031-409", "이미 가입된 사용자입니다."),
     USER_APPLY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR032-409", "이번학기 스터디에 이미 지원 했습니다."),
+    STAFF_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR039-409", "이미 등록된 스태프 계정입니다."),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "서버 내부 오류가 발생했습니다.");

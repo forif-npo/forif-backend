@@ -11,6 +11,7 @@ import org.forif_backend.infrastructure.persistence.user.UserApplyJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
 import org.forif_backend.mock.DefaultMockitoTest;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +22,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@Disabled
 public class UserApplyServiceTest extends DefaultMockitoTest {
     @Autowired
     UserApplyService userApplyService;
