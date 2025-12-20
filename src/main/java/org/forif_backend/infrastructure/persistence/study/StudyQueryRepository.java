@@ -10,6 +10,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.QStudy;
 import org.forif_backend.domain.study.QStudyTag;
+import org.forif_backend.domain.study.QStudyUser;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudySearchCond;
@@ -19,6 +20,7 @@ public class StudyQueryRepository {
     private final JPAQueryFactory queryFactory;
     private final QStudy study = QStudy.study;
     private final QStudyTag studyTag = QStudyTag.studyTag;
+    private final QStudyUser studyUser = QStudyUser.studyUser;
 
     public StudyQueryRepository(EntityManager em) {
         queryFactory = new JPAQueryFactory(em);
@@ -90,7 +92,30 @@ public class StudyQueryRepository {
         if (tagNames == null || tagNames.isEmpty()) {
             return null;
         }
-        
+
         return studyTag.name.in(tagNames);
+    }
+
+    public List<Study> findStudiesByUserId(Long userId) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .join(studyUser).on(studyUser.study.id.eq(study.id))
+                .where(studyUser.user.id.eq(userId))
+                .orderBy(study.actYear.desc(), study.actSemester.desc())
+                .fetch();
+    }
+
+    public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(study.secondaryMentor.id.eq(mentorId)),
+                        isApplied != null ? study.isApplied.eq(isApplied) : null
+                )
+                .orderBy(study.createdAt.desc())
+                .fetch();
     }
 }

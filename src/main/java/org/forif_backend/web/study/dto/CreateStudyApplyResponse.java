@@ -1,4 +1,4 @@
-package org.forif_backend.web.studyApply.dto;
+package org.forif_backend.web.study.dto;
 
 import lombok.Builder;
 import org.forif_backend.application.file.dto.FileInfo;

@@ -79,6 +79,32 @@ public class Study extends BaseTimeEntity {
     @Column(length = 300)
     private String imgUrl;
 
+    // StudyApply에서 통합된 필드들
+    @Column
+    private Boolean isApplied;
+
+    @Column(length = 50)
+    private String subTitle;
+
+    private String thumbnailImage;
+
+    private Boolean isOnline;
+
+    @Column(length = 500)
+    private String goal;
+
+    @Column(length = 50)
+    private String locationDetail;
+
+    @Column(length = 100)
+    private String selectionCriteria;
+
+    private Integer capacity;
+
+    private Boolean requiresInterview;
+
+    private java.time.ZonedDateTime interviewDate;
+
     /**
      * 해당 스터디 멘토 여부 확인 메서드
      * @param userId 유저 ID

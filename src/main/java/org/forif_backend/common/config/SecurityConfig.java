@@ -50,6 +50,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // TODO: 프로덕션 환경에서는 특정 도메인만 허용하도록 변경 필요
+        // 예시: configuration.setAllowedOrigins(List.of("https://forif.org", "https://admin.forif.org"));
+        // 현재는 개발 환경을 위해 모든 origin 허용
         configuration.setAllowedOriginPatterns(List.of("*"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
