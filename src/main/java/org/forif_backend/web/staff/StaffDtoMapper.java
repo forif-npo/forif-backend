@@ -1,6 +1,8 @@
 package org.forif_backend.web.staff;
 
 import org.forif_backend.application.staff.dto.*;
+import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.web.staff.dto.*;
 
 /**
@@ -43,5 +45,18 @@ public class StaffDtoMapper {
             .accessToken(result.accessToken())
             .role(result.role())
             .build();
+    }
+
+    public static StaffInfoResponse toResponse(StaffAccount staffAccount) {
+        User user = staffAccount.getUser();
+        return StaffInfoResponse.builder()
+                .userId(staffAccount.getUserId())
+                .userName(user.getUserName())
+                .email(user.getEmail())
+                .phoneNum(user.getPhoneNum())
+                .department(user.getDepartment())
+                .imgUrl(user.getImgUrl())
+                .role(staffAccount.getRole().getValue())
+                .build();
     }
 }

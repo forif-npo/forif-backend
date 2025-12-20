@@ -4,6 +4,7 @@ import org.forif_backend.application.user.dto.*;
 import org.forif_backend.application.study.dto.SemesterStudiesInfo;
 import org.forif_backend.application.study.dto.StudyInfo;
 import org.forif_backend.application.study.dto.UserStudiesResult;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
 
 /**
@@ -102,5 +103,16 @@ public class UserDtoMapper {
         return CertificateResponse.builder()
             .certificateUrl(result.certificateUrl())
             .build();
+    }
+
+    public static UserInfoResponse toResponse(User user) {
+        return UserInfoResponse.builder()
+                .userId(user.getId())
+                .userName(user.getUserName())
+                .email(user.getEmail())
+                .phoneNum(user.getPhoneNum())
+                .department(user.getDepartment())
+                .imgUrl(user.getImgUrl())
+                .build();
     }
 }

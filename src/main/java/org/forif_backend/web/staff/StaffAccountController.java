@@ -10,6 +10,8 @@ import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.application.staff.dto.StaffSignUpCommand;
 import org.forif_backend.application.staff.dto.StaffSignUpResult;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.web.staff.dto.StaffInfoResponse;
 import org.forif_backend.web.staff.dto.StaffSignInRequest;
 import org.forif_backend.web.staff.dto.StaffSignInResponse;
 import org.forif_backend.web.staff.dto.StaffSignupRequest;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
@@ -82,6 +86,18 @@ public class StaffAccountController {
         // 4. Application Result → Web DTO 변환 (refreshToken 제외)
         StaffSignupResponse response = StaffDtoMapper.toResponse(result);
 
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 현재 로그인한 스태프 정보 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<StaffInfoResponse>> getStaffInfo(
+            @AuthenticationPrincipal Long userId
+    ) {
+        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
+        StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

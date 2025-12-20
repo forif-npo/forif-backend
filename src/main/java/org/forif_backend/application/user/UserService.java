@@ -268,4 +268,13 @@ public class UserService {
 
         return new GetCertificateResult(studyUser.getCertificateUrl());
     }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
+    @Transactional
+    public User getUserInfo(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+    }
 }

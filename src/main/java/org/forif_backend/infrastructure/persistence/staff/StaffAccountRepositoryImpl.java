@@ -15,7 +15,7 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
-        return staffAccountJpaRepository.findById(userId);
+        return staffAccountJpaRepository.findByIdWithUser(userId);
     }
 
     // 미사용

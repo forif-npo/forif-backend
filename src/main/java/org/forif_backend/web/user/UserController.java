@@ -4,6 +4,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.auth.TokenBlacklistService;
 import org.forif_backend.application.study.StudyService;
@@ -14,6 +15,7 @@ import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/v1/users")
 public class UserController {
 
@@ -220,6 +223,18 @@ public class UserController {
     ) {
         GetCertificateResult result = userService.getCertificate(userId, studyId);
         CertificateResponse response = UserDtoMapper.toResponse(result);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 현재 로그인한 사용자 정보 조회
+     */
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(
+            @AuthenticationPrincipal Long userId
+    ) {
+        User user = userService.getUserInfo(userId);
+        UserInfoResponse response = UserDtoMapper.toResponse(user);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
