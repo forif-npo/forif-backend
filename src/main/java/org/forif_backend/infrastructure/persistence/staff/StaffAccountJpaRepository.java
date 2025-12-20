@@ -7,5 +7,4 @@ import java.util.Optional;
 
 public interface StaffAccountJpaRepository extends JpaRepository<StaffAccount, Long> {
 
-    Optional<StaffAccount> findByUser_Id(Long userId);
 }

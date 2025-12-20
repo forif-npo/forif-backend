@@ -1,7 +1,9 @@
 package org.forif_backend.web.staff.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record StaffSignInRequest(
-    Long userId,   // User ID
-    String password   // 비밀번호
+        Long userId,
+        String password
 ) {
 }

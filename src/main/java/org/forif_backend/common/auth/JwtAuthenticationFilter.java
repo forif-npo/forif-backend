@@ -99,17 +99,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         private void setAuthentication(String token, HttpServletRequest request) {
-
+            
             String userIdStr = jwtProvider.getUserIdFromToken(token);
             Long userId = Long.parseLong(userIdStr);
 
-            UsernamePasswordAuthenticationToken authenticationToken =
+            UsernamePasswordAuthenticationToken authenticationToken = 
                     new UsernamePasswordAuthenticationToken(
                     userId,
                     null,
                     List.of(new SimpleGrantedAuthority("ROLE_USER"))
                     );
-
+            
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);

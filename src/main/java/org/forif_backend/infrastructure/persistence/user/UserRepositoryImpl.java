@@ -121,4 +121,9 @@ public class UserRepositoryImpl implements UserRepository {
     private OrderSpecifier<?> getSortOrder(SortDirection direction) {
         return new OrderSpecifier<>(direction.toOrder(), userApply.createdAt);
     }
+
+    @Override
+    public Optional<User> findByPhoneNum(String phoneNum) {
+        return userJpaRepository.findByPhoneNum(phoneNum);
+    }
 }

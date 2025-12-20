@@ -8,11 +8,27 @@ spring:
       data-source-properties:
         rewriteBatchedStatements: true
 
+  data:
+    redis:
+      host: localhost
+      port: 6379
 
   jpa:
     show-sql: true
     hibernate:
       ddl-auto: validate
+
+  cloud:
+    aws:
+      credentials:
+        access-key: your-access-key
+        secret-key: your-secret-key
+      region:
+        static: ap-northeast-2
+      s3:
+        bucket-name: forif-backend-dev
+
+
 
 logging:
   level:
