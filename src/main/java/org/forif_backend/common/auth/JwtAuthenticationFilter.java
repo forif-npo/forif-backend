@@ -100,7 +100,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         private void setAuthentication(String token, HttpServletRequest request) {
             
-            String userId = jwtProvider.getUserIdFromToken(token);
+            String userIdStr = jwtProvider.getUserIdFromToken(token);
+            Long userId = Long.parseLong(userIdStr);
 
             UsernamePasswordAuthenticationToken authenticationToken = 
                     new UsernamePasswordAuthenticationToken(

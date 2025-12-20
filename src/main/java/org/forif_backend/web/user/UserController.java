@@ -13,6 +13,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.web.user.dto.*;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
@@ -104,7 +105,7 @@ public class UserController {
         // 1. 쿠키에서 Refresh Token 확인
         if (refreshToken == null || refreshToken.isEmpty()) {
             return ResponseEntity.status(401)
-                    .body(ApiResponse.error("FOR013-401", "Refresh Token이 없습니다."));
+                    .body(ApiResponse.error(ErrorCode.INVALID_TOKEN));
         }
 
         // 2. Web DTO → Application Command 변환
