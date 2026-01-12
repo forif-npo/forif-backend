@@ -11,7 +11,6 @@ This project is a backend service built using **Java/Kotlin** with **Spring Boot
 - **Cloud Services**:
     - AWS EC2 (Compute)
     - AWS RDS (Database)
-    - AWS SSM (Parameter Store)
     - AWS S3 (Storage)
     - AWS Route53 (DNS Management)
 - **API Documentation**: Swagger
@@ -33,7 +32,6 @@ This project is a backend service built using **Java/Kotlin** with **Spring Boot
 - MySQL database
 - AWS RDS instance
 - AWS S3 bucket
-- AWS SSM parameter store
 - AWS EC2 instance
 - AWS Route53 domain
 - GitHub repository
@@ -56,7 +54,8 @@ link: [Swagger](https://api.forif.org/swagger-ui/index.html#/)
 
 ## Contributors
 - [Byeonghyun Yang](https://github.com/zxvm5962)
-- Jihwan Yoon
+- Junwoo Song
+- Donghyun Kim
 
 ## License
 MIT License
