@@ -3,20 +3,11 @@ package org.forif_backend.infrastructure.external.notification;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.ssm.SsmClient;
 
 import java.util.concurrent.Executor;
 
 @Configuration
 public class NotificationConfig {
-
-    @Bean(destroyMethod = "close")
-    public SsmClient ssmClient() {
-        return SsmClient.builder()
-                .region(Region.AP_NORTHEAST_2)
-                .build();
-    }
 
     @Bean(name = "notificationExecutor")
     public Executor notificationExecutor() {
