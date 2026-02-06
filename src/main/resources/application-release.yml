@@ -4,11 +4,27 @@ spring:
     url: ${RDS_URL}/forif
     username: ${RDS_USERNAME}
     password: ${RDS_PASSWORD}
+    hikari:
+      # 대량 데이터 insert 시 성능 향상을 위한 옵션
+      data-source-properties:
+        rewriteBatchedStatements: true
 
   jpa:
-    show-sql: true
+    show-sql: false # 운영 환경에서 로그 폭발 방지
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          batch_size: 100 # Batch insert 성능 최적화
+
+  cloud:
+    aws:
+      s3:
+        bucket-name: ${S3_BUCKET_NAME}
+      region:
+        static: ap-northeast-2
 
 logging:
   level:
