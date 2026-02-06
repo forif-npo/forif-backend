@@ -35,4 +35,14 @@ public interface StudyRepository {
      * 멘토 ID로 스터디 신청 목록 조회
      */
     List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied);
+
+    /**
+     * 커서 기반 스터디 목록 조회 (Admin용)
+     */
+    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search);
+
+    /**
+     * 조건에 맞는 스터디 총 건수
+     */
+    long countStudies(Integer year, Integer semester, String search);
 }

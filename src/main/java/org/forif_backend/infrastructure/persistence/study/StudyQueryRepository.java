@@ -118,4 +118,39 @@ public class StudyQueryRepository {
                 .orderBy(study.createdAt.desc())
                 .fetch();
     }
+
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(
+                        cursorLt(cursor),
+                        yearEq(year),
+                        semesterEq(semester),
+                        searchKeywordEq(search)
+                )
+                .orderBy(study.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public long countStudies(Integer year, Integer semester, String search) {
+        Long count = queryFactory
+                .select(study.count())
+                .from(study)
+                .where(
+                        yearEq(year),
+                        semesterEq(semester),
+                        searchKeywordEq(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    private BooleanExpression cursorLt(Integer cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        return study.id.lt(cursor);
+    }
 }

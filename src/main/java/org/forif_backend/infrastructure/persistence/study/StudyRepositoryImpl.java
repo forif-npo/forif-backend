@@ -62,4 +62,14 @@ public class StudyRepositoryImpl implements StudyRepository {
     public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
         return studyQueryRepository.findAllStudiesByMentorIdAndIsApplied(mentorId, isApplied);
     }
+
+    @Override
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
+        return studyQueryRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+    }
+
+    @Override
+    public long countStudies(Integer year, Integer semester, String search) {
+        return studyQueryRepository.countStudies(year, semester, search);
+    }
 }

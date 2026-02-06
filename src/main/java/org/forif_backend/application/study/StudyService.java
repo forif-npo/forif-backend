@@ -17,6 +17,7 @@ import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyInfo;
 import org.forif_backend.application.study.dto.SemesterStudiesInfo;
 import org.forif_backend.application.study.dto.UserStudiesResult;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -109,6 +110,20 @@ public class StudyService {
         return UserStudiesResult.builder()
                 .semesters(semesters)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<StudyDto> getAdminStudies(Integer cursor, int size, Integer year, Integer semester, String search) {
+        List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+        long totalElements = studyRepository.countStudies(year, semester, search);
+
+        boolean hasNext = studies.size() > size;
+        List<Study> content = hasNext ? studies.subList(0, size) : studies;
+
+        List<StudyDto> dtos = content.stream().map(StudyDto::from).toList();
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+
+        return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);
     }
 
     /**
