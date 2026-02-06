@@ -45,4 +45,19 @@ public interface StudyRepository {
      * 조건에 맞는 스터디 총 건수
      */
     long countStudies(Integer year, Integer semester, String search);
+
+    /**
+     * 스터디 ID로 스터디 플랜 목록 조회
+     */
+    List<StudyPlan> findStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 스터디 참고자료 목록 조회
+     */
+    List<StudyReference> findStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 멘토-스터디 매핑 목록 조회
+     */
+    List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
 }

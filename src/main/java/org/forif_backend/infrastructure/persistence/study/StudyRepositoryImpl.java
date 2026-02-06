@@ -17,6 +17,7 @@ public class StudyRepositoryImpl implements StudyRepository {
     private final StudyTagJpaRepository studyTagJpaRepository;
     private final StudyPlanJpaRepository studyPlanJpaRepository;
     private final StudyReferenceJpaRepository studyReferenceJpaRepository;
+    private final MentorStudyJpaRepository mentorStudyJpaRepository;
 
     @Override
     public Optional<Study> findStudyById(Integer studyId) {
@@ -71,5 +72,20 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public long countStudies(Integer year, Integer semester, String search) {
         return studyQueryRepository.countStudies(year, semester, search);
+    }
+
+    @Override
+    public List<StudyPlan> findStudyPlansByStudyId(Integer studyId) {
+        return studyPlanJpaRepository.findByStudyId(studyId);
+    }
+
+    @Override
+    public List<StudyReference> findStudyReferencesByStudyId(Integer studyId) {
+        return studyReferenceJpaRepository.findByStudyId(studyId);
+    }
+
+    @Override
+    public List<MentorStudy> findMentorStudiesByStudyId(Integer studyId) {
+        return mentorStudyJpaRepository.findByStudyId(studyId);
     }
 }

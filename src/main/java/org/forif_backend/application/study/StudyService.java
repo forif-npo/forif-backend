@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.study.dto.CreateStudyApplyInfo;
+import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyInfo;
 import org.forif_backend.application.study.dto.SemesterStudiesInfo;
@@ -110,6 +111,18 @@ public class StudyService {
         return UserStudiesResult.builder()
                 .semesters(semesters)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public StudyDetailDto getStudyDetail(Integer studyId) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        List<StudyPlan> plans = studyRepository.findStudyPlansByStudyId(studyId);
+        List<StudyReference> references = studyRepository.findStudyReferencesByStudyId(studyId);
+        List<MentorStudy> mentorStudies = studyRepository.findMentorStudiesByStudyId(studyId);
+
+        return StudyDetailDto.of(study, plans, references, mentorStudies);
     }
 
     @Transactional(readOnly = true)

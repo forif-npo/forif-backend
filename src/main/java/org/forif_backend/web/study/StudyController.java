@@ -2,12 +2,14 @@ package org.forif_backend.web.study;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
+import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.common.dto.request.PageRequest;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
+import org.forif_backend.web.study.dto.StudyDetailResponse;
 import org.forif_backend.web.study.dto.StudyResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -68,6 +70,16 @@ public class StudyController {
         );
 
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 스터디 상세 조회
+     */
+    @GetMapping("/api/v1/studies/{studyId}")
+    public ResponseEntity<ApiResponse<StudyDetailResponse>> getStudyDetail(
+            @PathVariable Integer studyId) {
+        StudyDetailDto studyDetail = studyService.getStudyDetail(studyId);
+        return ResponseEntity.ok(ApiResponse.success(StudyDetailResponse.from(studyDetail)));
     }
 
     /**
