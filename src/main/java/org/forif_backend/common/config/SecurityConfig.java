@@ -42,6 +42,10 @@ public class SecurityConfig {
                     "/api/v1/users/google/userinfo",
                     "/api/v1/staff/signin",
                     "/api/v1/staff/signup",
+                    "/api/v1/studies/**",
+                    "/api/v1/posts/faqs/**",
+                    "/api/v1/posts/announcements/**",
+                    "/api/v1/staff/signup",
                     "/api/v1/studies/{studyId}"
                 ).permitAll()
                 .anyRequest().authenticated()
