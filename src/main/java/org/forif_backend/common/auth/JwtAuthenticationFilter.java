@@ -99,19 +99,39 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         private void setAuthentication(String token, HttpServletRequest request) {
-            
+
             String userIdStr = jwtProvider.getUserIdFromToken(token);
             Long userId = Long.parseLong(userIdStr);
+            String role = jwtProvider.getRoleFromToken(token);
 
-            UsernamePasswordAuthenticationToken authenticationToken = 
+            List<SimpleGrantedAuthority> authorities = resolveAuthorities(role);
+
+            UsernamePasswordAuthenticationToken authenticationToken =
                     new UsernamePasswordAuthenticationToken(
                     userId,
                     null,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                    authorities
                     );
-            
+
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        }
+
+        private List<SimpleGrantedAuthority> resolveAuthorities(String role) {
+            if ("ADMIN".equals(role)) {
+                return List.of(
+                        new SimpleGrantedAuthority("ROLE_ADMIN"),
+                        new SimpleGrantedAuthority("ROLE_MENTOR"),
+                        new SimpleGrantedAuthority("ROLE_USER")
+                );
+            }
+            if ("MENTOR".equals(role)) {
+                return List.of(
+                        new SimpleGrantedAuthority("ROLE_MENTOR"),
+                        new SimpleGrantedAuthority("ROLE_USER")
+                );
+            }
+            return List.of(new SimpleGrantedAuthority("ROLE_USER"));
         }
 }

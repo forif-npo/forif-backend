@@ -66,4 +66,29 @@ public interface StudyRepository {
      * 스터디 ID로 멘토-스터디 매핑 목록 조회
      */
     List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 삭제
+     */
+    void deleteStudyById(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 커리큘럼 전체 삭제
+     */
+    void deleteStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 참고자료 전체 삭제
+     */
+    void deleteStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 수강생 전체 삭제
+     */
+    void deleteStudyUsersByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 멘토-스터디 매핑 전체 삭제
+     */
+    void deleteMentorStudiesByStudyId(Integer studyId);
 }

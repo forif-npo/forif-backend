@@ -19,6 +19,7 @@ public class StudyRepositoryImpl implements StudyRepository {
     private final StudyPlanJpaRepository studyPlanJpaRepository;
     private final StudyReferenceJpaRepository studyReferenceJpaRepository;
     private final MentorStudyJpaRepository mentorStudyJpaRepository;
+    private final StudyUserJpaRepository studyUserJpaRepository;
 
     @Override
     public Optional<Study> findStudyById(Integer studyId) {
@@ -93,5 +94,30 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public List<MentorStudy> findMentorStudiesByStudyId(Integer studyId) {
         return mentorStudyJpaRepository.findByStudyId(studyId);
+    }
+
+    @Override
+    public void deleteStudyById(Integer studyId) {
+        studyJpaRepository.deleteById(studyId);
+    }
+
+    @Override
+    public void deleteStudyPlansByStudyId(Integer studyId) {
+        studyPlanJpaRepository.deleteByStudyId(studyId);
+    }
+
+    @Override
+    public void deleteStudyReferencesByStudyId(Integer studyId) {
+        studyReferenceJpaRepository.deleteByStudyId(studyId);
+    }
+
+    @Override
+    public void deleteStudyUsersByStudyId(Integer studyId) {
+        studyUserJpaRepository.deleteByStudyId(studyId);
+    }
+
+    @Override
+    public void deleteMentorStudiesByStudyId(Integer studyId) {
+        mentorStudyJpaRepository.deleteByStudyId(studyId);
     }
 }

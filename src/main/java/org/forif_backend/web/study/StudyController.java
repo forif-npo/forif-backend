@@ -13,7 +13,9 @@ import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.web.study.dto.AdminStudyResponse;
 import org.forif_backend.web.study.dto.StudyDetailResponse;
 import org.forif_backend.web.study.dto.StudyResponse;
+import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,6 +84,31 @@ public class StudyController {
             @PathVariable Integer studyId) {
         StudyDetailDto studyDetail = studyService.getStudyDetail(studyId);
         return ResponseEntity.ok(ApiResponse.success(StudyDetailResponse.from(studyDetail)));
+    }
+
+    /**
+     * [어드민용] 스터디 수정
+     */
+    @PatchMapping("/api/v1/admin/studies/{studyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateStudy(
+            @PathVariable Integer studyId,
+            @RequestBody UpdateStudyRequest request
+    ) {
+        studyService.updateStudy(studyId, request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [어드민용] 스터디 삭제
+     */
+    @DeleteMapping("/api/v1/admin/studies/{studyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteStudy(
+            @PathVariable Integer studyId
+    ) {
+        studyService.deleteStudy(studyId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**

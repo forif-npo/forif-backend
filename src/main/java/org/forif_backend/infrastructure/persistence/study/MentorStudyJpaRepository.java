@@ -8,4 +8,5 @@ import java.util.List;
 
 interface MentorStudyJpaRepository extends JpaRepository<MentorStudy, MentorStudyId> {
     List<MentorStudy> findByStudyId(Integer studyId);
+    void deleteByStudyId(Integer studyId);
 }
