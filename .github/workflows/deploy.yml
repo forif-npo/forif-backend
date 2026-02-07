@@ -49,7 +49,7 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/forif-app:latest
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
@@ -69,6 +69,8 @@ jobs:
             echo "SMS_PF_ID=${{ secrets.SMS_PF_ID }}" >> .env
             echo "SMS_SENDER_NUMBER=${{ secrets.SMS_SENDER_NUMBER }}" >> .env
             echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> .env
-
+            
+            chmod 600 .env
+            
             docker-compose pull
             docker-compose up -d
