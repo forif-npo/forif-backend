@@ -1,6 +1,10 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
 
 import org.springframework.stereotype.Repository;
@@ -145,6 +149,21 @@ public class StudyQueryRepository {
                 )
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    public Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds) {
+        List<Tuple> results = queryFactory
+                .select(studyUser.study.id, studyUser.count())
+                .from(studyUser)
+                .where(studyUser.study.id.in(studyIds))
+                .groupBy(studyUser.study.id)
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(studyUser.study.id),
+                        tuple -> tuple.get(studyUser.count())
+                ));
     }
 
     private BooleanExpression cursorLt(Integer cursor) {

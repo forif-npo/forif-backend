@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.study.dto.AdminStudyDto;
 import org.forif_backend.application.study.dto.CreateStudyApplyInfo;
 import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
@@ -126,14 +127,19 @@ public class StudyService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageResponse<StudyDto> getAdminStudies(Integer cursor, int size, Integer year, Integer semester, String search) {
+    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, int size, Integer year, Integer semester, String search) {
         List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
         long totalElements = studyRepository.countStudies(year, semester, search);
 
         boolean hasNext = studies.size() > size;
         List<Study> content = hasNext ? studies.subList(0, size) : studies;
 
-        List<StudyDto> dtos = content.stream().map(StudyDto::from).toList();
+        List<Integer> studyIds = content.stream().map(Study::getId).toList();
+        Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
+
+        List<AdminStudyDto> dtos = content.stream()
+                .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
+                .toList();
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
 
         return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);

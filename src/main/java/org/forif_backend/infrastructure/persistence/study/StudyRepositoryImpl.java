@@ -1,6 +1,7 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.*;
@@ -72,6 +73,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public long countStudies(Integer year, Integer semester, String search) {
         return studyQueryRepository.countStudies(year, semester, search);
+    }
+
+    @Override
+    public Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds) {
+        return studyQueryRepository.countMenteesByStudyIds(studyIds);
     }
 
     @Override

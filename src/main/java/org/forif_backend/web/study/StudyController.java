@@ -2,6 +2,7 @@ package org.forif_backend.web.study;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
+import org.forif_backend.application.study.dto.AdminStudyDto;
 import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.common.dto.request.PageRequest;
@@ -9,6 +10,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
+import org.forif_backend.web.study.dto.AdminStudyResponse;
 import org.forif_backend.web.study.dto.StudyDetailResponse;
 import org.forif_backend.web.study.dto.StudyResponse;
 import org.springframework.http.ResponseEntity;
@@ -52,20 +54,20 @@ public class StudyController {
      * [어드민용] 스터디 목록 조회 (cursor pagination)
      */
     @GetMapping("/api/v1/admin/studies")
-    public ResponseEntity<ApiResponse<CursorPageResponse<StudyResponse>>> getAdminStudies(
+    public ResponseEntity<ApiResponse<CursorPageResponse<AdminStudyResponse>>> getAdminStudies(
             @RequestParam(required = false) Integer cursor,
             @RequestParam int size,
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer semester,
             @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StudyDto> result = studyService.getAdminStudies(cursor, size, year, semester, search);
+        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, size, year, semester, search);
 
-        List<StudyResponse> content = result.content().stream()
-                .map(StudyResponse::from)
+        List<AdminStudyResponse> content = result.content().stream()
+                .map(AdminStudyResponse::from)
                 .toList();
 
-        CursorPageResponse<StudyResponse> response = new CursorPageResponse<>(
+        CursorPageResponse<AdminStudyResponse> response = new CursorPageResponse<>(
                 content, result.nextCursor(), result.hasNext(), result.totalElements()
         );
 
