@@ -27,7 +27,8 @@ spring:
         static: ap-northeast-2
       s3:
         bucket-name: ${S3_BUCKET_NAME_DEV}
-
+      presigned-url:
+        expiration-minutes: 60
 
 
 logging:
