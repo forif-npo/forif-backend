@@ -2,13 +2,20 @@ package org.forif_backend.web.study;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
+import org.forif_backend.application.study.dto.AdminStudyDto;
+import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.common.dto.request.PageRequest;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
+import org.forif_backend.web.study.dto.AdminStudyResponse;
+import org.forif_backend.web.study.dto.StudyDetailResponse;
 import org.forif_backend.web.study.dto.StudyResponse;
+import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,12 +24,14 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/studies")
 public class StudyController {
 
     private final StudyService studyService;
 
-    @GetMapping
+    /**
+     * [유저용] 스터디 목록 조회 (offset pagination)
+     */
+    @GetMapping("/api/v1/studies")
     public ResponseEntity<ApiResponse<List<StudyResponse>>> getStudies(
             @ModelAttribute PageRequest pageRequest,
             @RequestParam(required = false) Integer year,
@@ -44,11 +53,70 @@ public class StudyController {
     }
 
     /**
+     * [어드민용] 스터디 목록 조회 (cursor pagination)
+     */
+    @GetMapping("/api/v1/admin/studies")
+    public ResponseEntity<ApiResponse<CursorPageResponse<AdminStudyResponse>>> getAdminStudies(
+            @RequestParam(required = false) Integer cursor,
+            @RequestParam int size,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer semester,
+            @RequestParam(required = false) String search
+    ) {
+        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, size, year, semester, search);
+
+        List<AdminStudyResponse> content = result.content().stream()
+                .map(AdminStudyResponse::from)
+                .toList();
+
+        CursorPageResponse<AdminStudyResponse> response = new CursorPageResponse<>(
+                content, result.nextCursor(), result.hasNext(), result.totalElements()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 스터디 상세 조회
+     */
+    @GetMapping("/api/v1/studies/{studyId}")
+    public ResponseEntity<ApiResponse<StudyDetailResponse>> getStudyDetail(
+            @PathVariable Integer studyId) {
+        StudyDetailDto studyDetail = studyService.getStudyDetail(studyId);
+        return ResponseEntity.ok(ApiResponse.success(StudyDetailResponse.from(studyDetail)));
+    }
+
+    /**
+     * [어드민용] 스터디 수정
+     */
+    @PatchMapping("/api/v1/admin/studies/{studyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateStudy(
+            @PathVariable Integer studyId,
+            @RequestBody UpdateStudyRequest request
+    ) {
+        studyService.updateStudy(studyId, request);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [어드민용] 스터디 삭제
+     */
+    @DeleteMapping("/api/v1/admin/studies/{studyId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteStudy(
+            @PathVariable Integer studyId
+    ) {
+        studyService.deleteStudy(studyId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
      * 멘토가 개설한 스터디 조회
      * @param userId 멘토 ID (인증된 사용자)
      * @return 멘토가 개설한 스터디 리스트
      */
-    @GetMapping("/me/created")
+    @GetMapping("/api/v1/studies/me/created")
     public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyCreatedStudies(@AuthenticationPrincipal Long userId)
     {
         List<StudyDto> studies = studyService.getMyCreatedStudies(userId);

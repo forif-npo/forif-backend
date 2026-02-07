@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface StudyReferenceJpaRepository extends JpaRepository<StudyReference, UUID> {
     List<StudyReference> findByStudy(Study study);
+    List<StudyReference> findByStudyId(Integer studyId);
+    void deleteByStudyId(Integer studyId);
 }

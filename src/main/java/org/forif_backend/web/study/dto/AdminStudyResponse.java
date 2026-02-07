@@ -1,0 +1,38 @@
+package org.forif_backend.web.study.dto;
+
+import org.forif_backend.application.study.dto.AdminStudyDto;
+import org.forif_backend.application.study.dto.StudyTagDto;
+
+import java.util.List;
+
+public record AdminStudyResponse(
+        Integer id,
+        String studyName,
+        String primaryMentorName,
+        String secondaryMentorName,
+        List<String> tags,
+        String oneLiner,
+        long menteeCount,
+        String recruitStatus
+) {
+    public static AdminStudyResponse from(AdminStudyDto dto) {
+        List<String> tagNames = dto.getTags().stream()
+                .map(StudyTagDto::getName)
+                .toList();
+
+        String recruitStatusValue = dto.getRecruitStatus() != null
+                ? dto.getRecruitStatus().getValue()
+                : null;
+
+        return new AdminStudyResponse(
+                dto.getId(),
+                dto.getStudyName(),
+                dto.getPrimaryMentorName(),
+                dto.getSecondaryMentorName(),
+                tagNames,
+                dto.getOneLiner(),
+                dto.getMenteeCount(),
+                recruitStatusValue
+        );
+    }
+}

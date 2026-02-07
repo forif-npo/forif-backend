@@ -1,6 +1,10 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
 
 import org.springframework.stereotype.Repository;
@@ -117,5 +121,55 @@ public class StudyQueryRepository {
                 )
                 .orderBy(study.createdAt.desc())
                 .fetch();
+    }
+
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(
+                        cursorLt(cursor),
+                        yearEq(year),
+                        semesterEq(semester),
+                        searchKeywordEq(search)
+                )
+                .orderBy(study.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public long countStudies(Integer year, Integer semester, String search) {
+        Long count = queryFactory
+                .select(study.count())
+                .from(study)
+                .where(
+                        yearEq(year),
+                        semesterEq(semester),
+                        searchKeywordEq(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    public Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds) {
+        List<Tuple> results = queryFactory
+                .select(studyUser.study.id, studyUser.count())
+                .from(studyUser)
+                .where(studyUser.study.id.in(studyIds))
+                .groupBy(studyUser.study.id)
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        tuple -> tuple.get(studyUser.study.id),
+                        tuple -> tuple.get(studyUser.count())
+                ));
+    }
+
+    private BooleanExpression cursorLt(Integer cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        return study.id.lt(cursor);
     }
 }

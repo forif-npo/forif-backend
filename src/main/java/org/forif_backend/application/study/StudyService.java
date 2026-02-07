@@ -12,11 +12,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.study.dto.AdminStudyDto;
 import org.forif_backend.application.study.dto.CreateStudyApplyInfo;
+import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyInfo;
 import org.forif_backend.application.study.dto.SemesterStudiesInfo;
 import org.forif_backend.application.study.dto.UserStudiesResult;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -24,6 +27,7 @@ import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
+import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -109,6 +113,105 @@ public class StudyService {
         return UserStudiesResult.builder()
                 .semesters(semesters)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public StudyDetailDto getStudyDetail(Integer studyId) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        List<StudyPlan> plans = studyRepository.findStudyPlansByStudyId(studyId);
+        List<StudyReference> references = studyRepository.findStudyReferencesByStudyId(studyId);
+        List<MentorStudy> mentorStudies = studyRepository.findMentorStudiesByStudyId(studyId);
+
+        return StudyDetailDto.of(study, plans, references, mentorStudies);
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, int size, Integer year, Integer semester, String search) {
+        List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+        long totalElements = studyRepository.countStudies(year, semester, search);
+
+        boolean hasNext = studies.size() > size;
+        List<Study> content = hasNext ? studies.subList(0, size) : studies;
+
+        List<Integer> studyIds = content.stream().map(Study::getId).toList();
+        Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
+
+        List<AdminStudyDto> dtos = content.stream()
+                .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
+                .toList();
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+
+        return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);
+    }
+
+    @Transactional
+    public void updateStudy(Integer studyId, UpdateStudyRequest request) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        // null이 아닌 기본 필드만 반영
+        if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
+        if (request.getSubTitle() != null) study.setSubTitle(request.getSubTitle());
+        if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
+        if (request.getExplanation() != null) study.setExplanation(request.getExplanation());
+        if (request.getGoal() != null) study.setGoal(request.getGoal());
+        if (request.getStartTime() != null) study.setStartTime(request.getStartTime());
+        if (request.getEndTime() != null) study.setEndTime(request.getEndTime());
+        if (request.getWeekDay() != null) study.setWeekDay(request.getWeekDay());
+        if (request.getLocation() != null) study.setLocation(request.getLocation());
+        if (request.getLocationDetail() != null) study.setLocationDetail(request.getLocationDetail());
+        if (request.getIsOnline() != null) study.setIsOnline(request.getIsOnline());
+        if (request.getCapacity() != null) study.setCapacity(request.getCapacity());
+        if (request.getSelectionCriteria() != null) study.setSelectionCriteria(request.getSelectionCriteria());
+        if (request.getRequiresInterview() != null) study.setRequiresInterview(request.getRequiresInterview());
+        if (request.getInterviewDate() != null) study.setInterviewDate(request.getInterviewDate());
+
+        // enum 변환 필드
+        if (request.getDifficulty() != null) {
+            study.setDifficulty(StudyDifficulty.fromLevel(request.getDifficulty()));
+        }
+        if (request.getRecruitStatus() != null) {
+            study.setRecruitStatus(RecruitStatus.fromValue(request.getRecruitStatus()));
+        }
+
+        // 태그 교체
+        if (request.getStudyTagIds() != null) {
+            List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagIds());
+            study.setTags(tags);
+        }
+
+        // 커리큘럼: 기존 삭제 후 재생성
+        if (request.getStudyPlanList() != null) {
+            studyRepository.deleteStudyPlansByStudyId(studyId);
+            List<StudyPlan> plans = request.getStudyPlanList().stream()
+                    .map(plan -> StudyPlan.create(
+                            plan.getWeekNum(), plan.getDate(), plan.getTopic(), plan.getContent(), study))
+                    .toList();
+            studyRepository.saveAllStudyPlan(plans);
+        }
+
+        // 참고자료: 기존 삭제 후 재생성
+        if (request.getReferences() != null) {
+            studyRepository.deleteStudyReferencesByStudyId(studyId);
+            List<StudyReference> references = request.getReferences().stream()
+                    .map(ref -> StudyReference.create(study, ref.getType(), ref.getUrl()))
+                    .toList();
+            studyRepository.saveAllStudyReference(references);
+        }
+    }
+
+    @Transactional
+    public void deleteStudy(Integer studyId) {
+        studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        studyRepository.deleteStudyPlansByStudyId(studyId);
+        studyRepository.deleteStudyReferencesByStudyId(studyId);
+        studyRepository.deleteStudyUsersByStudyId(studyId);
+        studyRepository.deleteMentorStudiesByStudyId(studyId);
+        studyRepository.deleteStudyById(studyId);
     }
 
     /**

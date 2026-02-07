@@ -1,6 +1,7 @@
 package org.forif_backend.domain.study;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface StudyRepository {
@@ -35,4 +36,59 @@ public interface StudyRepository {
      * 멘토 ID로 스터디 신청 목록 조회
      */
     List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied);
+
+    /**
+     * 커서 기반 스터디 목록 조회 (Admin용)
+     */
+    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search);
+
+    /**
+     * 조건에 맞는 스터디 총 건수
+     */
+    long countStudies(Integer year, Integer semester, String search);
+
+    /**
+     * 스터디 ID 목록에 해당하는 멘티 수 조회
+     */
+    Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds);
+
+    /**
+     * 스터디 ID로 스터디 플랜 목록 조회
+     */
+    List<StudyPlan> findStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 스터디 참고자료 목록 조회
+     */
+    List<StudyReference> findStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 멘토-스터디 매핑 목록 조회
+     */
+    List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 삭제
+     */
+    void deleteStudyById(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 커리큘럼 전체 삭제
+     */
+    void deleteStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 참고자료 전체 삭제
+     */
+    void deleteStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 수강생 전체 삭제
+     */
+    void deleteStudyUsersByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 멘토-스터디 매핑 전체 삭제
+     */
+    void deleteMentorStudiesByStudyId(Integer studyId);
 }

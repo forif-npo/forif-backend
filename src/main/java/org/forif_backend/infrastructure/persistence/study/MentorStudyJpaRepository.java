@@ -4,6 +4,9 @@ import org.forif_backend.domain.study.MentorStudy;
 import org.forif_backend.domain.study.MentorStudyId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface MentorStudyJpaRepository extends JpaRepository<MentorStudy, MentorStudyId> {
+import java.util.List;
 
+interface MentorStudyJpaRepository extends JpaRepository<MentorStudy, MentorStudyId> {
+    List<MentorStudy> findByStudyId(Integer studyId);
+    void deleteByStudyId(Integer studyId);
 }
