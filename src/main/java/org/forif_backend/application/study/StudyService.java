@@ -278,6 +278,34 @@ public class StudyService {
         }
         return StudyReference.create(study, refType, content);
     }
+
+    /**
+     * 거절된 스터디 수정 후 재요청
+     */
+    @Transactional
+    public void reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                             MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        // 1. 권한 및 상태 검증 (내부에서 REJECTED 체크)
+        if (!study.isMentor(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        study.reApply();
+
+        // 2. 데이터 업데이트 (Entity 메서드 호출)
+        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        study.applyRequestData(request, tags);
+
+        // 3. 기존 리소스(Plan, Reference) 삭제 및 재등록
+        studyRepository.deleteStudyPlansByStudyId(studyId);
+        studyRepository.deleteStudyReferencesByStudyId(studyId);
+
+        saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
     /**
      * [공통] 스터디 리소스(파일, 플랜, 참고자료) 처리 및 DB 저장
      */
@@ -309,5 +337,27 @@ public class StudyService {
                 .thumbnailUploadInfo(thumbnailInfo)
                 .referenceUploadInfos(referenceUploadInfos)
                 .build();
+    }
+
+    /**
+     * [어드민 전용] 스터디 개설 승인
+     */
+    @Transactional
+    public void approveStudy(Integer studyId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        study.approve(); // 도메인 메서드 호출 (상태 변경 및 사유 초기화)
+    }
+
+    /**
+     * [어드민 전용] 스터디 개설 거절
+     */
+    @Transactional
+    public void rejectStudy(Integer studyId, String reason) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        study.reject(reason); // 도메인 메서드 호출 (상태 변경 및 사유 저장)
     }
 }

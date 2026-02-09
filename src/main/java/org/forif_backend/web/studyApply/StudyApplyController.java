@@ -55,4 +55,31 @@ public class StudyApplyController {
         CreateStudyApplyInfo info = studyService.createStudyApply(userId, createStudyApplyRequest, thumbnail, references);
         return ResponseEntity.ok().body(ApiResponse.success(StudyApplyMapper.from(info)));
     }
+
+    /**
+     * 거절된 스터디 재요청 (수정 후 제출)
+     * @param studyId 수정할 스터디 ID
+     * @param userId 사용자 ID
+     * @param requestJson 수정된 스터디 정보 (JSON)
+     */
+    @PatchMapping("/{studyId}/re-apply")
+    public ResponseEntity<ApiResponse<Void>> reApplyStudy(
+            @PathVariable Integer studyId,
+            @AuthenticationPrincipal Long userId,
+            @RequestPart(name = "updateStudyRequest") String requestJson,
+            @RequestPart(name = "thumbnail", required = false) MultipartFile thumbnail,
+            @RequestPart(name = "references", required = false) List<MultipartFile> references
+    ) throws Exception {
+
+        // ObjectMapper 설정
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.registerModule(new ParameterNamesModule());
+
+        CreateStudyApplyRequest updateRequest = mapper.readValue(requestJson, CreateStudyApplyRequest.class);
+
+        studyService.reApplyStudy(studyId, userId, updateRequest, thumbnail, references);
+
+        return ResponseEntity.ok().body(ApiResponse.success(null));
+    }
 }
