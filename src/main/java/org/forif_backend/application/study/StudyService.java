@@ -280,7 +280,7 @@ public class StudyService {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        // 2. 권한 검증 및 상태 변경 (REJECTED -> PENDING)
+        // 2. 권한 검증 및 상태 변경
         if (!study.isMentor(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }

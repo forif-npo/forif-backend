@@ -49,14 +49,14 @@ public class StudyApplyController {
     }
 
     @PatchMapping(value = "/{studyId}/re-apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CreateStudyApplyResponse> reApplyStudy(
+    public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> reApplyStudy(
             @PathVariable Integer studyId,
             @AuthenticationPrincipal Long userId,
             @RequestPart("studyRequest") @Valid CreateStudyApplyRequest request, // 여기서 자동으로 ObjectMapper가 작동합니다!
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
-            @RequestPart(value = "referenceFiles", required = false) List<MultipartFile> referenceFiles) {
+            @RequestPart(value = "references", required = false) List<MultipartFile> references) {
 
-        CreateStudyApplyInfo info = studyService.reApplyStudy(studyId, userId, request, thumbnail, referenceFiles);
-        return ApiResponse.success(CreateStudyApplyResponse.from(info));
+        CreateStudyApplyInfo info = studyService.reApplyStudy(studyId, userId, request, thumbnail, references);
+        return ResponseEntity.ok().body(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 }
