@@ -1,5 +1,6 @@
 package org.forif_backend.web.study;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
 import org.forif_backend.application.study.dto.AdminStudyDto;
@@ -10,10 +11,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
-import org.forif_backend.web.study.dto.AdminStudyResponse;
-import org.forif_backend.web.study.dto.StudyDetailResponse;
-import org.forif_backend.web.study.dto.StudyResponse;
-import org.forif_backend.web.study.dto.UpdateStudyRequest;
+import org.forif_backend.web.study.dto.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -123,4 +121,28 @@ public class StudyController {
 
         return ResponseEntity.ok(ApiResponse.success(StudyResponse.fromList(studies)));
     }
+
+    /**
+     * [어드민용] 스터디 승인
+     */
+    @PatchMapping("/api/v1/admin/studies/{studyId}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> approveStudy(@PathVariable Integer studyId) {
+        studyService.approveStudy(studyId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [어드민용] 스터디 거절
+     */
+    @PatchMapping("/api/v1/admin/studies/{studyId}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> rejectStudy(
+            @PathVariable Integer studyId,
+            @RequestBody @Valid StudyRejectRequest request // String reason을 담은 DTO
+    ) {
+        studyService.rejectStudy(studyId, request.reason());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
 }

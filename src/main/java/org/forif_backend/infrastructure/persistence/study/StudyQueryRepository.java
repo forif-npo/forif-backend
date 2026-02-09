@@ -7,17 +7,11 @@ import java.util.stream.Collectors;
 import com.querydsl.core.Tuple;
 import jakarta.persistence.EntityManager;
 
+import org.forif_backend.domain.study.*;
+import org.forif_backend.domain.user.QUser;
 import org.springframework.stereotype.Repository;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
-
-import org.forif_backend.domain.study.StudyDifficulty;
-import org.forif_backend.domain.study.QStudy;
-import org.forif_backend.domain.study.QStudyTag;
-import org.forif_backend.domain.study.QStudyUser;
-import org.forif_backend.domain.study.RecruitStatus;
-import org.forif_backend.domain.study.Study;
-import org.forif_backend.domain.study.StudySearchCond;
 
 @Repository
 public class StudyQueryRepository {
@@ -25,6 +19,7 @@ public class StudyQueryRepository {
     private final QStudy study = QStudy.study;
     private final QStudyTag studyTag = QStudyTag.studyTag;
     private final QStudyUser studyUser = QStudyUser.studyUser;
+    private final QUser secondaryMentor = new QUser("secondaryMentor");
 
     public StudyQueryRepository(EntityManager em) {
         queryFactory = new JPAQueryFactory(em);
@@ -36,7 +31,8 @@ public class StudyQueryRepository {
         List<Study> studies = queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
-                .where(yearEq(cond.getYear()),
+                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                        yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
                         difficultiesIn(cond.getDifficulties()),
                         recruitStatusEq(cond.getRecruitStatus()),
@@ -47,7 +43,7 @@ public class StudyQueryRepository {
                 .limit(limit)
                 .fetch();
 
-        return studies;     
+        return studies;
     }
 
     private BooleanExpression yearEq(Integer year) {
@@ -91,7 +87,7 @@ public class StudyQueryRepository {
                 .or(study.primaryMentorName.containsIgnoreCase(searchKeyword))
                 .or(study.secondaryMentorName.containsIgnoreCase(searchKeyword));
     }
-    
+
     private BooleanExpression tagsIn(List<String> tagNames) {
         if (tagNames == null || tagNames.isEmpty()) {
             return null;
@@ -110,16 +106,21 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
+    public List<Study> findAllStudiesByMentorId(Long mentorId) {
         return queryFactory
                 .selectFrom(study).distinct()
+                // 1. 태그는 목록 출력 시 성능을 위해 Fetch Join
                 .leftJoin(study.tags, studyTag).fetchJoin()
+
+                // 2. 부멘토는 null일 때 데이터 누락 방지를 위해 명시적 Left Join
+                .leftJoin(study.secondaryMentor, secondaryMentor)
+
                 .where(
-                        study.primaryMentor.id.eq(mentorId)
-                                .or(study.secondaryMentor.id.eq(mentorId)),
-                        isApplied != null ? study.isApplied.eq(isApplied) : null
+                        study.primaryMentor.id.eq(mentorId) // FK 직접 비교 (효율적)
+                                .or(secondaryMentor.id.eq(mentorId)), // 별칭으로 비교 (안전함)
+                        study.studyStatus.ne(StudyStatus.APPROVED)
                 )
-                .orderBy(study.createdAt.desc())
+                .orderBy(study.id.desc())
                 .fetch();
     }
 
@@ -128,6 +129,7 @@ public class StudyQueryRepository {
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
                 .where(
+                        study.studyStatus.eq(StudyStatus.APPROVED),
                         cursorLt(cursor),
                         yearEq(year),
                         semesterEq(semester),
@@ -143,6 +145,7 @@ public class StudyQueryRepository {
                 .select(study.count())
                 .from(study)
                 .where(
+                        study.studyStatus.eq(StudyStatus.APPROVED),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)
@@ -171,5 +174,20 @@ public class StudyQueryRepository {
             return null;
         }
         return study.id.lt(cursor);
+    }
+
+    public List<Study> findStudiesByMentorId(Long mentorId) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin() // 태그 N+1 방어
+                .leftJoin(study.secondaryMentor, secondaryMentor) // 부멘토 null 방어
+                .where(
+                        // 주멘토 혹은 부멘토가 나이면서 + 승인 완료된 스터디만
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(secondaryMentor.id.eq(mentorId)),
+                        study.studyStatus.eq(StudyStatus.APPROVED)
+                )
+                .orderBy(study.createdAt.desc())
+                .fetch();
     }
 }

@@ -11,7 +11,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 
 @Entity
 @Getter
@@ -82,9 +86,6 @@ public class Study extends BaseTimeEntity {
     private String imgUrl;
 
     // StudyApply에서 통합된 필드들
-    @Column
-    private Boolean isApplied;
-
     @Column(length = 50)
     private String subTitle;
 
@@ -107,6 +108,13 @@ public class Study extends BaseTimeEntity {
 
     private LocalDateTime interviewDate;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "study_status", nullable = false)
+    private StudyStatus studyStatus = StudyStatus.PENDING; // 기본값을 PENDING으로 설정
+
+    @Column(length = 1000)
+    private String rejectReason; // 거절 사유 저장 컬럼
+
     /**
      * 해당 스터디 멘토 여부 확인 메서드
      * @param userId 유저 ID
@@ -117,5 +125,73 @@ public class Study extends BaseTimeEntity {
         boolean isSecondary = this.secondaryMentor != null && this.secondaryMentor.getId().equals(userId);
 
         return isPrimary || isSecondary;
+    }
+
+    /**
+     * 초기 스터디 생성 메서드
+     * @param mentor 멘토 유저
+     * @return 스터디 객체
+     */
+    public static Study createPendingStudy(User mentor) {
+        Study study = new Study();
+        study.primaryMentor = mentor;
+        study.actYear = DateUtils.getCurrentYear();
+        study.actSemester = DateUtils.getCurrentSemester();
+
+        return study;
+    }
+
+    /**
+     * DTO로부터 스터디 데이터를 반영하는 도메인 메서드
+     * 최초 신청(Create)과 재요청(Re-apply) 시 공통으로 사용됩니다.
+     */
+    public void applyRequestData(CreateStudyApplyRequest request, List<StudyTag> tags) {
+        this.studyName = request.getTitle();
+        this.subTitle = request.getSubTitle();
+        this.goal = request.getGoal();
+        this.explanation = request.getExplanation();
+        this.isOnline = request.getIsOnline();
+        this.location = request.getStudyLocation();
+        this.locationDetail = request.getStudyLocationDetail();
+        this.weekDay = request.getWeekDay();
+        this.startTime = request.getStartTime();
+        this.endTime = request.getEndTime();
+        this.difficulty = StudyDifficulty.fromLevel(request.getDifficulty());
+        this.selectionCriteria = request.getSelectionCriteria();
+        this.capacity = request.getCapacity();
+        this.requiresInterview = request.getRequiresInterview();
+        this.interviewDate = request.getInterviewDate();
+
+        // 연관 관계 설정
+        this.tags = tags;
+    }
+
+    /**
+     * 거절 처리: 상태를 REJECTED로 변경하고 사유를 기록합니다.
+     */
+    public void reject(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT, "거절 사유는 필수입니다.");
+        }
+        this.studyStatus = StudyStatus.REJECTED;
+        this.rejectReason = reason;
+    }
+
+    /**
+     * 승인 처리: 상태를 APPROVED로 변경하고 이전 거절 사유는 초기화합니다.
+     */
+    public void approve() {
+        this.studyStatus = StudyStatus.APPROVED;
+        this.rejectReason = null;
+    }
+
+    /**
+     * 재요청 처리: 거절된 상태에서만 재요청(신청자가 수정 후 제출)이 가능합니다.
+     */
+    public void reApply() {
+        if (this.studyStatus != StudyStatus.REJECTED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST, "재요청은 거절된 신청서에만 가능합니다.");
+        }
+        this.studyStatus = StudyStatus.RE_APPLIED;
     }
 }

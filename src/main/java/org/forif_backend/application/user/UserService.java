@@ -8,14 +8,11 @@ import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
-import org.forif_backend.domain.study.Study;
-import org.forif_backend.domain.study.StudyRepository;
-import org.forif_backend.domain.study.StudyUser;
-import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.*;
 import org.springframework.stereotype.Service;
 
@@ -178,7 +175,7 @@ public class UserService {
      * 멘토 스터디 개설 신청서 목록 조회
      */
     public GetStudyCreationApplicationsResult getStudyCreationApplications(Long userId) {
-        List<Study> studies = studyRepository.findAllStudiesByMentorIdAndIsApplied(userId, true);
+        List<Study> studies = studyRepository.findAllStudiesByMentorId(userId);
 
         List<StudyCreationApplicationDto> applications = studies.stream()
                 .map(study -> {
@@ -194,7 +191,7 @@ public class UserService {
                     }
 
                     List<String> tags = study.getTags().stream()
-                            .map(tag -> tag.getName())
+                            .map(StudyTag::getName)
                             .collect(Collectors.toList());
 
                     return new StudyCreationApplicationDto(
@@ -208,12 +205,13 @@ public class UserService {
                             study.getWeekDay(),
                             study.getLocation(),
                             study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
-                            study.getIsApplied(),
                             study.getActYear(),
                             study.getActSemester(),
                             role,
                             partnerMentorName,
-                            study.getCreatedAt()
+                            study.getCreatedAt(),
+                            study.getStudyStatus().getValue(),
+                            study.getRejectReason()
                     );
                 })
                 .collect(Collectors.toList());
@@ -232,7 +230,7 @@ public class UserService {
                 study.getPrimaryMentorName(),
                 study.getSecondaryMentorName(),
                 study.getTags().stream()
-                        .map(tag -> tag.getName())
+                        .map(StudyTag::getName)
                         .collect(Collectors.toList()),
                 study.getOneLiner(),
                 study.getWeekDay(),
