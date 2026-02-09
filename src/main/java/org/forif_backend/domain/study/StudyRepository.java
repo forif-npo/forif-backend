@@ -35,7 +35,7 @@ public interface StudyRepository {
     /**
      * 멘토 ID로 스터디 신청 목록 조회
      */
-    List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied);
+    List<Study> findAllStudiesByMentorId(Long mentorId);
 
     /**
      * 커서 기반 스터디 목록 조회 (Admin용)

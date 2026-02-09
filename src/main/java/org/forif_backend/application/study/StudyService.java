@@ -63,7 +63,7 @@ public class StudyService {
     @Transactional(readOnly = true)
     public List<StudyDto> getMyCreatedStudies(Long mentorId) {
 
-        return mentorStudyRepository.findStudiesWithTagsByMentorId(mentorId)
+        return mentorStudyRepository.findStudiesByMentorId(mentorId)
             .stream()
             .map(StudyDto::from)
             .toList();
@@ -217,81 +217,26 @@ public class StudyService {
     /**
      * 스터디 개설 신청 저장 메서드입니다.
      * @param mentorId 개설 신청하는 유저 id
-     * @param createStudyApplyRequest 신청 정보
+     * @param request 신청 정보
      * @param thumbnail 썸네일 이미지 파일 정보
      * @param referenceFiles 참고 자료 파일 정보.
      * @return 클라이언트가 S3에 직접 파일을 업로드하는 데 사용할 Presigned URL 정보
      */
     @Transactional
-    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest createStudyApplyRequest, MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        // 유저 조회
-        User mentor = userRepository.findUserById(mentorId).orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
+                                                 MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        User mentor = userRepository.findUserById(mentorId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
-        // 스터디 태그 조회
-        List<StudyTag> tags = studyRepository.findAllStudyTagById(createStudyApplyRequest.getStudyTagId());
+        // 생성 시점에 필요한 최소한의 정보만 주입
+        Study study = Study.createPendingStudy(mentor);
 
-        // 썸네일 업로드용 presigned url 생성 (optional)
-        FileInfo thumbnailUploadInfo = null;
-        String thumbnailKey = null;
-        if (thumbnail != null) {
-            thumbnailUploadInfo = filePort.generatePresignedUploadUrl(thumbnail);
-            thumbnailKey = thumbnailUploadInfo.objectKey();
-        }
+        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
 
-        // 스터디 개설 내역 생성 (Study 사용)
-        Study study = createStudyFromRequest(mentor, createStudyApplyRequest, tags, thumbnailKey);
+        // 공통 데이터 반영
+        study.applyRequestData(request, tags);
 
-        // 스터디 커리큘럼 생성
-        List<StudyPlan> planList = createStudyApplyRequest.getStudyPlanList().stream()
-                .map(plan -> createStudyPlan(plan, study)).toList();
-
-        // 스터디 참고자료 생성
-        List<FileInfo> referenceUploadInfos = new ArrayList<>();
-        List<StudyReference> referenceList = createStudyApplyRequest.getReferences()
-                .stream()
-                .map(reference -> toReferenceEntity(reference, study, referenceFiles, referenceUploadInfos))
-                .toList();
-
-        // ---------- DB 저장 단계 ------------
-
-        studyRepository.saveStudy(study);
-        studyRepository.saveAllStudyPlan(planList);
-        studyRepository.saveAllStudyReference(referenceList);
-
-        // presigned url 반환
-        return CreateStudyApplyInfo.builder()
-                .thumbnailUploadInfo(thumbnailUploadInfo)
-                .referenceUploadInfos(referenceUploadInfos)
-                .build();
-    }
-
-    /**
-     * CreateStudyApplyRequest로부터 Study 엔티티 생성
-     */
-    private Study createStudyFromRequest(User primaryMentor, CreateStudyApplyRequest request, List<StudyTag> tags, String thumbnailKey) {
-        Study study = new Study();
-        study.setPrimaryMentor(primaryMentor);
-        study.setStudyName(request.getTitle());
-        study.setSubTitle(request.getSubTitle());
-        study.setTags(tags);
-        study.setIsOnline(request.getIsOnline());
-        study.setGoal(request.getGoal());
-        study.setExplanation(request.getExplanation());
-        study.setStartTime(request.getStartTime());
-        study.setEndTime(request.getEndTime());
-        study.setWeekDay(request.getWeekDay());
-        study.setLocation(request.getStudyLocation());
-        study.setLocationDetail(request.getStudyLocationDetail());
-        study.setDifficulty(StudyDifficulty.fromLevel(request.getDifficulty()));
-        study.setSelectionCriteria(request.getSelectionCriteria());
-        study.setCapacity(request.getCapacity());
-        study.setRequiresInterview(request.getRequiresInterview());
-        study.setInterviewDate(request.getInterviewDate());
-        study.setThumbnailImage(thumbnailKey);
-        study.setIsApplied(true); // 신청 상태
-        study.setActYear(DateUtils.getCurrentYear());
-        study.setActSemester(DateUtils.getCurrentSemester());
-        return study;
+        return saveStudyWithResources(study, request, thumbnail, referenceFiles);
     }
 
     /**
@@ -332,5 +277,37 @@ public class StudyService {
             content = reference.getUrl();
         }
         return StudyReference.create(study, refType, content);
+    }
+    /**
+     * [공통] 스터디 리소스(파일, 플랜, 참고자료) 처리 및 DB 저장
+     */
+    private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyRequest request,
+                                                        MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        // 썸네일 처리
+        FileInfo thumbnailInfo = null;
+        if (thumbnail != null) {
+            thumbnailInfo = filePort.generatePresignedUploadUrl(thumbnail);
+            study.setThumbnailImage(thumbnailInfo.objectKey());
+        }
+
+        // 커리큘럼 생성
+        List<StudyPlan> planList = request.getStudyPlanList().stream()
+                .map(plan -> createStudyPlan(plan, study)).toList();
+
+        // 참고자료 생성
+        List<FileInfo> referenceUploadInfos = new ArrayList<>();
+        List<StudyReference> referenceList = request.getReferences().stream()
+                .map(ref -> toReferenceEntity(ref, study, referenceFiles, referenceUploadInfos))
+                .toList();
+
+        // DB 저장
+        studyRepository.saveStudy(study);
+        studyRepository.saveAllStudyPlan(planList);
+        studyRepository.saveAllStudyReference(referenceList);
+
+        return CreateStudyApplyInfo.builder()
+                .thumbnailUploadInfo(thumbnailInfo)
+                .referenceUploadInfos(referenceUploadInfos)
+                .build();
     }
 }

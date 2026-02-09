@@ -9,5 +9,5 @@ public interface MentorStudyRepository {
      * @param mentorId 멘토 아이디
      * @return 스터디 리스트
      */
-    List<Study> findStudiesWithTagsByMentorId(Long mentorId);
+    List<Study> findStudiesByMentorId(Long mentorId);
 }

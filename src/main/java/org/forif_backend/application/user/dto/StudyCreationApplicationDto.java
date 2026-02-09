@@ -17,11 +17,12 @@ public record StudyCreationApplicationDto(
         Integer weekDay,
         String location,
         Integer difficulty,
-        Boolean isApplied,  // 신청 상태
         Integer actYear,
         Integer actSemester,
         String role,  // "PRIMARY_MENTOR" or "SECONDARY_MENTOR"
         String partnerMentorName,  // 파트너 멘토 이름 (null 가능)
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String status, // 스터디 신청서 상태
+        String rejectionReason // 거절 사유
 ) {
 }

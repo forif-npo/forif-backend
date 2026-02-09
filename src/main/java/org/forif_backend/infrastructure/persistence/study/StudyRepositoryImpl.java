@@ -62,8 +62,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<Study> findAllStudiesByMentorIdAndIsApplied(Long mentorId, Boolean isApplied) {
-        return studyQueryRepository.findAllStudiesByMentorIdAndIsApplied(mentorId, isApplied);
+    public List<Study> findAllStudiesByMentorId(Long mentorId) {
+        return studyQueryRepository.findAllStudiesByMentorId(mentorId);
     }
 
     @Override

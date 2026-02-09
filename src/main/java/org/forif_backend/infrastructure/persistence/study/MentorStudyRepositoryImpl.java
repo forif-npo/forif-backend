@@ -12,18 +12,22 @@ import java.util.List;
 public class MentorStudyRepositoryImpl implements MentorStudyRepository {
     private final JPAQueryFactory queryFactory;
 
-    private final QMentorStudy mentorStudy = QMentorStudy.mentorStudy;
     private final QStudy study = QStudy.study;
     private final QStudyTag studyTag = QStudyTag.studyTag;
 
     @Override
-    public List<Study> findStudiesWithTagsByMentorId(Long mentorId) {
+    public List<Study> findStudiesByMentorId(Long mentorId) {
         return queryFactory
-                .selectFrom(study)
-                .distinct()
-                .join(mentorStudy).on(mentorStudy.study.eq(study))
+                .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
-                .where(mentorStudy.mentor.id.eq(mentorId))
+                .where(
+                        // 멘토 ID 조건 (주멘토 혹은 부멘토)
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(study.secondaryMentor.id.eq(mentorId)),
+                        // "내 스터디" 목록이라면 APPROVED 상태로 고정
+                        study.studyStatus.eq(StudyStatus.APPROVED)
+                )
+                .orderBy(study.createdAt.desc())
                 .fetch();
     }
 }
