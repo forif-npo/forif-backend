@@ -1,5 +1,6 @@
 package org.forif_backend.web.study;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
 import org.forif_backend.application.study.dto.AdminStudyDto;
@@ -138,7 +139,7 @@ public class StudyController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> rejectStudy(
             @PathVariable Integer studyId,
-            @RequestBody StudyRejectRequest request // String reason을 담은 DTO
+            @RequestBody @Valid StudyRejectRequest request // String reason을 담은 DTO
     ) {
         studyService.rejectStudy(studyId, request.reason());
         return ResponseEntity.ok(ApiResponse.success(null));

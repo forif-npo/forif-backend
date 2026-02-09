@@ -91,4 +91,12 @@ public interface StudyRepository {
      * 스터디 ID에 해당하는 멘토-스터디 매핑 전체 삭제
      */
     void deleteMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 멘토 아이디로 스터디와 태그들을 함께 조회한다.
+     *
+     * @param mentorId 멘토 아이디
+     * @return 스터디 리스트
+     */
+    List<Study> findStudiesByMentorId(Long mentorId);
 }

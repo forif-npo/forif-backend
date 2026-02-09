@@ -120,4 +120,10 @@ public class StudyRepositoryImpl implements StudyRepository {
     public void deleteMentorStudiesByStudyId(Integer studyId) {
         mentorStudyJpaRepository.deleteByStudyId(studyId);
     }
+
+    @Override
+    public List<Study> findStudiesByMentorId(Long mentorId){
+        return studyQueryRepository.findStudiesByMentorId(mentorId);
+    }
+
 }

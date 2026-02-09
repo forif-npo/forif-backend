@@ -190,9 +190,8 @@ public class Study extends BaseTimeEntity {
      */
     public void reApply() {
         if (this.studyStatus != StudyStatus.REJECTED) {
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "거절된 상태에서만 재요청이 가능합니다.");
+            throw new ForifException(ErrorCode.BAD_REQUEST, "재요청은 거절된 신청서에만 가능합니다.");
         }
         this.studyStatus = StudyStatus.RE_APPLIED;
-        // 기존 사유는 유지(참고용)하거나 null 처리(기획에 따름). 여기서는 유지하도록 두겠습니다.
     }
 }

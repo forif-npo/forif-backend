@@ -1,24 +1,9 @@
 package org.forif_backend.application.study;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
-import org.forif_backend.application.study.dto.AdminStudyDto;
-import org.forif_backend.application.study.dto.CreateStudyApplyInfo;
-import org.forif_backend.application.study.dto.StudyDetailDto;
-import org.forif_backend.application.study.dto.StudyDto;
-import org.forif_backend.application.study.dto.StudyInfo;
-import org.forif_backend.application.study.dto.SemesterStudiesInfo;
-import org.forif_backend.application.study.dto.UserStudiesResult;
+import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -28,14 +13,18 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class StudyService {
 
     private final StudyRepository studyRepository;
-    private final MentorStudyRepository mentorStudyRepository;
     private final UserRepository userRepository;
     private final FilePort filePort;
 
@@ -63,7 +52,7 @@ public class StudyService {
     @Transactional(readOnly = true)
     public List<StudyDto> getMyCreatedStudies(Long mentorId) {
 
-        return mentorStudyRepository.findStudiesByMentorId(mentorId)
+        return studyRepository.findStudiesByMentorId(mentorId)
             .stream()
             .map(StudyDto::from)
             .toList();
@@ -281,29 +270,34 @@ public class StudyService {
 
     /**
      * 거절된 스터디 수정 후 재요청
+     * @return S3 업로드를 위한 Presigned URL 정보가 담긴 Info 객체
      */
     @Transactional
-    public void reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
-                             MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+    public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                             MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
 
+        // 1. 스터디 조회 (태그 포함)
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        // 1. 권한 및 상태 검증 (내부에서 REJECTED 체크)
+        // 2. 권한 검증 및 상태 변경 (REJECTED -> PENDING)
         if (!study.isMentor(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
-        study.reApply();
+        study.reApply(); // 내부에서 상태값을 변경하는 로직
 
-        // 2. 데이터 업데이트 (Entity 메서드 호출)
+        // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
         List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
         study.applyRequestData(request, tags);
 
-        // 3. 기존 리소스(Plan, Reference) 삭제 및 재등록
+        // 4. 기존 연관 리소스(커리큘럼, 참고자료) 삭제
+        // 재신청은 기존 내용을 덮어쓰는 개념이므로 삭제 후 재등록
         studyRepository.deleteStudyPlansByStudyId(studyId);
         studyRepository.deleteStudyReferencesByStudyId(studyId);
 
-        saveStudyWithResources(study, request, thumbnail, referenceFiles);
+        // 5. 신규 리소스 저장 및 Presigned URL 생성
+        // 기존에 만들어둔 공통 메서드를 호출하고 그 결과를 그대로 반환합니다.
+        return saveStudyWithResources(study, request, thumbnail, referenceFiles);
     }
 
     /**
@@ -318,13 +312,19 @@ public class StudyService {
             study.setThumbnailImage(thumbnailInfo.objectKey());
         }
 
-        // 커리큘럼 생성
-        List<StudyPlan> planList = request.getStudyPlanList().stream()
-                .map(plan -> createStudyPlan(plan, study)).toList();
+        // 커리큘럼 생성 (null을 빈 리스트로 처리)
+        List<StudyPlan> planList = Optional.ofNullable(request.getStudyPlanList())
+                .orElseGet(Collections::emptyList)
+                .stream()
+                .map(plan -> createStudyPlan(plan, study))
+                .toList();
 
-        // 참고자료 생성
+        // 참고자료 생성 (null을 빈 리스트로 처리)
         List<FileInfo> referenceUploadInfos = new ArrayList<>();
-        List<StudyReference> referenceList = request.getReferences().stream()
+
+        List<StudyReference> referenceList = Optional.ofNullable(request.getReferences())
+                .orElseGet(Collections::emptyList) // null이면 빈 리스트 반환
+                .stream()
                 .map(ref -> toReferenceEntity(ref, study, referenceFiles, referenceUploadInfos))
                 .toList();
 
