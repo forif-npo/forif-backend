@@ -120,6 +120,7 @@ public class StudyQueryRepository {
                                 .or(secondaryMentor.id.eq(mentorId)), // 별칭으로 비교 (안전함)
                         study.studyStatus.ne(StudyStatus.APPROVED)
                 )
+                .orderBy(study.id.desc())
                 .fetch();
     }
 
