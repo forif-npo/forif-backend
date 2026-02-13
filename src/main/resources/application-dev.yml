@@ -26,7 +26,7 @@ spring:
       region:
         static: ap-northeast-2
       s3:
-        bucket-name: ${S3_BUCKET_NAME_DEV}
+        bucket-name: ${S3_BUCKET_NAME}
       presigned-url:
         expiration-minutes: 60
 
