@@ -53,6 +53,10 @@ public class UserApply extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private UserApplyStatus secondaryStatus;
 
+    private Integer primaryWaitlistOrder;
+
+    private Integer secondaryWaitlistOrder;
+
     private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro, String primaryStudyName, String secondaryStudyName) {
         this.applier = applier;
         this.applyYear = applyYear;
