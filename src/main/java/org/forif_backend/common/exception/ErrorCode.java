@@ -21,6 +21,7 @@ public enum ErrorCode {
     PRIMARY_STUDY_REQUIRED(HttpStatus.BAD_REQUEST, "FOR010-400", "1순위 스터디를 무조건 선택해야 합니다."),
     USER_NOT_APPLIED_TO_STUDY(HttpStatus.BAD_REQUEST, "FOR011-400", "해당 스터디에 지원하지 않은 유저입니다."),
     STUDY_APPLICATION_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "FOR012-400", "스터디 지원 기간이 아닙니다."),
+    WAITLIST_ORDER_REQUIRED(HttpStatus.BAD_REQUEST, "FOR013-400", "예비 상태일 경우 예비 순번을 입력해야 합니다."),
     INVALID_EMAIL_DOMAIN(HttpStatus.BAD_REQUEST, "FOR032-400", "한양대 이메일(@hanyang.ac.kr)만 사용 가능합니다."),
     STUDENT_ID_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "FOR033-400", "이미 가입된 학번입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "FOR034-400", "이미 가입된 이메일입니다."),

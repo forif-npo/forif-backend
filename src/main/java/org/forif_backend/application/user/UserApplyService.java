@@ -15,10 +15,12 @@ import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -97,6 +99,30 @@ public class UserApplyService {
         return ApplyDetailInfo.builder()
                 .applyReason(getApplicationContentForStudy(userApply, study.getId()))
                 .build();
+    }
+
+    /**
+     * 멘토가 신청서의 상태를 변경하는 메서드입니다.
+     * @param userId 멘토 유저 id
+     * @param studyId 스터디 id
+     * @param applyId 지원 id
+     * @param request 상태 변경 요청 dto
+     */
+    @Transactional
+    public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
+        // 멘토 권한 확인
+        Study study = getStudyIfMentor(userId, studyId);
+
+        // 예비 상태일 경우 순번 필수 검증
+        if (request.status() == UserApplyStatus.WAITLIST && request.waitlistOrder() == null) {
+            throw new ForifException(ErrorCode.WAITLIST_ORDER_REQUIRED);
+        }
+
+        // 지원서 조회
+        UserApply userApply = userRepository.findUserApplyById(applyId);
+
+        // 상태 변경
+        userApply.updateStatus(study.getId(), request.status(), request.waitlistOrder());
     }
 
     /**

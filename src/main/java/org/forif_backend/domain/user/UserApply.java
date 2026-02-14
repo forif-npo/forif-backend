@@ -71,6 +71,17 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryStudyName = secondaryStudyName;
     }
 
+    public void updateStatus(Integer studyId, UserApplyStatus status, Integer waitlistOrder) {
+        Integer order = (status == UserApplyStatus.WAITLIST) ? waitlistOrder : null;
+        if (this.primaryStudy == studyId) {
+            this.primaryStatus = status;
+            this.primaryWaitlistOrder = order;
+        } else {
+            this.secondaryStatus = status;
+            this.secondaryWaitlistOrder = order;
+        }
+    }
+
     public static UserApply applyStudy(UserApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
         return new UserApply(
                 applier,
