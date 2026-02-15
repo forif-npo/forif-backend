@@ -10,6 +10,7 @@ import org.forif_backend.common.dto.response.PageResponse;
 import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
 import org.forif_backend.web.userApply.dto.UserApplyDetailResponse;
 import org.forif_backend.web.userApply.dto.UserApplyResponse;
 import org.springframework.data.domain.Page;
@@ -51,5 +52,14 @@ public class UserApplyController {
         ApplyDetailInfo applyDetailInfo = userApplyService.getApplyDetailInfo(userId, studyId, applyId);
         UserApplyDetailResponse response = UserApplyDetailResponse.from(applyDetailInfo);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/{studyId}/{applyId}/status")
+    public ResponseEntity<ApiResponse<Void>> updateApplyStatus(@AuthenticationPrincipal Long userId,
+                                                                @PathVariable("studyId") Integer studyId,
+                                                                @PathVariable("applyId") Long applyId,
+                                                                @Valid @RequestBody UserApplyStatusUpdateRequest request) {
+        userApplyService.updateApplyStatus(userId, studyId, applyId, request);
+        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }
 }
