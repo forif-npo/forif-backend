@@ -5,6 +5,7 @@ import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -12,6 +13,7 @@ import java.util.Optional;
 public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     private final StaffAccountJpaRepository staffAccountJpaRepository;
+    private final StaffAccountQueryRepository staffAccountQueryRepository;
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
@@ -33,5 +35,20 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public boolean existsById(Long userId) {
         return staffAccountJpaRepository.existsById(userId);
+    }
+
+    @Override
+    public void deleteById(Long userId) {
+        staffAccountJpaRepository.deleteById(userId);
+    }
+
+    @Override
+    public List<StaffAccount> searchWithCursor(Long cursor, int size, String search) {
+        return staffAccountQueryRepository.searchWithCursor(cursor, size, search);
+    }
+
+    @Override
+    public long count(String search) {
+        return staffAccountQueryRepository.count(search);
     }
 }
