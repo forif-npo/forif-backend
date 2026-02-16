@@ -5,6 +5,7 @@ import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -12,19 +13,18 @@ import java.util.Optional;
 public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     private final StaffAccountJpaRepository staffAccountJpaRepository;
+    private final StaffAccountQueryRepository staffAccountQueryRepository;
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
         return staffAccountJpaRepository.findByIdWithUser(userId);
     }
 
-    // 미사용
     @Override
     public StaffAccount save(StaffAccount staffAccount) {
         return staffAccountJpaRepository.save(staffAccount);
     }
 
-    // 미사용
     @Override
     public Optional<StaffAccount> findById(Long id) {
         return staffAccountJpaRepository.findById(id);
@@ -33,5 +33,25 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public boolean existsById(Long userId) {
         return staffAccountJpaRepository.existsById(userId);
+    }
+
+    @Override
+    public void deleteById(Long userId) {
+        staffAccountJpaRepository.deleteById(userId);
+    }
+
+    @Override
+    public List<StaffAccount> searchAdminsWithCursor(Long cursor, int size, String search) {
+        return staffAccountQueryRepository.searchAdminsWithCursor(cursor, size, search);
+    }
+
+    @Override
+    public long countAdmins(String search) {
+        return staffAccountQueryRepository.countAdmins(search);
+    }
+
+    @Override
+    public List<StaffAccount> findByAffiliation(String affiliation) {
+        return staffAccountQueryRepository.findByAffiliation(affiliation);
     }
 }

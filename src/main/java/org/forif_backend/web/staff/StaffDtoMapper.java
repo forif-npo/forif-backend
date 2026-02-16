@@ -30,6 +30,14 @@ public class StaffDtoMapper {
         );
     }
 
+    public static CreateAdminCommand toCommand(CreateAdminRequest request) {
+        return new CreateAdminCommand(
+            request.userId(),
+            request.password(),
+            request.affiliation()
+        );
+    }
+
     /**
      * Application Result → Web DTO
      */
@@ -57,6 +65,14 @@ public class StaffDtoMapper {
                 .department(user.getDepartment())
                 .imgUrl(user.getImgUrl())
                 .role(staffAccount.getRole().getValue())
+                .build();
+    }
+
+    public static AdminResponse toAdminResponse(StaffAccount staffAccount) {
+        return AdminResponse.builder()
+                .userId(staffAccount.getUserId())
+                .name(staffAccount.getName())
+                .affiliation(staffAccount.getAffiliation())
                 .build();
     }
 }
