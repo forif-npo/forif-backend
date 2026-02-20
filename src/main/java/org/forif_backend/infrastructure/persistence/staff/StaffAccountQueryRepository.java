@@ -5,6 +5,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.forif_backend.domain.staff.QStaffAccount;
 import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.staff.StaffRole;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class StaffAccountQueryRepository {
                 .selectFrom(staffAccount)
                 .join(staffAccount.user).fetchJoin()
                 .where(
+                        staffAccount.role.eq(StaffRole.MENTOR),
                         cursorLt(cursor),
                         searchKeyword(search)
                 )
@@ -36,7 +38,7 @@ public class StaffAccountQueryRepository {
         Long count = queryFactory
                 .select(staffAccount.count())
                 .from(staffAccount)
-                .where(searchKeyword(search))
+                .where(staffAccount.role.eq(StaffRole.MENTOR), searchKeyword(search))
                 .fetchOne();
         return count != null ? count : 0L;
     }

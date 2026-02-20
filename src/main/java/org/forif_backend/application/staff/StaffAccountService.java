@@ -91,6 +91,14 @@ public class StaffAccountService {
         StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
+        if (staffAccount.getRole() != StaffRole.MENTOR) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        if (name != null) {
+            staffAccount.getUser().updateUserName(name);
+        }
+
         String encodedPassword = password != null ? passwordEncoder.encode(password) : null;
         staffAccount.updateInfo(name, encodedPassword, affiliation);
     }
@@ -100,11 +108,14 @@ public class StaffAccountService {
      */
     @Transactional
     public void deleteMentorAccount(Long userId) {
-        if (!staffAccountRepository.existsById(userId)) {
-            throw new ForifException(ErrorCode.STAFF_NOT_FOUND);
+        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (staffAccount.getRole() != StaffRole.MENTOR) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
-        staffAccountRepository.deleteById(userId);
+        staffAccountRepository.deleteById(staffAccount.getUserId());
     }
 
     /**

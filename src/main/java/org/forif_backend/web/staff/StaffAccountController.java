@@ -18,6 +18,7 @@ import org.forif_backend.web.staff.dto.MentorResponse;
 import org.forif_backend.web.staff.dto.StaffSignInResponse;
 import org.forif_backend.web.staff.dto.UpdateMentorRequest;
 import java.util.List;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -93,7 +94,7 @@ public class StaffAccountController {
     @PostMapping("/api/v1/admin/mentors")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> createMentor(
-            @RequestBody CreateMentorRequest request
+            @Valid @RequestBody CreateMentorRequest request
     ) {
         CreateMentorCommand command = StaffDtoMapper.toCommand(request);
         staffAccountService.createMentorAccount(command);

@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class StudyService {
 
+    // TODO: 하드코딩된 기본 비밀번호 개선 필요. 멘토가 직접 초기 비밀번호를 설정하거나,
+    //       랜덤 생성 후 이메일 발송하는 방식으로 변경 필요.
     private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
 
     private final StudyRepository studyRepository;
