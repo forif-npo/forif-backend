@@ -20,6 +20,46 @@ public class StaffAccountQueryRepository {
         this.queryFactory = new JPAQueryFactory(em);
     }
 
+    // ==================== 운영진(ADMIN) ====================
+
+    public List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(staffAccount)
+                .join(staffAccount.user).fetchJoin()
+                .where(
+                        staffAccount.role.eq(StaffRole.ADMIN),
+                        cursorLt(cursor),
+                        searchKeyword(search)
+                )
+                .orderBy(staffAccount.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public long countAdmins(String search) {
+        Long count = queryFactory
+                .select(staffAccount.count())
+                .from(staffAccount)
+                .where(
+                        staffAccount.role.eq(StaffRole.ADMIN),
+                        searchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    public List<StaffAccount> findByAffiliation(String affiliation) {
+        return queryFactory
+                .selectFrom(staffAccount)
+                .where(
+                        staffAccount.role.eq(StaffRole.ADMIN),
+                        staffAccount.affiliation.eq(affiliation)
+                )
+                .fetch();
+    }
+
+    // ==================== 멘토(MENTOR) ====================
+
     public List<StaffAccount> searchWithCursor(Long cursor, int size, String search) {
         return queryFactory
                 .selectFrom(staffAccount)
@@ -41,6 +81,15 @@ public class StaffAccountQueryRepository {
                 .where(staffAccount.role.eq(StaffRole.MENTOR), searchKeyword(search))
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    // ==================== 공통 ====================
+
+    private BooleanExpression cursorLt(Integer cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        return staffAccount.id.lt(cursor.longValue());
     }
 
     private BooleanExpression cursorLt(Long cursor) {

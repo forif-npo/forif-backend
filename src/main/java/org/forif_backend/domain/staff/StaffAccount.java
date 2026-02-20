@@ -54,6 +54,18 @@ public class StaffAccount extends BaseTimeEntity {
         return this.id;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
+    public void updateAffiliation(String affiliation) {
+        this.affiliation = affiliation;
+    }
+
     /**
      * 멘토 정보 수정
      */

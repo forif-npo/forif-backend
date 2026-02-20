@@ -20,13 +20,11 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
         return staffAccountJpaRepository.findByIdWithUser(userId);
     }
 
-    // 미사용
     @Override
     public StaffAccount save(StaffAccount staffAccount) {
         return staffAccountJpaRepository.save(staffAccount);
     }
 
-    // 미사용
     @Override
     public Optional<StaffAccount> findById(Long id) {
         return staffAccountJpaRepository.findById(id);
@@ -40,6 +38,21 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public void deleteById(Long userId) {
         staffAccountJpaRepository.deleteById(userId);
+    }
+
+    @Override
+    public List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search) {
+        return staffAccountQueryRepository.searchAdminsWithCursor(cursor, size, search);
+    }
+
+    @Override
+    public long countAdmins(String search) {
+        return staffAccountQueryRepository.countAdmins(search);
+    }
+
+    @Override
+    public List<StaffAccount> findByAffiliation(String affiliation) {
+        return staffAccountQueryRepository.findByAffiliation(affiliation);
     }
 
     @Override
