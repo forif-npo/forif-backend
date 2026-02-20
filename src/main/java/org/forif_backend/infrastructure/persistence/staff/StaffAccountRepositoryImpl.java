@@ -54,4 +54,14 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     public List<StaffAccount> findByAffiliation(String affiliation) {
         return staffAccountQueryRepository.findByAffiliation(affiliation);
     }
+
+    @Override
+    public List<StaffAccount> searchWithCursor(Long cursor, int size, String search) {
+        return staffAccountQueryRepository.searchWithCursor(cursor, size, search);
+    }
+
+    @Override
+    public long count(String search) {
+        return staffAccountQueryRepository.count(search);
+    }
 }

@@ -1,13 +1,17 @@
 package org.forif_backend.application.study;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.application.staff.StaffAccountService;
+import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -20,13 +24,20 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class StudyService {
 
+    // TODO: 하드코딩된 기본 비밀번호 개선 필요. 멘토가 직접 초기 비밀번호를 설정하거나,
+    //       랜덤 생성 후 이메일 발송하는 방식으로 변경 필요.
+    private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
+
     private final StudyRepository studyRepository;
     private final UserRepository userRepository;
     private final FilePort filePort;
+    private final StaffAccountService staffAccountService;
+    private final StaffAccountRepository staffAccountRepository;
 
     @Transactional(readOnly = true)
     public List<StudyDto> getStudies(Long page, Long pageSize, Integer year, Integer semester,
@@ -341,13 +352,36 @@ public class StudyService {
 
     /**
      * [어드민 전용] 스터디 개설 승인
+     * 승인 시 멘토(primary, secondary) 계정이 없으면 자동 생성
      */
     @Transactional
     public void approveStudy(Integer studyId) {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        study.approve(); // 도메인 메서드 호출 (상태 변경 및 사유 초기화)
+        study.approve();
+
+        // 멘토 계정 자동 생성
+        createMentorAccountIfAbsent(study.getPrimaryMentor(), study.getStudyName());
+        if (study.getSecondaryMentor() != null) {
+            createMentorAccountIfAbsent(study.getSecondaryMentor(), study.getStudyName());
+        }
+    }
+
+    /**
+     * 멘토 계정이 없으면 기본 비밀번호로 자동 생성
+     */
+    private void createMentorAccountIfAbsent(User mentor, String studyName) {
+        if (staffAccountRepository.existsById(mentor.getId())) {
+            return;
+        }
+
+        CreateMentorCommand command = new CreateMentorCommand(
+                mentor.getId(),
+                DEFAULT_MENTOR_PASSWORD,
+                studyName
+        );
+        staffAccountService.createMentorAccount(command);
     }
 
     /**

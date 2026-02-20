@@ -15,9 +15,15 @@ public interface StaffAccountRepository {
 
     void deleteById(Long userId);
 
+    // FOR-72: 운영진(ADMIN) 관련
     List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search);
 
     long countAdmins(String search);
 
     List<StaffAccount> findByAffiliation(String affiliation);
+
+    // FOR-73: 멘토(MENTOR) 관련
+    List<StaffAccount> searchWithCursor(Long cursor, int size, String search);
+
+    long count(String search);
 }

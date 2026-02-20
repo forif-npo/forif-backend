@@ -65,4 +65,13 @@ public class StaffAccount extends BaseTimeEntity {
     public void updateAffiliation(String affiliation) {
         this.affiliation = affiliation;
     }
+
+    /**
+     * 멘토 정보 수정
+     */
+    public void updateInfo(String name, String password, String affiliation) {
+        if (name != null) this.name = name;
+        if (password != null) this.password = password;
+        if (affiliation != null) this.affiliation = affiliation;
+    }
 }
