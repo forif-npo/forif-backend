@@ -41,7 +41,7 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     }
 
     @Override
-    public List<StaffAccount> searchAdminsWithCursor(Long cursor, int size, String search) {
+    public List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search) {
         return staffAccountQueryRepository.searchAdminsWithCursor(cursor, size, search);
     }
 

@@ -20,7 +20,7 @@ public class StaffAccountQueryRepository {
         this.queryFactory = new JPAQueryFactory(em);
     }
 
-    public List<StaffAccount> searchAdminsWithCursor(Long cursor, int size, String search) {
+    public List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search) {
         return queryFactory
                 .selectFrom(staffAccount)
                 .join(staffAccount.user).fetchJoin()
@@ -56,11 +56,11 @@ public class StaffAccountQueryRepository {
                 .fetch();
     }
 
-    private BooleanExpression cursorLt(Long cursor) {
+    private BooleanExpression cursorLt(Integer cursor) {
         if (cursor == null) {
             return null;
         }
-        return staffAccount.id.lt(cursor);
+        return staffAccount.id.lt(cursor.longValue());
     }
 
     private BooleanExpression searchKeyword(String search) {

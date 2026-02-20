@@ -106,7 +106,7 @@ public class StaffAccountController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<AdminResponse>>> getAdmins(
             @AuthenticationPrincipal Long userId,
-            @RequestParam(required = false) Long cursor,
+            @RequestParam(required = false) Integer cursor,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String search
     ) {

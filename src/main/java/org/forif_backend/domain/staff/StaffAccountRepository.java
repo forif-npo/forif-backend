@@ -15,7 +15,7 @@ public interface StaffAccountRepository {
 
     void deleteById(Long userId);
 
-    List<StaffAccount> searchAdminsWithCursor(Long cursor, int size, String search);
+    List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search);
 
     long countAdmins(String search);
 

@@ -148,7 +148,7 @@ public class StaffAccountService {
      * 운영진 목록 조회 (커서 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getAdmins(Long requesterId, Long cursor, int size, String search) {
+    public CursorPageResponse<StaffAccount> getAdmins(Long requesterId, Integer cursor, int size, String search) {
         validatePresidentTeam(requesterId);
 
         List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithCursor(cursor, size, search);
@@ -183,7 +183,7 @@ public class StaffAccountService {
                 encodedPassword,
                 user.getUserName(),
                 StaffRole.ADMIN,
-                command.affiliation()
+                "운영진"
         );
 
         return staffAccountRepository.save(staffAccount);
@@ -229,6 +229,10 @@ public class StaffAccountService {
             staffAccount.updatePassword(passwordEncoder.encode(password));
         }
         if (affiliation != null) {
+            if ("회장".equals(affiliation) || "부회장".equals(affiliation)
+                    || "회장".equals(staffAccount.getAffiliation()) || "부회장".equals(staffAccount.getAffiliation())) {
+                throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+            }
             staffAccount.updateAffiliation(affiliation);
         }
 
