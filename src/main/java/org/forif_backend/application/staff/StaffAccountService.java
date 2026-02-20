@@ -3,11 +3,11 @@ package org.forif_backend.application.staff;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
+import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
-import org.forif_backend.application.staff.dto.StaffSignUpCommand;
-import org.forif_backend.application.staff.dto.StaffSignUpResult;
 import org.forif_backend.common.auth.JwtProvider;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staff.StaffAccount;
@@ -18,6 +18,8 @@ import org.forif_backend.domain.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -57,48 +59,80 @@ public class StaffAccountService {
     }
 
     /**
-     * 스태프(멘토/운영진) 회원가입
+     * 멘토 계정 생성 (운영진 전용)
      */
     @Transactional
-    public StaffSignUpResult staffSignUp(StaffSignUpCommand command) {
-        // 이미 스태프 계정이 존재하는지 확인
+    public void createMentorAccount(CreateMentorCommand command) {
         if (staffAccountRepository.existsById(command.userId())) {
             throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
         }
 
-        // 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(command.password());
-
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
-        // 스태프 계정 생성
+        String encodedPassword = passwordEncoder.encode(command.password());
+
         StaffAccount staffAccount = StaffAccount.createStaffAccount(
                 user,
                 encodedPassword,
-                command.name(),
-                command.role(),
+                user.getUserName(),
+                StaffRole.MENTOR,
                 command.affiliation()
         );
 
         staffAccountRepository.save(staffAccount);
-
-        StaffRole role = staffAccount.getRole();
-        String roleValue = role.getValue();
-        String staffId = staffAccount.getUserId().toString();
-        String accessToken = jwtProvider.generateAccessToken(staffId, roleValue);
-        String refreshToken = jwtProvider.generateRefreshToken(staffId);
-
-        // 5. Refresh Token을 Redis에 저장
-        refreshTokenService.saveRefreshToken(staffId, refreshToken);
-
-        return new StaffSignUpResult(
-                accessToken,
-                refreshToken,
-                role
-        );
     }
 
+    /**
+     * 멘토 정보 수정 (운영진 전용)
+     */
+    @Transactional
+    public void updateMentorAccount(Long userId, String name, String password, String affiliation) {
+        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (staffAccount.getRole() != StaffRole.MENTOR) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        if (name != null) {
+            staffAccount.getUser().updateUserName(name);
+        }
+
+        String encodedPassword = password != null ? passwordEncoder.encode(password) : null;
+        staffAccount.updateInfo(name, encodedPassword, affiliation);
+    }
+
+    /**
+     * 멘토 계정 삭제 (운영진 전용)
+     */
+    @Transactional
+    public void deleteMentorAccount(Long userId) {
+        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (staffAccount.getRole() != StaffRole.MENTOR) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        staffAccountRepository.deleteById(staffAccount.getUserId());
+    }
+
+    /**
+     * 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<StaffAccount> getMentors(Long cursor, int size, String search) {
+        List<StaffAccount> staffAccounts = staffAccountRepository.searchWithCursor(cursor, size, search);
+        long totalElements = staffAccountRepository.count(search);
+
+        boolean hasNext = staffAccounts.size() > size;
+        List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
+
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
+
+        return new CursorPageResponse<>(content, nextCursor, hasNext, totalElements);
+    }
 
     /**
      * 현재 로그인한 스태프 정보 조회
