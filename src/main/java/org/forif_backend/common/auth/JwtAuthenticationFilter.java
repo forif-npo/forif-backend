@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.forif_backend.application.auth.TokenBlacklistService;
+import org.forif_backend.common.exception.ErrorCode;
 
 /**
  * JWT 토큰 기반 인증을 처리하는 Spring Security 필터
@@ -52,6 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 2. 토큰이 없으면 다음 필터로 진행
                 if(token == null) {
                     log.info("토큰이 없습니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.MISSING_TOKEN);
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -59,6 +61,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 3. 토큰이 유효한지 검증
                 if(!jwtProvider.validateToken(token)) {
                     log.error("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -66,6 +69,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 4. 토큰 만료 여부 확인
                 if(jwtProvider.isExpired(token)) {
                     log.info("토큰이 만료되었습니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.TOKEN_EXPIRED);
                     filterChain.doFilter(request, response);
                     return;
                 }
@@ -73,6 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 5. 블랙리스트 확인 (로그아웃된 토큰인지 검증)
                 if(tokenBlacklistService.isTokenBlacklisted(token)) {
                     log.warn("블랙리스트에 등록된 토큰입니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
                     filterChain.doFilter(request, response);
                     return;
                 }

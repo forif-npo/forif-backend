@@ -30,7 +30,10 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        ApiResponse<?> body = ApiResponse.error(ErrorCode.INVALID_TOKEN.getCode(), "토큰이 없습니다.");
+        ErrorCode errorCode = (ErrorCode) request.getAttribute("jwt.error");
+        if (errorCode == null) errorCode = ErrorCode.MISSING_TOKEN;
+
+        ApiResponse<?> body = ApiResponse.error(errorCode);
         objectMapper.writeValue(response.getWriter(), body);
     }
 }
