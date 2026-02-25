@@ -58,18 +58,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                // 3. 토큰이 유효한지 검증
-                if(!jwtProvider.validateToken(token)) {
-                    log.error("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
-                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
+                // 3. 토큰 만료 여부 확인 (validateToken 전에 먼저 체크)
+                if(jwtProvider.isTokenExpired(token)) {
+                    log.info("토큰이 만료되었습니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.TOKEN_EXPIRED);
                     filterChain.doFilter(request, response);
                     return;
                 }
 
-                // 4. 토큰 만료 여부 확인
-                if(jwtProvider.isExpired(token)) {
-                    log.info("토큰이 만료되었습니다. URI: {}", request.getRequestURI());
-                    request.setAttribute("jwt.error", ErrorCode.TOKEN_EXPIRED);
+                // 4. 토큰이 유효한지 검증
+                if(!jwtProvider.validateToken(token)) {
+                    log.error("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
                     filterChain.doFilter(request, response);
                     return;
                 }

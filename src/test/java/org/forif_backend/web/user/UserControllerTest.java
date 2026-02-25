@@ -158,7 +158,7 @@ class UserControllerTest {
         mockMvc.perform(post("/api/v1/users/refresh"))
                 .andDo(print())
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error_code").value("FOR013-401"))
+                .andExpect(jsonPath("$.error_code").value("FOR037-401"))
                 .andExpect(jsonPath("$.message").exists());
     }
 
