@@ -28,6 +28,7 @@ public enum ErrorCode {
     PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "FOR035-400", "비밀번호가 일치하지 않습니다."),
 
     // 401 Unauthorized
+    MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "FOR037-401", "토큰이 없습니다."),
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "FOR013-401", "유효하지 않은 토큰입니다."),
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "FOR014-401", "토큰이 만료되었습니다."),
     UNAUTHORIZED_ACCESS(HttpStatus.UNAUTHORIZED, "FOR015-401", "권한이 없습니다."),
