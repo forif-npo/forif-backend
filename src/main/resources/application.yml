@@ -32,9 +32,9 @@ springdoc:
     display-request-duration: true
     default-model-expand-depth: 2
     default-models-expand-depth: 2
-    path: /api-docs
+    path: /swagger-ui
   api-docs:
-    path: /api-docs
+    path: /v3/api-docs
   show-actuator: true
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
