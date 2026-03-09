@@ -93,7 +93,7 @@ public class StaffAccountService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if (staffAccount.getRole() != StaffRole.MENTOR) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
         if (name != null) {
@@ -113,7 +113,7 @@ public class StaffAccountService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if (staffAccount.getRole() != StaffRole.MENTOR) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
         staffAccountRepository.deleteById(staffAccount.getUserId());
@@ -289,7 +289,7 @@ public class StaffAccountService {
         StaffAccount president = validatePresident(requesterId);
 
         if (president.getUserId().equals(targetUserId)) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
         StaffAccount target = staffAccountRepository.findByUserId(targetUserId)
@@ -309,7 +309,7 @@ public class StaffAccountService {
             }
             target.updateAffiliation("부회장");
         } else {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_INPUT);
         }
     }
 }

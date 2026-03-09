@@ -31,13 +31,8 @@ public record ApiResponse<T>(
         return new ApiResponse<>(System.currentTimeMillis(), null, errorCode.getCode(), errorCode.getMessage());
     }
 
-    // 실패 응답 (메시지만 포함)
-    public static <T> ApiResponse<T> error(String errorCode, String message) {
-        return new ApiResponse<>(System.currentTimeMillis(), null, errorCode, message);
-    }
-
-    // 실패 응답 (상세 데이터 포함, 예: 유효성 검사 실패 목록)
-    public static <T> ApiResponse<T> error(String errorCode, String message, T data) {
-        return new ApiResponse<>(System.currentTimeMillis(), data, errorCode, message);
+    // 실패 응답 (ErrorCode + 상세 데이터 포함, 예: 유효성 검사 실패 목록)
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, T data) {
+        return new ApiResponse<>(System.currentTimeMillis(), data, errorCode.getCode(), errorCode.getMessage());
     }
 }

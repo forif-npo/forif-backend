@@ -19,7 +19,7 @@ public enum StaffRole {
         return switch (value) {
             case "MENTOR" -> MENTOR;
             case "ADMIN" -> ADMIN;
-            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+            default -> throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
         };
     }
 }

@@ -75,7 +75,7 @@ public class S3FileClient implements FilePort {
 
         } catch (Exception e) {
             log.error("업로드용 Presigned URL 생성 중 오류 발생", e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -111,7 +111,7 @@ public class S3FileClient implements FilePort {
 
         } catch (Exception e) {
             log.error("조회용 Presigned URL 생성 중 오류 발생 (ObjectKey: {})", objectKey, e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -140,10 +140,10 @@ public class S3FileClient implements FilePort {
 
         } catch (IOException e) {
             log.error("파일 읽기 중 오류 발생", e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         } catch (Exception e) {
             log.error("S3 파일 업로드 중 오류 발생", e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -166,7 +166,7 @@ public class S3FileClient implements FilePort {
 
         } catch (Exception e) {
             log.error("S3 파일 삭제 중 오류 발생 (ObjectKey: {})", objectKey, e);
-            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
 }

@@ -171,7 +171,7 @@ public class Study extends BaseTimeEntity {
      */
     public void reject(String reason) {
         if (reason == null || reason.isBlank()) {
-            throw new ForifException(ErrorCode.INVALID_INPUT, "거절 사유는 필수입니다.");
+            throw new ForifException(ErrorCode.REJECT_REASON_REQUIRED);
         }
         this.studyStatus = StudyStatus.REJECTED;
         this.rejectReason = reason;
@@ -190,7 +190,7 @@ public class Study extends BaseTimeEntity {
      */
     public void reApply() {
         if (this.studyStatus != StudyStatus.REJECTED) {
-            throw new ForifException(ErrorCode.BAD_REQUEST, "재요청은 거절된 신청서에만 가능합니다.");
+            throw new ForifException(ErrorCode.REAPPLY_ONLY_FOR_REJECTED);
         }
         this.studyStatus = StudyStatus.RE_APPLIED;
     }

@@ -24,7 +24,6 @@ public enum RecruitStatus {
             }
         }
         
-        throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, 
-            "해당하는 RecruitStatus가 없습니다. value: " + value);
+        throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
     }
 }

@@ -27,6 +27,6 @@ public enum StudyStatus {
             }
         }
 
-        throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid status: " + value);
+        throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
     }
 }

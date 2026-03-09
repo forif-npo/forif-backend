@@ -28,7 +28,7 @@ public enum StudyDifficulty {
             }
         }
 
-        throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "Invalid difficulty: " + value);
+        throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
     }
 
     public static StudyDifficulty fromLevel(Integer level) {
@@ -42,7 +42,6 @@ public enum StudyDifficulty {
             }
         }
 
-        throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR,
-                "Invalid difficulty level: " + level);
+        throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
     }
 }
