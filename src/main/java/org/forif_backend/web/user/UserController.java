@@ -1,5 +1,8 @@
 package org.forif_backend.web.user;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -23,6 +26,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name = "부원", description = "부원 인증 및 마이페이지 API")
 @RestController
 @RequiredArgsConstructor
 @Slf4j
@@ -40,6 +44,7 @@ public class UserController {
      * 부원 회원가입
      * 프론트엔드에서 Google OAuth로 획득한 이메일을 함께 전송
      */
+    @Operation(summary = "부원 회원가입", description = "Google OAuth 이메일 인증 후 신규 부원을 등록합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserSignUpResponse>> userSignUp(
             @RequestBody UserSignUpRequest request,
@@ -69,6 +74,7 @@ public class UserController {
     /**
      * 부원 로그인
      */
+    @Operation(summary = "부원 로그인", description = "Google OAuth Access Token으로 로그인합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
     @PostMapping("/signin")
     public ResponseEntity<ApiResponse<UserSignInResponse>> userSignIn(
             @RequestBody UserSignInRequest request,
@@ -100,6 +106,7 @@ public class UserController {
     /**
      * Refresh Token으로 Access Token 재발급 (토큰 로테이션 적용)
      */
+    @Operation(summary = "Access Token 재발급", description = "HttpOnly 쿠키의 Refresh Token으로 새 Access Token을 발급합니다. 토큰 로테이션이 적용됩니다.")
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<AccessTokenResponse>> refreshAccessToken(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
@@ -134,6 +141,7 @@ public class UserController {
     /**
      * 로그아웃 (Access Token 블랙리스트 등록 + Refresh Token 삭제)
      */
+    @Operation(summary = "로그아웃", description = "Access Token을 블랙리스트에 등록하고 Refresh Token을 삭제합니다.")
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<String>> logout(
             HttpServletRequest request,
@@ -177,6 +185,7 @@ public class UserController {
      * 수강 스터디 조회
      * 부원이 현재 수강중인 스터디와 역대 수강한 스터디를 학기별로 그룹화하여 반환
      */
+    @Operation(summary = "내 수강 스터디 조회", description = "로그인한 부원이 수강 중이거나 과거에 수강한 스터디를 학기별로 그룹화하여 반환합니다.")
     @GetMapping("/me/studies")
     public ResponseEntity<ApiResponse<UserStudiesResponse>> getUserStudies(@AuthenticationPrincipal Long userId) {
         // 1. Service 호출
@@ -191,6 +200,7 @@ public class UserController {
     /**
      * 멘티 스터디 신청서 목록 조회
      */
+    @Operation(summary = "내 스터디 수강 신청서 목록 조회", description = "로그인한 부원이 제출한 스터디 수강 신청서 목록을 조회합니다.")
     @GetMapping("/me/study-applications")
     public ResponseEntity<ApiResponse<StudyApplicationsResponse>> getStudyApplications(
             @AuthenticationPrincipal Long userId
@@ -203,6 +213,7 @@ public class UserController {
     /**
      * 멘토 스터디 개설 신청서 목록 조회
      */
+    @Operation(summary = "내 스터디 개설 신청서 목록 조회 (멘토 전용)", description = "로그인한 멘토가 제출한 스터디 개설 신청서 목록과 심사 상태를 조회합니다.")
     @GetMapping("/me/study-creation-applications")
     public ResponseEntity<ApiResponse<StudyCreationApplicationsResponse>> getStudyCreationApplications(
             @AuthenticationPrincipal Long userId
@@ -216,10 +227,11 @@ public class UserController {
      * 인증서 조회
      * 특정 스터디에 대한 본인의 인증서 URL을 조회
      */
+    @Operation(summary = "수료증 조회", description = "특정 스터디에 대한 본인의 수료증 URL을 조회합니다.")
     @GetMapping("/me/certificates")
     public ResponseEntity<ApiResponse<CertificateResponse>> getCertificate(
             @AuthenticationPrincipal Long userId,
-            @RequestParam("studyId") Integer studyId
+            @Parameter(description = "수료증을 조회할 스터디 ID") @RequestParam("studyId") Integer studyId
     ) {
         GetCertificateResult result = userService.getCertificate(userId, studyId);
         CertificateResponse response = UserDtoMapper.toResponse(result);
@@ -229,6 +241,7 @@ public class UserController {
     /**
      * 현재 로그인한 사용자 정보 조회
      */
+    @Operation(summary = "내 정보 조회", description = "로그인한 부원의 이름, 이메일, 학과 등 기본 정보를 조회합니다.")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfo(
             @AuthenticationPrincipal Long userId
