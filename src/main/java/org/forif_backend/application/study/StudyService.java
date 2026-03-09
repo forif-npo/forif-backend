@@ -264,7 +264,7 @@ public class StudyService {
         if (refType == ReferenceType.FILE) { // 참고자료 타입이 파일인 경우
             // 이름에 맞는 파일 찾기
             MultipartFile file = referenceFiles.stream().filter(referenceFile -> Objects.equals(referenceFile.getOriginalFilename(), reference.getFileName())).findAny()
-                    .orElseThrow(() -> new ForifException(ErrorCode.BAD_REQUEST, "파일 첨부가 잘못됐습니다."));
+                    .orElseThrow(() -> new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT));
 
             // 업로드용 presigned url 생성
             FileInfo fileInfo = filePort.generatePresignedUploadUrl(file);

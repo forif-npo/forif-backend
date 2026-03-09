@@ -50,7 +50,7 @@ public class PostService {
                 .orElseThrow(() -> new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND));
 
         if (!POST_TYPE_ANNOUNCEMENT.equals(post.getPostType())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND);
         }
 
         return convertToDto(post);
@@ -80,7 +80,7 @@ public class PostService {
                 .orElseThrow(() -> new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND));
 
         if (!POST_TYPE_ANNOUNCEMENT.equals(post.getPostType())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND);
         }
 
         post.update(title, content, tag);
@@ -102,7 +102,7 @@ public class PostService {
                 .orElseThrow(() -> new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND));
 
         if (!POST_TYPE_ANNOUNCEMENT.equals(post.getPostType())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND);
         }
 
         // S3와 DB에서 파일 삭제
@@ -131,7 +131,7 @@ public class PostService {
                 .orElseThrow(() -> new ForifException(ErrorCode.SPECIFIC_FAQ_NOT_FOUND));
 
         if (!POST_TYPE_FAQ.equals(post.getPostType())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.SPECIFIC_FAQ_NOT_FOUND);
         }
 
         post.update(title, content, tag);
@@ -145,7 +145,7 @@ public class PostService {
                 .orElseThrow(() -> new ForifException(ErrorCode.SPECIFIC_FAQ_NOT_FOUND));
 
         if (!POST_TYPE_FAQ.equals(post.getPostType())) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.SPECIFIC_FAQ_NOT_FOUND);
         }
 
         postRepository.deleteById(postId);
@@ -176,18 +176,18 @@ public class PostService {
 
     private void validateImageFile(MultipartFile file) {
         if (file.isEmpty()) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
 
         // 파일 크기 검증 (5MB)
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
 
         // 이미지 파일 타입 검증
         String contentType = file.getContentType();
         if (contentType == null || !contentType.startsWith("image/")) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
     }
 

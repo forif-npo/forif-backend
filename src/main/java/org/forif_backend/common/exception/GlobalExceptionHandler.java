@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -22,22 +21,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ForifException.class)
     public ResponseEntity<ApiResponse<?>> handleForifException(ForifException e) {
         ErrorCode errorCode = e.getErrorCode();
-        log.warn("ForifException caught: code={}, message={}", errorCode.getCode(), e.getMessage());
+        log.warn("ForifException caught: code={}, message={}", errorCode.getCode(), errorCode.getMessage());
 
-        // 예외에 상세 데이터가 포함되어 있는지 확인
         ApiResponse<?> response;
-
-        // 실제 예외 메시지가 있으면 그것을 사용, 없으면 ErrorCode의 기본 메시지 사용
-        String message = e.getMessage() != null ? e.getMessage() : errorCode.getMessage();
-
         if (e.getErrorDataList() != null && !e.getErrorDataList().isEmpty()) {
-            // 상세 데이터가 있으면 data 필드에 담아 반환
-            response = ApiResponse.error(errorCode.getCode(), message, e.getErrorDataList());
-
+            response = ApiResponse.error(errorCode, e.getErrorDataList());
         } else {
-            // 상세 데이터가 없으면 기존처럼 data 필드는 null로 반환
-            response = ApiResponse.error(errorCode.getCode(), message);
-
+            response = ApiResponse.error(errorCode);
         }
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
@@ -48,9 +38,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<?>> handleMissingServletRequestParameter(MissingServletRequestParameterException e) {
         log.warn("Missing required parameter: {}", e.getParameterName());
-        String message = String.format("필수 파라미터가 누락되었습니다: %s", e.getParameterName());
-        ApiResponse<?> response = ApiResponse.error("BAD_REQUEST", message);
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        ErrorCode errorCode = ErrorCode.MISSING_PARAMETER;
+        List<ApiErrorData> errors = List.of(new ApiErrorData(e.getParameterName(), errorCode.getMessage(), null));
+        ApiResponse<?> response = ApiResponse.error(errorCode, errors);
+        return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
 
     /**
@@ -59,9 +50,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<?>> handleMethodArgumentTypeMismatch(MethodArgumentTypeMismatchException e) {
         log.warn("Type mismatch for parameter: {}", e.getName());
-        String message = String.format("파라미터 타입이 올바르지 않습니다: %s", e.getName());
-        ApiResponse<?> response = ApiResponse.error("BAD_REQUEST", message);
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        ErrorCode errorCode = ErrorCode.TYPE_MISMATCH;
+        List<ApiErrorData> errors = List.of(new ApiErrorData(e.getName(), errorCode.getMessage(), e.getValue()));
+        ApiResponse<?> response = ApiResponse.error(errorCode, errors);
+        return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
 
     /**
@@ -70,6 +62,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<?>> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
         log.warn("Validation failed: {}", e.getBindingResult());
+        ErrorCode errorCode = ErrorCode.VALIDATION_FAILED;
         List<ApiErrorData> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(error -> new ApiErrorData(
                         error.getField(),
@@ -77,9 +70,8 @@ public class GlobalExceptionHandler {
                         error.getRejectedValue()
                 ))
                 .collect(Collectors.toList());
-        
-        ApiResponse<?> response = ApiResponse.error("VALIDATION_FAILED", "입력값 검증에 실패했습니다", errors);
-        return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+        ApiResponse<?> response = ApiResponse.error(errorCode, errors);
+        return new ResponseEntity<>(response, errorCode.getHttpStatus());
     }
 
     /**
@@ -89,8 +81,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleGlobalException(Exception e) {
         log.error("알 수 없는 예외: {}", e.getMessage(), e);
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
-        ApiResponse<?> response = ApiResponse.error(errorCode.getCode(), errorCode.getMessage());
-
-        return new ResponseEntity<>(response, errorCode.getHttpStatus());
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
     }
 }
