@@ -22,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -123,6 +124,117 @@ public class UserApplyService {
 
         // 상태 변경
         userApply.updateStatus(study.getId(), request.status(), request.waitlistOrder());
+    }
+
+    /**
+     * 합격자가 최종 신청을 포기할 경우, 예비 1번을 합격으로 승격하고 나머지 예비 순번을 당기는 메서드
+     * @param userId  멘토 유저 id
+     * @param studyId 스터디 id
+     * @param applyId 최종 신청을 포기한 합격자의 신청서 id
+     */
+    @Transactional
+    public void promoteWaitlist(Long userId, Integer studyId, Long applyId) {
+        // 1. 멘토 권한 확인
+        getStudyIfMentor(userId, studyId);
+
+        // 2. 대상 신청서 조회 & ACCEPT 상태 검증
+        UserApply cancelledApply = userRepository.findUserApplyById(applyId);
+        if (!cancelledApply.isAcceptedForStudy(studyId)) {
+            throw new ForifException(ErrorCode.APPLY_NOT_ACCEPTED_STATUS);
+        }
+
+        // 3. 합격 취소 → REJECT로 변경
+        cancelledApply.updateStatus(studyId, UserApplyStatus.REJECT, null);
+
+        // 4. 해당 스터디의 WAITLIST 전체 조회 → 예비 순번 오름차순 정렬
+        List<UserApply> waitlist = userRepository.findWaitlistByStudyId(studyId);
+        waitlist.sort(Comparator.comparing(
+                apply -> apply.getWaitlistOrderForStudy(studyId),
+                Comparator.nullsLast(Comparator.naturalOrder())
+        ));
+
+        if (waitlist.isEmpty()) {
+            return;
+        }
+
+        // 5. 예비 1번 → ACCEPT 승격
+        UserApply promoted = waitlist.get(0);
+        promoted.updateStatus(studyId, UserApplyStatus.ACCEPT, null);
+
+        // 6. 나머지 예비 순번 1씩 당김
+        for (int i = 1; i < waitlist.size(); i++) {
+            UserApply w = waitlist.get(i);
+            int currentOrder = w.getWaitlistOrderForStudy(studyId);
+            w.updateStatus(studyId, UserApplyStatus.WAITLIST, currentOrder - 1);
+        }
+
+    }
+
+    /**
+     * 합격자가 최종 등록을 완료할 경우, 다른 스터디 예비 대기열에서 자동으로 제거합니다.
+     * 최종 등록이 확정된 시점에 호출해야 합니다.
+     * @param userId  등록을 확정하는 멘토 유저 id
+     * @param studyId 최종 등록한 스터디 id
+     * @param applyId 최종 등록한 합격자의 신청서 id
+     */
+    @Transactional
+    public void confirmEnrollment(Long userId, Integer studyId, Long applyId) {
+        // 1. 멘토 권한 확인
+        getStudyIfMentor(userId, studyId);
+
+        // 2. 신청서 조회 & ACCEPT 상태 검증
+        UserApply apply = userRepository.findUserApplyById(applyId);
+        if (!apply.isAcceptedForStudy(studyId)) {
+            throw new ForifException(ErrorCode.APPLY_NOT_ACCEPTED_STATUS);
+        }
+
+        // 3. 다른 스터디 예비 대기열에서 제거 및 순번 재정렬
+        removeFromOtherWaitlistIfAccepted(apply, studyId);
+    }
+
+    /**
+     * 합격 처리된 신청자가 다른 스터디의 예비 대기열에 있을 경우 제거하고 순번을 재정렬합니다.
+     * @param acceptedApply 합격된 신청서
+     * @param acceptedStudyId 합격된 스터디 id
+     */
+    private void removeFromOtherWaitlistIfAccepted(UserApply acceptedApply, Integer acceptedStudyId) {
+        Integer otherStudyId = getOtherWaitlistStudyId(acceptedApply, acceptedStudyId);
+        if (otherStudyId == null) {
+            return;
+        }
+
+        // 순번을 먼저 저장 (status 변경 전)
+        int removedOrder = acceptedApply.getWaitlistOrderForStudy(otherStudyId);
+
+        // 다른 스터디 예비 대기열에서 제거 (REJECT)
+        acceptedApply.updateStatus(otherStudyId, UserApplyStatus.REJECT, null);
+
+        // DB에서 읽어온 목록에 acceptedApply가 아직 WAITLIST로 남아있을 수 있으므로 자신을 제외하고 순번 재정렬
+        List<UserApply> waitlist = userRepository.findWaitlistByStudyId(otherStudyId);
+        for (UserApply w : waitlist) {
+            if (w.getId().equals(acceptedApply.getId())) continue;
+            int order = w.getWaitlistOrderForStudy(otherStudyId);
+            if (order > removedOrder) {
+                w.updateStatus(otherStudyId, UserApplyStatus.WAITLIST, order - 1);
+            }
+        }
+    }
+
+    /**
+     * 합격된 스터디가 아닌 다른 스터디에서 WAITLIST 상태인 경우 해당 스터디 id를 반환합니다.
+     * 해당하지 않으면 null 반환.
+     */
+    private Integer getOtherWaitlistStudyId(UserApply apply, Integer acceptedStudyId) {
+        if (apply.getPrimaryStudy() == acceptedStudyId) {
+            if (apply.getSecondaryStudy() != null && apply.getSecondaryStatus() == UserApplyStatus.WAITLIST) {
+                return apply.getSecondaryStudy();
+            }
+        } else if (apply.getSecondaryStudy() != null && apply.getSecondaryStudy().equals(acceptedStudyId)) {
+            if (apply.getPrimaryStatus() == UserApplyStatus.WAITLIST) {
+                return apply.getPrimaryStudy();
+            }
+        }
+        return null;
     }
 
     /**

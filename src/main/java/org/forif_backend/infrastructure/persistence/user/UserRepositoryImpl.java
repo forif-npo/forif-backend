@@ -126,4 +126,16 @@ public class UserRepositoryImpl implements UserRepository {
     public Optional<User> findByPhoneNum(String phoneNum) {
         return userJpaRepository.findByPhoneNum(phoneNum);
     }
+
+    @Override
+    public List<UserApply> findWaitlistByStudyId(Integer studyId) {
+        return queryFactory.selectFrom(userApply)
+                .leftJoin(userApply.applier).fetchJoin()
+                .where(
+                        userApply.primaryStudy.eq(studyId).and(userApply.primaryStatus.eq(UserApplyStatus.WAITLIST))
+                        .or(
+                        userApply.secondaryStudy.eq(studyId).and(userApply.secondaryStatus.eq(UserApplyStatus.WAITLIST)))
+                )
+                .fetch();
+    }
 }
