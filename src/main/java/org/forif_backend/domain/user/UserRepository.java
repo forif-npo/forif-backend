@@ -33,4 +33,6 @@ public interface UserRepository {
     UserApply findUserApplyById(Long applyId);
 
     Optional<User> findByPhoneNum(String phoneNum);
+
+    List<UserApply> findWaitlistByStudyId(Integer studyId);
 }

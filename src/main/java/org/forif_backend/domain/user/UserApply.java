@@ -76,10 +76,28 @@ public class UserApply extends BaseTimeEntity {
         if (this.primaryStudy == studyId) {
             this.primaryStatus = status;
             this.primaryWaitlistOrder = order;
-        } else {
+        } else if (studyId.equals(this.secondaryStudy)) {
             this.secondaryStatus = status;
             this.secondaryWaitlistOrder = order;
         }
+    }
+
+    /**
+     * 해당 스터디에 대한 예비 순번 반환
+     */
+    public Integer getWaitlistOrderForStudy(Integer studyId) {
+        if (this.primaryStudy == studyId) return this.primaryWaitlistOrder;
+        if (studyId.equals(this.secondaryStudy)) return this.secondaryWaitlistOrder;
+        return null;
+    }
+
+    /**
+     * 해당 스터디에 대해 합격(ACCEPT) 상태인지 확인
+     */
+    public boolean isAcceptedForStudy(Integer studyId) {
+        if (this.primaryStudy == studyId) return this.primaryStatus == UserApplyStatus.ACCEPT;
+        if (studyId.equals(this.secondaryStudy)) return this.secondaryStatus == UserApplyStatus.ACCEPT;
+        return false;
     }
 
     public static UserApply applyStudy(UserApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
