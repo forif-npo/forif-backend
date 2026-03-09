@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
@@ -20,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Tag(name = "스터디 개설 신청", description = "멘토의 스터디 개설 신청 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/study-apply")
@@ -37,6 +41,16 @@ public class StudyApplyController {
      * @param references 참고 자료 파일들
      * @return 생성된 스터디 개설 신청 응답
      */
+    @Operation(summary = "스터디 개설 신청", description = """
+            스터디 개설을 신청합니다. multipart/form-data 형식으로 전송합니다.
+
+            **파트 구성**
+            - `studyRequest`: 스터디 신청 정보 (JSON)
+            - `thumbnail`: 썸네일 이미지 파일 (선택)
+            - `references`: 참고 자료 파일 목록 (선택)
+
+            승인 대기(PENDING) 상태로 생성되며, 파일 업로드용 Presigned URL이 응답에 포함됩니다.
+            """)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> applyStudy(
             @AuthenticationPrincipal Long userId,
@@ -48,9 +62,14 @@ public class StudyApplyController {
         return ResponseEntity.ok().body(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 
+    @Operation(summary = "스터디 개설 재신청", description = """
+            거절된 스터디 개설 신청서를 수정하여 재신청합니다.
+
+            거절(REJECTED) 상태인 신청서만 재신청이 가능하며, 재신청 후 RE_APPLIED 상태로 변경됩니다.
+            """)
     @PatchMapping(value = "/{studyId}/re-apply", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> reApplyStudy(
-            @PathVariable Integer studyId,
+            @Parameter(description = "재신청할 스터디 ID") @PathVariable Integer studyId,
             @AuthenticationPrincipal Long userId,
             @RequestPart("studyRequest") @Valid CreateStudyApplyRequest request, // 여기서 자동으로 ObjectMapper가 작동합니다!
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,

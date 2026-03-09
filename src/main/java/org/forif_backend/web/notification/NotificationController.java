@@ -1,5 +1,8 @@
 package org.forif_backend.web.notification;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "알림", description = "카카오 알림톡 발송 API")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/notifications")
@@ -28,6 +32,7 @@ public class NotificationController {
     /**
      * 알림톡 발송
      */
+    @Operation(summary = "알림톡 발송 (어드민 전용)", description = "지정한 수신자들에게 카카오 알림톡을 발송합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<SendAlimTalkResponse>> sendAlimTalk(
             @RequestBody @Valid SendAlimTalkRequest request,
@@ -48,9 +53,10 @@ public class NotificationController {
     /**
      * 발송 가능한 카카오 알림톡 템플릿 조회
      */
+    @Operation(summary = "알림톡 템플릿 조회 (어드민 전용)", description = "발송 가능한 카카오 알림톡 템플릿 목록을 조회합니다.")
     @GetMapping("/templates")
     public ResponseEntity<ApiResponse<List<TemplateInfo>>> getKakaoTemplates(
-            @RequestParam Long userId) {
+            @Parameter(description = "조회를 요청하는 스태프 유저 ID") @RequestParam Long userId) {
 
         log.info("알림톡 템플릿 조회 요청 - userId: {}", userId);
 
