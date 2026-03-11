@@ -11,9 +11,12 @@ import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.domain.team.ForifTeam;
+import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -32,6 +35,7 @@ public class StaffAccountService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
+    private final ForifTeamRepository forifTeamRepository;
 
     /**
      * 스태프(멘토/운영진) 로그인
@@ -217,7 +221,17 @@ public class StaffAccountService {
                 "운영진"
         );
 
-        return staffAccountRepository.save(staffAccount);
+        StaffAccount saved = staffAccountRepository.save(staffAccount);
+
+        // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
+        int currentYear = DateUtils.getCurrentYear();
+        int currentSemester = DateUtils.getCurrentSemester();
+        if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
+            ForifTeam forifTeam = ForifTeam.create(user, currentYear, currentSemester, command.affiliation());
+            forifTeamRepository.save(forifTeam);
+        }
+
+        return saved;
     }
 
     /**
