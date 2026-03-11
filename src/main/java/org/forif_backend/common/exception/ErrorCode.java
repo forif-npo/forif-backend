@@ -51,15 +51,15 @@ public enum ErrorCode {
     WEEKLY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR034-404", "해당하는 스터디의 주간 계획을 찾을 수 없습니다."),
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR035-404", "등록되지 않은 스태프입니다."),
     CERTIFICATE_NOT_ISSUED(HttpStatus.NOT_FOUND, "FOR036-404", "인증서가 발급되지 않았습니다."),
-    SEMESTER_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR037-404", "해당 학기 일정을 찾을 수 없습니다."),
-    FORIF_TEAM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR038-404", "해당 운영진 이력을 찾을 수 없습니다."),
+    SEMESTER_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR042-404", "해당 학기 일정을 찾을 수 없습니다."),
+    FORIF_TEAM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR043-404", "해당 운영진 이력을 찾을 수 없습니다."),
 
     // 409 Conflict
-    USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR039-409", "이미 가입된 사용자입니다."),
-    USER_APPLY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR040-409", "이번학기 스터디에 이미 지원 했습니다."),
-    STAFF_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR041-409", "이미 등록된 스태프 계정입니다."),
-    STUDENT_ID_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR042-409", "이미 가입된 학번입니다."),
-    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR043-409", "이미 가입된 이메일입니다."),
+    USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),
+    USER_APPLY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR045-409", "이번학기 스터디에 이미 지원 했습니다."),
+    STAFF_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR046-409", "이미 등록된 스태프 계정입니다."),
+    STUDENT_ID_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR047-409", "이미 가입된 학번입니다."),
+    EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR048-409", "이미 가입된 이메일입니다."),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
