@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -49,9 +50,11 @@ public class SecurityConfig {
                     "/api/v1/users/google/userinfo",
                     "/api/v1/staff/signin",
                     "/api/v1/studies/**",
-                    "/api/v1/posts/faqs/**",
-                    "/api/v1/posts/announcements/**",
                     "/api/v1/studies/{studyId}"
+                ).permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/posts/faqs/**",
+                    "/api/v1/posts/announcements/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )

@@ -3,7 +3,6 @@ package org.forif_backend.web.staff;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +16,8 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.web.staff.dto.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -44,12 +45,14 @@ public class StaffAccountController {
         StaffSignInCommand command = StaffDtoMapper.toCommand(request);
         StaffSignInResult result = staffAccountService.staffSignIn(command);
 
-        Cookie refreshTokenCookie = new Cookie("refreshToken", result.refreshToken());
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true);
-        refreshTokenCookie.setPath("/");
-        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30일
-        httpResponse.addCookie(refreshTokenCookie);
+        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", result.refreshToken())
+                .httpOnly(true)
+                .secure(true)
+                .path("/")
+                .maxAge(30 * 24 * 60 * 60)
+                .sameSite("Lax")
+                .build();
+        httpResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
 
         StaffSignInResponse response = StaffDtoMapper.toResponse(result);
 

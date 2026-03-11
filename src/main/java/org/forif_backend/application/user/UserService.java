@@ -123,11 +123,8 @@ public class UserService {
      * Refresh Token으로 새로운 Access Token 발급 (토큰 로테이션 적용)
      */
     public RefreshTokenResult refreshAccessToken(RefreshTokenCommand command) {
-        // 1. 토큰에서 role 추출 (로테이션 전)
-        String role = jwtProvider.getRoleFromToken(command.refreshToken());
-
-        // 2. Refresh Token 로테이션 (기존 토큰 무효화 + 새 토큰 발급)
-        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(command.refreshToken(), role);
+        // Refresh Token 로테이션 (기존 토큰 무효화 + DB에서 현재 role 조회 + 새 토큰 발급)
+        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(command.refreshToken());
 
         return new RefreshTokenResult(tokenPair.accessToken(), tokenPair.refreshToken());
     }

@@ -1,7 +1,7 @@
 package org.forif_backend.web.notification;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
+
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +16,7 @@ import org.forif_backend.web.notification.dto.SendAlimTalkRequest;
 import org.forif_backend.web.notification.dto.SendAlimTalkResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class NotificationController {
      */
     @Operation(summary = "알림톡 발송 (어드민 전용)", description = "지정한 수신자들에게 카카오 알림톡을 발송합니다.")
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SendAlimTalkResponse>> sendAlimTalk(
             @RequestBody @Valid SendAlimTalkRequest request,
             @AuthenticationPrincipal Long userId) {
@@ -55,8 +57,9 @@ public class NotificationController {
      */
     @Operation(summary = "알림톡 템플릿 조회 (어드민 전용)", description = "발송 가능한 카카오 알림톡 템플릿 목록을 조회합니다.")
     @GetMapping("/templates")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<TemplateInfo>>> getKakaoTemplates(
-            @Parameter(description = "조회를 요청하는 스태프 유저 ID") @RequestParam Long userId) {
+            @AuthenticationPrincipal Long userId) {
 
         log.info("알림톡 템플릿 조회 요청 - userId: {}", userId);
 

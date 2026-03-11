@@ -60,6 +60,7 @@ public class StudyController {
      */
     @Operation(summary = "스터디 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 스터디 목록을 조회합니다. 승인 대기 스터디 포함.")
     @GetMapping("/api/v1/admin/studies")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<AdminStudyResponse>>> getAdminStudies(
             @Parameter(description = "이전 페이지의 마지막 스터디 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
             @Parameter(description = "페이지 당 항목 수") @RequestParam int size,
