@@ -11,7 +11,9 @@ public interface ForifTeamRepository {
 
     Optional<ForifTeam> findById(Long id);
 
-    void save(ForifTeam forIfTeam);
+    ForifTeam save(ForifTeam forifTeam);
 
     void deleteById(Long id);
+
+    boolean existsByActYearAndActSemesterAndUserId(int actYear, int actSemester, Long userId);
 }

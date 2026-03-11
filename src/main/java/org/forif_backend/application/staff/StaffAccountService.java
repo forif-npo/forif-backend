@@ -35,7 +35,7 @@ public class StaffAccountService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
-    private final ForifTeamRepository forIfTeamRepository;
+    private final ForifTeamRepository forifTeamRepository;
 
     /**
      * 스태프(멘토/운영진) 로그인
@@ -224,13 +224,12 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
-        ForifTeam forIfTeam = ForifTeam.create(
-                user,
-                DateUtils.getCurrentYear(),
-                DateUtils.getCurrentSemester(),
-                command.affiliation()
-        );
-        forIfTeamRepository.save(forIfTeam);
+        int currentYear = DateUtils.getCurrentYear();
+        int currentSemester = DateUtils.getCurrentSemester();
+        if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
+            ForifTeam forifTeam = ForifTeam.create(user, currentYear, currentSemester, command.affiliation());
+            forifTeamRepository.save(forifTeam);
+        }
 
         return saved;
     }

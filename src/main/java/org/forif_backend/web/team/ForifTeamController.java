@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.team.ForifTeamService;
 import org.forif_backend.common.dto.response.ApiResponse;
-import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.web.team.dto.ForifTeamResponse;
 import org.forif_backend.web.team.dto.UpdateForifTeamRequest;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +19,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ForifTeamController {
 
-    private final ForifTeamService forIfTeamService;
+    private final ForifTeamService forifTeamService;
 
     @Operation(summary = "전체 운영진 이력 조회")
     @GetMapping("/api/v1/forif-team")
     public ResponseEntity<ApiResponse<List<ForifTeamResponse>>> getAllMembers() {
-        List<ForifTeamResponse> response = forIfTeamService.getAllMembers().stream()
-                .map(ForifTeamResponse::from)
-                .toList();
+        List<ForifTeamResponse> response = forifTeamService.getAllMembers();
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -37,9 +34,7 @@ public class ForifTeamController {
             @Parameter(description = "연도 (예: 2025)") @PathVariable int year,
             @Parameter(description = "학기 (1 또는 2)") @PathVariable int semester
     ) {
-        List<ForifTeamResponse> response = forIfTeamService.getMembersByYearAndSemester(year, semester).stream()
-                .map(ForifTeamResponse::from)
-                .toList();
+        List<ForifTeamResponse> response = forifTeamService.getMembersByYearAndSemester(year, semester);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -50,16 +45,16 @@ public class ForifTeamController {
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id,
             @RequestBody UpdateForifTeamRequest request
     ) {
-        ForifTeam updated = forIfTeamService.updateMember(
+        ForifTeamResponse response = forifTeamService.updateMember(
                 id,
-                request.getUserTitle(),
-                request.getClubDepartment(),
-                request.getIntroTag(),
-                request.getSelfIntro(),
-                request.getProfImgUrl(),
-                request.getGraduateYear()
+                request.userTitle(),
+                request.clubDepartment(),
+                request.introTag(),
+                request.selfIntro(),
+                request.profImgUrl(),
+                request.graduateYear()
         );
-        return ResponseEntity.ok(ApiResponse.success(ForifTeamResponse.from(updated)));
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @Operation(summary = "운영진 이력 삭제 (어드민 전용)")
@@ -68,7 +63,7 @@ public class ForifTeamController {
     public ResponseEntity<ApiResponse<Void>> deleteMember(
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id
     ) {
-        forIfTeamService.deleteMember(id);
+        forifTeamService.deleteMember(id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

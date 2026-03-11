@@ -30,12 +30,17 @@ public class ForifTeamRepositoryImpl implements ForifTeamRepository {
     }
 
     @Override
-    public void save(ForifTeam forIfTeam) {
-        jpaRepository.save(forIfTeam);
+    public ForifTeam save(ForifTeam forifTeam) {
+        return jpaRepository.save(forifTeam);
     }
 
     @Override
     public void deleteById(Long id) {
         jpaRepository.deleteById(id);
+    }
+
+    @Override
+    public boolean existsByActYearAndActSemesterAndUserId(int actYear, int actSemester, Long userId) {
+        return jpaRepository.existsByActYearAndActSemesterAndUser_Id(actYear, actSemester, userId);
     }
 }

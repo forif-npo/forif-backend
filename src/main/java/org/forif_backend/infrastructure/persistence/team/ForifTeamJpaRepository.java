@@ -8,4 +8,6 @@ import java.util.List;
 public interface ForifTeamJpaRepository extends JpaRepository<ForifTeam, Long> {
 
     List<ForifTeam> findByActYearAndActSemester(int actYear, int actSemester);
+
+    boolean existsByActYearAndActSemesterAndUser_Id(int actYear, int actSemester, Long userId);
 }
