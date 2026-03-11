@@ -2,6 +2,7 @@ package org.forif_backend.web.semesterSchedule.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
@@ -10,12 +11,13 @@ import java.time.LocalDateTime;
 public class CreateSemesterScheduleRequest {
 
     @NotNull
-    private int actYear;
+    private Integer actYear;
 
     @NotNull
-    private int actSemester;
+    private Integer actSemester;
 
     @NotBlank
+    @Size(max = 50)
     private String scheduleType;
 
     @NotNull

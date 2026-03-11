@@ -65,7 +65,7 @@ public class SemesterScheduleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<SemesterScheduleResponse>> updateSchedule(
             @Parameter(description = "일정 ID") @PathVariable Long id,
-            @RequestBody UpdateSemesterScheduleRequest request
+            @RequestBody @Valid UpdateSemesterScheduleRequest request
     ) {
         SemesterScheduleDto dto = semesterScheduleService.updateSchedule(
                 id,

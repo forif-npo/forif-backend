@@ -40,7 +40,7 @@ public class SemesterSchedule extends BaseTimeEntity {
     }
 
     public void update(String scheduleType, LocalDateTime scheduledAt) {
-        if (scheduleType != null) this.scheduleType = scheduleType;
+        if (scheduleType != null && !scheduleType.isBlank()) this.scheduleType = scheduleType;
         if (scheduledAt != null) this.scheduledAt = scheduledAt;
     }
 }

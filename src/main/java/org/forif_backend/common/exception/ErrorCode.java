@@ -51,7 +51,7 @@ public enum ErrorCode {
     WEEKLY_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR034-404", "해당하는 스터디의 주간 계획을 찾을 수 없습니다."),
     STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR035-404", "등록되지 않은 스태프입니다."),
     CERTIFICATE_NOT_ISSUED(HttpStatus.NOT_FOUND, "FOR036-404", "인증서가 발급되지 않았습니다."),
-    SEMESTER_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR037-404", "해당 학기 일정을 찾을 수 없습니다."),
+    SEMESTER_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR042-404", "해당 학기 일정을 찾을 수 없습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR037-409", "이미 가입된 사용자입니다."),
