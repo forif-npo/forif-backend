@@ -11,9 +11,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
@@ -49,8 +49,7 @@ public class SecurityConfig {
                     "/api/v1/users/refresh",
                     "/api/v1/users/google/userinfo",
                     "/api/v1/staff/signin",
-                    "/api/v1/studies/**",
-                    "/api/v1/studies/{studyId}"
+                    "/api/v1/studies/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/posts/faqs/**",

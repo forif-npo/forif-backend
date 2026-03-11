@@ -19,8 +19,8 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
+import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
@@ -57,7 +57,7 @@ public class UserController {
         UserSignUpResult result = userService.userSignUp(command);
 
         // 3. Refresh Token을 HttpOnly 쿠키로 설정
-        addRefreshTokenCookie(httpResponse, result.refreshToken());
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 4. Application Result → Web DTO 변환 (refreshToken 제외)
         UserSignUpResponse response = UserDtoMapper.toResponse(result);
@@ -84,7 +84,7 @@ public class UserController {
         UserSignInResult result = userService.userSignIn(command);
 
         // 4. Refresh Token을 HttpOnly 쿠키로 설정
-        addRefreshTokenCookie(httpResponse, result.refreshToken());
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 5. Application Result → Web DTO 변환 (refreshToken 제외)
         UserSignInResponse response = UserDtoMapper.toResponse(result);
@@ -114,7 +114,7 @@ public class UserController {
         RefreshTokenResult result = userService.refreshAccessToken(command);
 
         // 4. 새 Refresh Token을 HttpOnly 쿠키로 설정
-        addRefreshTokenCookie(httpResponse, result.refreshToken());
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 5. Application Result → Web DTO 변환 (Access Token만 응답)
         AccessTokenResponse response = UserDtoMapper.toResponse(result);
@@ -144,7 +144,7 @@ public class UserController {
         }
 
         // 4. Refresh Token 쿠키 삭제
-        deleteRefreshTokenCookie(httpResponse);
+        CookieUtils.deleteRefreshTokenCookie(httpResponse);
 
         return ResponseEntity.ok(ApiResponse.successWithMsg("로그아웃되었습니다."));
     }
@@ -158,28 +158,6 @@ public class UserController {
             return authorization.substring(7);
         }
         return null;
-    }
-
-    private void addRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(30 * 24 * 60 * 60)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void deleteRefreshTokenCookie(HttpServletResponse response) {
-        ResponseCookie cookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(0)
-                .sameSite("Lax")
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     /**

@@ -16,8 +16,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.web.staff.dto.*;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
+import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,14 +44,7 @@ public class StaffAccountController {
         StaffSignInCommand command = StaffDtoMapper.toCommand(request);
         StaffSignInResult result = staffAccountService.staffSignIn(command);
 
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", result.refreshToken())
-                .httpOnly(true)
-                .secure(true)
-                .path("/")
-                .maxAge(30 * 24 * 60 * 60)
-                .sameSite("Lax")
-                .build();
-        httpResponse.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString());
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         StaffSignInResponse response = StaffDtoMapper.toResponse(result);
 

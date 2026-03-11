@@ -1,7 +1,6 @@
 package org.forif_backend.web.notification;
 
 import io.swagger.v3.oas.annotations.Operation;
-
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +14,8 @@ import org.forif_backend.web.notification.dto.NotificationDtoMapper;
 import org.forif_backend.web.notification.dto.SendAlimTalkRequest;
 import org.forif_backend.web.notification.dto.SendAlimTalkResponse;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
