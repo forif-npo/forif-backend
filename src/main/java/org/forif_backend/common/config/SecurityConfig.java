@@ -48,10 +48,11 @@ public class SecurityConfig {
                     "/api/v1/users/signin",
                     "/api/v1/users/refresh",
                     "/api/v1/users/google/userinfo",
-                    "/api/v1/staff/signin",
-                    "/api/v1/studies/**"
+                    "/api/v1/staff/signin"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
+                    "/api/v1/studies",
+                    "/api/v1/studies/{studyId}",
                     "/api/v1/posts/faqs/**",
                     "/api/v1/posts/announcements/**"
                 ).permitAll()
