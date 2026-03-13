@@ -3,7 +3,6 @@ package org.forif_backend.web.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +19,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
+import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -57,13 +57,7 @@ public class UserController {
         UserSignUpResult result = userService.userSignUp(command);
 
         // 3. Refresh Token을 HttpOnly 쿠키로 설정
-        Cookie refreshTokenCookie = new Cookie("refreshToken", result.refreshToken());
-        refreshTokenCookie.setHttpOnly(true);  // JavaScript에서 접근 불가
-        refreshTokenCookie.setSecure(true);    // HTTPS에서만 전송
-        refreshTokenCookie.setPath("/");       // 모든 경로에서 사용 가능
-        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30일
-        // refreshTokenCookie.setAttribute("SameSite", "Strict"); // CSRF 방지
-        httpResponse.addCookie(refreshTokenCookie);
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 4. Application Result → Web DTO 변환 (refreshToken 제외)
         UserSignUpResponse response = UserDtoMapper.toResponse(result);
@@ -90,12 +84,7 @@ public class UserController {
         UserSignInResult result = userService.userSignIn(command);
 
         // 4. Refresh Token을 HttpOnly 쿠키로 설정
-        Cookie refreshTokenCookie = new Cookie("refreshToken", result.refreshToken());
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true);
-        refreshTokenCookie.setPath("/");
-        refreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30일
-        httpResponse.addCookie(refreshTokenCookie);
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 5. Application Result → Web DTO 변환 (refreshToken 제외)
         UserSignInResponse response = UserDtoMapper.toResponse(result);
@@ -125,12 +114,7 @@ public class UserController {
         RefreshTokenResult result = userService.refreshAccessToken(command);
 
         // 4. 새 Refresh Token을 HttpOnly 쿠키로 설정
-        Cookie newRefreshTokenCookie = new Cookie("refreshToken", result.refreshToken());
-        newRefreshTokenCookie.setHttpOnly(true);
-        newRefreshTokenCookie.setSecure(true);
-        newRefreshTokenCookie.setPath("/");
-        newRefreshTokenCookie.setMaxAge(30 * 24 * 60 * 60); // 30일
-        httpResponse.addCookie(newRefreshTokenCookie);
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
         // 5. Application Result → Web DTO 변환 (Access Token만 응답)
         AccessTokenResponse response = UserDtoMapper.toResponse(result);
@@ -160,12 +144,7 @@ public class UserController {
         }
 
         // 4. Refresh Token 쿠키 삭제
-        Cookie refreshTokenCookie = new Cookie("refreshToken", null);
-        refreshTokenCookie.setHttpOnly(true);
-        refreshTokenCookie.setSecure(true);
-        refreshTokenCookie.setPath("/");
-        refreshTokenCookie.setMaxAge(0); // 즉시 만료
-        httpResponse.addCookie(refreshTokenCookie);
+        CookieUtils.deleteRefreshTokenCookie(httpResponse);
 
         return ResponseEntity.ok(ApiResponse.successWithMsg("로그아웃되었습니다."));
     }

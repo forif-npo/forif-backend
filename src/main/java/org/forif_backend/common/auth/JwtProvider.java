@@ -51,7 +51,6 @@ public class JwtProvider {
     // 토큰 유효성 검증 (서명 및 만료 여부 체크 포함)
     public boolean validateToken(String token) {
         try {
-            log.info("Validating token: '{}'", token);
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (Exception e) {

@@ -12,6 +12,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.post.dto.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,6 +43,7 @@ public class PostController {
     // 자주 묻는 질문 생성 (관리자)
     @Operation(summary = "FAQ 생성 (어드민 전용)", description = "새 FAQ를 등록합니다.")
     @PostMapping("/faqs")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> createFAQ(
             @RequestBody FAQRequest request,
             @AuthenticationPrincipal Long userId
@@ -53,6 +55,7 @@ public class PostController {
     // 자주 묻는 질문 수정 (관리자)
     @Operation(summary = "FAQ 수정 (어드민 전용)", description = "기존 FAQ의 내용을 수정합니다.")
     @PatchMapping("/faqs/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateFAQ(
             @Parameter(description = "수정할 FAQ ID") @PathVariable Integer id,
             @RequestBody FAQRequest request,
@@ -65,6 +68,7 @@ public class PostController {
     // 자주 묻는 질문 삭제 (관리자)
     @Operation(summary = "FAQ 삭제 (어드민 전용)", description = "FAQ를 삭제합니다.")
     @DeleteMapping("/faqs/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteFAQ(
             @Parameter(description = "삭제할 FAQ ID") @PathVariable Integer id,
             @AuthenticationPrincipal Long userId
@@ -100,6 +104,7 @@ public class PostController {
     // 공지사항 생성 (관리자)
     @Operation(summary = "공지사항 생성 (어드민 전용)", description = "새 공지사항을 등록합니다. 이미지 파일을 함께 첨부할 수 있습니다.")
     @PostMapping("/announcements")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> createAnnouncement(
             @RequestPart("request") AnnouncementRequest request,
             @RequestPart(value = "images", required = false) MultipartFile[] images,
@@ -112,6 +117,7 @@ public class PostController {
     // 공지사항 수정 (관리자)
     @Operation(summary = "공지사항 수정 (어드민 전용)", description = "기존 공지사항의 내용을 수정합니다.")
     @PatchMapping("/announcements/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateAnnouncement(
             @Parameter(description = "수정할 공지사항 ID") @PathVariable Integer id,
             @RequestPart("request") AnnouncementUpdateRequest request,
@@ -125,6 +131,7 @@ public class PostController {
     // 공지사항 삭제 (관리자)
     @Operation(summary = "공지사항 삭제 (어드민 전용)", description = "공지사항을 삭제합니다.")
     @DeleteMapping("/announcements/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> deleteAnnouncement(
             @Parameter(description = "삭제할 공지사항 ID") @PathVariable Integer id,
             @AuthenticationPrincipal Long userId
