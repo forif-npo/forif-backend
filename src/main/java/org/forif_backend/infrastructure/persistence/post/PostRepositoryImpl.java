@@ -21,8 +21,13 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
-    public List<Post> findByPostType(String postType, String searchKeyword, Long offset, Long limit) {
-        return postQueryRepository.findByPostTypeWithPagination(postType, searchKeyword, offset, limit);
+    public List<Post> searchWithCursor(String postType, String searchKeyword, Integer cursor, int size) {
+        return postQueryRepository.searchWithCursor(postType, searchKeyword, cursor, size);
+    }
+
+    @Override
+    public long countByPostType(String postType, String searchKeyword) {
+        return postQueryRepository.countByPostType(postType, searchKeyword);
     }
 
     @Override

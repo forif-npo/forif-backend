@@ -34,12 +34,12 @@ public class StudyRepositoryImplTest {
         StudySearchCond cond = StudySearchCond.builder().build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
 
         // then
         assertThat(result).isNotEmpty();
         assertThat(result).isSortedAccordingTo(
-                Comparator.comparing(Study::getCreatedAt).reversed()
+                Comparator.comparing(Study::getId).reversed()
         );
     }
 
@@ -55,7 +55,7 @@ public class StudyRepositoryImplTest {
                 .build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
 
         // then
         assertThat(result).allMatch(study ->
@@ -80,7 +80,7 @@ public class StudyRepositoryImplTest {
                 .build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
 
         // then
         assertThat(result).allMatch(study ->
@@ -98,7 +98,7 @@ public class StudyRepositoryImplTest {
                 .build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 10L);
+        List<Study> result = studyRepository.getStudies(cond, null, 10);
 
         // then
         assertThat(result).allMatch(study -> study.getStudyName().contains("개발"));
@@ -115,7 +115,7 @@ public class StudyRepositoryImplTest {
                 .build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
 
         // then
         assertThat(result).allMatch(study -> study.getRecruitStatus() == RecruitStatus.APPLICABLE);
@@ -132,7 +132,7 @@ public class StudyRepositoryImplTest {
                 .build();
         
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
         
         // then
         assertThat(result).allSatisfy(study ->
@@ -156,7 +156,7 @@ public class StudyRepositoryImplTest {
                 .build();
 
         // when
-        List<Study> result = studyRepository.getStudies(cond, 0L, 20L);
+        List<Study> result = studyRepository.getStudies(cond, null, 20);
 
         // then
         assertThat(result).allMatch(study -> study.getActYear() == 2022 &&
@@ -166,21 +166,24 @@ public class StudyRepositoryImplTest {
     }
 
     @Test
-    @DisplayName("offset과 limit을 사용하여 페이징 처리한다")
+    @DisplayName("커서 기반 페이지네이션으로 페이징 처리한다")
     @Sql("/sql/user-test-data.sql")
     @Sql("/sql/study-test-data.sql")
-    void getStudies_withPaging_returnsPagedResults() {
+    void getStudies_withCursorPaging_returnsPagedResults() {
         // given
         StudySearchCond cond = StudySearchCond.builder().build();
 
-        // when
-        List<Study> firstPage = studyRepository.getStudies(cond, 0L, 10L);
-        List<Study> secondPage = studyRepository.getStudies(cond, 10L, 10L);
+        // when - 첫 페이지 조회 (cursor=null)
+        List<Study> firstPage = studyRepository.getStudies(cond, null, 10);
+
+        // 다음 페이지 조회 (마지막 항목의 ID를 커서로 사용)
+        Integer nextCursor = firstPage.get(firstPage.size() - 1).getId();
+        List<Study> secondPage = studyRepository.getStudies(cond, nextCursor, 10);
 
         // then
-        assertThat(firstPage).hasSize(10);
-        assertThat(secondPage).isNotEmpty();  // ✅ hasSize(10) 대신
-        assertThat(firstPage.get(0).getId())
-                .isNotEqualTo(secondPage.get(0).getId());
+        assertThat(firstPage).isNotEmpty();
+        assertThat(secondPage).isNotEmpty();
+        // 두 번째 페이지의 모든 ID는 커서보다 작아야 함
+        assertThat(secondPage).allMatch(study -> study.getId() < nextCursor);
     }
 }

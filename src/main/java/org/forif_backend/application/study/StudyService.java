@@ -40,11 +40,10 @@ public class StudyService {
     private final StaffAccountRepository staffAccountRepository;
 
     @Transactional(readOnly = true)
-    public List<StudyDto> getStudies(Long page, Long pageSize, Integer year, Integer semester,
+    public CursorPageResponse<StudyDto> getStudies(Integer cursor, int size, Integer year, Integer semester,
                                      List<StudyDifficulty> difficulties, List<String> tags,
                                      RecruitStatus recruitStatus, String search) {
-        
-        // Build search condition
+
         StudySearchCond searchCond = StudySearchCond.builder()
             .year(year)
             .semester(semester)
@@ -53,11 +52,17 @@ public class StudyService {
             .recruitStatus(recruitStatus)
             .searchKeyword(search)
             .build();
-        
-        // Get studies from repository
-        List<Study> studies = studyRepository.getStudies(searchCond, page, pageSize);
 
-        return studies.stream().map(StudyDto::from).toList();
+        List<Study> studies = studyRepository.getStudies(searchCond, cursor, size);
+        long totalElements = studyRepository.countStudiesForUser(searchCond);
+
+        boolean hasNext = studies.size() > size;
+        List<Study> content = hasNext ? studies.subList(0, size) : studies;
+
+        List<StudyDto> dtos = content.stream().map(StudyDto::from).toList();
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+
+        return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);
     }
 
     @Transactional(readOnly = true)

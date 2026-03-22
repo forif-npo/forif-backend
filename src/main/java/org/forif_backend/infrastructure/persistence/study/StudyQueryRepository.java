@@ -25,12 +25,28 @@ public class StudyQueryRepository {
         queryFactory = new JPAQueryFactory(em);
     }
 
-    public List<Study> searchStudies(StudySearchCond cond, Long offset, Long limit) {
-
-        // distinct로 중복 제거
-        List<Study> studies = queryFactory
+    public List<Study> searchStudies(StudySearchCond cond, Integer cursor, int size) {
+        return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                        cursorLt(cursor),
+                        yearEq(cond.getYear()),
+                        semesterEq(cond.getSemester()),
+                        difficultiesIn(cond.getDifficulties()),
+                        recruitStatusEq(cond.getRecruitStatus()),
+                        searchKeywordEq(cond.getSearchKeyword()),
+                        tagsIn(cond.getStudyTagNames()))
+                .orderBy(study.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public long countStudiesForUser(StudySearchCond cond) {
+        Long count = queryFactory
+                .select(study.countDistinct())
+                .from(study)
+                .leftJoin(study.tags, studyTag)
                 .where(study.studyStatus.eq(StudyStatus.APPROVED),
                         yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
@@ -38,12 +54,8 @@ public class StudyQueryRepository {
                         recruitStatusEq(cond.getRecruitStatus()),
                         searchKeywordEq(cond.getSearchKeyword()),
                         tagsIn(cond.getStudyTagNames()))
-                .orderBy(study.createdAt.desc())
-                .offset(offset)
-                .limit(limit)
-                .fetch();
-
-        return studies;
+                .fetchOne();
+        return count != null ? count : 0L;
     }
 
     private BooleanExpression yearEq(Integer year) {
