@@ -20,18 +20,37 @@ public class PostQueryRepository {
         this.queryFactory = new JPAQueryFactory(em);
     }
 
-    public List<Post> findByPostTypeWithPagination(String postType, String searchKeyword, Long offset, Long limit) {
+    public List<Post> searchWithCursor(String postType, String searchKeyword, Integer cursor, int size) {
         return queryFactory
                 .selectFrom(post)
                 .leftJoin(post.user, user).fetchJoin()
                 .where(
                         post.postType.eq(postType),
+                        cursorLt(cursor),
                         titleContains(searchKeyword)
                 )
-                .orderBy(post.createdAt.desc())
-                .offset(offset)
-                .limit(limit)
+                .orderBy(post.id.desc())
+                .limit(size + 1)
                 .fetch();
+    }
+
+    public long countByPostType(String postType, String searchKeyword) {
+        Long count = queryFactory
+                .select(post.count())
+                .from(post)
+                .where(
+                        post.postType.eq(postType),
+                        titleContains(searchKeyword)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    private BooleanExpression cursorLt(Integer cursor) {
+        if (cursor == null) {
+            return null;
+        }
+        return post.id.lt(cursor);
     }
 
     private BooleanExpression titleContains(String searchKeyword) {

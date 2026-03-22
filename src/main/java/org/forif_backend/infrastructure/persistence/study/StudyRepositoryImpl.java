@@ -27,8 +27,13 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<Study> getStudies(StudySearchCond cond, Long offset, Long limit) {
-        return studyQueryRepository.searchStudies(cond, offset, limit);
+    public List<Study> getStudies(StudySearchCond cond, Integer cursor, int size) {
+        return studyQueryRepository.searchStudies(cond, cursor, size);
+    }
+
+    @Override
+    public long countStudiesForUser(StudySearchCond cond) {
+        return studyQueryRepository.countStudiesForUser(cond);
     }
 
     @Override

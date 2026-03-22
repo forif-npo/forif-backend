@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.post.dto.PostDto;
-import org.forif_backend.application.post.dto.PostListResult;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.post.Post;
@@ -37,12 +37,12 @@ public class PostService {
     private static final String POST_TYPE_ANNOUNCEMENT = "공지사항";
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-    public PostListResult getFAQs(Long page, Long pageSize, String search) {
-        return getPostsByType(POST_TYPE_FAQ, search, page, pageSize);
+    public CursorPageResponse<PostDto> getFAQs(Integer cursor, int size, String search) {
+        return getPostsByType(POST_TYPE_FAQ, search, cursor, size);
     }
 
-    public PostListResult getAnnouncements(Long page, Long pageSize, String search) {
-        return getPostsByType(POST_TYPE_ANNOUNCEMENT, search, page, pageSize);
+    public CursorPageResponse<PostDto> getAnnouncements(Integer cursor, int size, String search) {
+        return getPostsByType(POST_TYPE_ANNOUNCEMENT, search, cursor, size);
     }
 
     public PostDto getAnnouncement(Integer id) {
@@ -151,21 +151,22 @@ public class PostService {
         postRepository.deleteById(postId);
     }
 
-    private PostListResult getPostsByType(String postType, String search, Long page, Long pageSize) {
-        // 타입 검증
+    private CursorPageResponse<PostDto> getPostsByType(String postType, String search, Integer cursor, int size) {
         validatePostType(postType);
 
-        Long offset = page * pageSize;
-        List<Post> posts = postRepository.findByPostType(postType, search, offset, pageSize);
+        List<Post> posts = postRepository.searchWithCursor(postType, search, cursor, size);
+        long totalElements = postRepository.countByPostType(postType, search);
 
-        List<PostDto> postDtos = posts.stream()
+        boolean hasNext = posts.size() > size;
+        List<Post> content = hasNext ? posts.subList(0, size) : posts;
+
+        List<PostDto> postDtos = content.stream()
                 .map(this::convertToDto)
                 .toList();
 
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
 
-        return PostListResult.builder()
-                .posts(postDtos)
-                .build();
+        return new CursorPageResponse<>(postDtos, nextCursor, hasNext, totalElements);
     }
 
     private void validatePostType(String postType) {

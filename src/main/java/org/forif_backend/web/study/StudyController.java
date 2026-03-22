@@ -9,7 +9,6 @@ import org.forif_backend.application.study.StudyService;
 import org.forif_backend.application.study.dto.AdminStudyDto;
 import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
-import org.forif_backend.common.dto.request.PageRequest;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
@@ -31,12 +30,13 @@ public class StudyController {
     private final StudyService studyService;
 
     /**
-     * [유저용] 스터디 목록 조회 (offset pagination)
+     * [유저용] 스터디 목록 조회 (cursor pagination)
      */
-    @Operation(summary = "스터디 목록 조회", description = "승인된 스터디 목록을 조회합니다. 연도/학기/난이도/태그/모집상태/검색어로 필터링할 수 있습니다.")
+    @Operation(summary = "스터디 목록 조회", description = "커서 기반 페이지네이션으로 승인된 스터디 목록을 조회합니다. 연도/학기/난이도/태그/모집상태/검색어로 필터링할 수 있습니다.")
     @GetMapping("/api/v1/studies")
-    public ResponseEntity<ApiResponse<List<StudyResponse>>> getStudies(
-            @ModelAttribute PageRequest pageRequest,
+    public ResponseEntity<ApiResponse<CursorPageResponse<StudyResponse>>> getStudies(
+            @Parameter(description = "이전 페이지의 마지막 스터디 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "조회 연도 (예: 2025)") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
             @Parameter(description = "난이도 필터 (BEGINNER, INTERMEDIATE, ADVANCED)") @RequestParam(required = false) List<StudyDifficulty> difficulties,
@@ -44,15 +44,20 @@ public class StudyController {
             @Parameter(description = "모집 상태 필터 (OPEN=모집중, CLOSED=모집마감)") @RequestParam(value = "recruit_status", required = false) RecruitStatus recruitStatus,
             @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search) {
 
-        // Convert params
         List<String> tagList = tags != null ? Arrays.asList(tags) : null;
 
-        // Search studies for condition
-        List<StudyDto> studies = studyService.getStudies(
-                pageRequest.getPage(), pageRequest.getPageSize(), year, semester, difficulties, tagList, recruitStatus, search);
+        CursorPageResponse<StudyDto> result = studyService.getStudies(
+                cursor, size, year, semester, difficulties, tagList, recruitStatus, search);
 
+        List<StudyResponse> content = result.content().stream()
+                .map(StudyResponse::from)
+                .toList();
 
-        return ResponseEntity.ok(ApiResponse.success(StudyResponse.fromList(studies)));
+        CursorPageResponse<StudyResponse> response = new CursorPageResponse<>(
+                content, result.nextCursor(), result.hasNext(), result.totalElements()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     /**
