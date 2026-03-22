@@ -7,8 +7,8 @@ import java.util.ArrayList;
 
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.application.study.dto.StudyTagDto;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.junit.jupiter.api.Disabled;
-import org.forif_backend.application.study.dto.StudyTagDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,38 +64,38 @@ class StudyControllerTest {
                 .build();
 
         List<StudyDto> studies = Arrays.asList(study1, study2);
+        CursorPageResponse<StudyDto> cursorResponse = new CursorPageResponse<>(studies, null, false, 2);
 
-        when(studyService.getStudies(anyLong(), anyLong(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(studies);
+        when(studyService.getStudies(any(), anyInt(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(cursorResponse);
 
         // when & then
         mockMvc.perform(get("/api/v1/studies")
-                        .param("page", "0")
-                        .param("page_size", "10"))
+                        .param("size", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data[0].id").value(1))
-                .andExpect(jsonPath("$.data[0].study_name").value("Spring Boot 스터디"))
-                .andExpect(jsonPath("$.data[0].primary_mentor_name").value("김멘토"))
-                .andExpect(jsonPath("$.data[0].difficulty").value("EASY"))
-                .andExpect(jsonPath("$.data[0].recruit_status").value("APPLICABLE"))
-                .andExpect(jsonPath("$.data[0].tags").isEmpty())
-                .andExpect(jsonPath("$.data[1].study_name").value("React 심화"));
+                .andExpect(jsonPath("$.data.content[0].id").value(1))
+                .andExpect(jsonPath("$.data.content[0].study_name").value("Spring Boot 스터디"))
+                .andExpect(jsonPath("$.data.content[0].primary_mentor_name").value("김멘토"))
+                .andExpect(jsonPath("$.data.content[0].difficulty").value("EASY"))
+                .andExpect(jsonPath("$.data.content[0].recruit_status").value("APPLICABLE"))
+                .andExpect(jsonPath("$.data.content[0].tags").isEmpty())
+                .andExpect(jsonPath("$.data.content[1].study_name").value("React 심화"))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
     }
 
     @Test
     @DisplayName("GET /api/v1/studies - 모든 파라미터 포함 요청")
     void getStudies_withAllParameters() throws Exception {
         // given
-        List<StudyDto> studies = new ArrayList<>();
+        CursorPageResponse<StudyDto> cursorResponse = new CursorPageResponse<>(new ArrayList<>(), null, false, 0);
 
-        when(studyService.getStudies(eq(0L), eq(10L), eq(2024), eq(2),
+        when(studyService.getStudies(any(), anyInt(), eq(2024), eq(2),
                 any(List.class), any(List.class), any(RecruitStatus.class), eq("spring")))
-                .thenReturn(studies);
+                .thenReturn(cursorResponse);
 
         // when & then
         mockMvc.perform(get("/api/v1/studies")
-                        .param("page", "0")
-                        .param("page_size", "10")
+                        .param("size", "10")
                         .param("year", "2024")
                         .param("semester", "2")
                         .param("difficulties", "EASY", "NORMAL")
@@ -103,15 +103,14 @@ class StudyControllerTest {
                         .param("recruit_status", "APPLICABLE")
                         .param("search", "spring"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.content").isArray());
     }
 
     @Test
     @DisplayName("GET /api/v1/studies - 잘못된 difficulty 값")
     void getStudies_invalidDifficulty() throws Exception {
         mockMvc.perform(get("/api/v1/studies")
-                        .param("page", "0")
-                        .param("page_size", "10")
+                        .param("size", "10")
                         .param("difficulties", "invalid"))
                 .andExpect(status().isBadRequest());
     }
@@ -120,8 +119,7 @@ class StudyControllerTest {
     @DisplayName("GET /api/v1/studies - 잘못된 recruitStatus 값")
     void getStudies_invalidRecruitStatus() throws Exception {
         mockMvc.perform(get("/api/v1/studies")
-                        .param("page", "0")
-                        .param("page_size", "10")
+                        .param("size", "10")
                         .param("recruit_status", "invalid"))
                 .andExpect(status().isBadRequest());
     }
