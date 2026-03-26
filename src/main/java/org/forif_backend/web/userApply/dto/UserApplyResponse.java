@@ -24,8 +24,11 @@ public record UserApplyResponse(
         @Schema(description = "신청 일시", example = "2025-03-01T10:00:00")
         LocalDateTime applyDate,
 
-        @Schema(description = "현재 신청 상태 (대기중 / 승낙 / 거절 / 예비)", example = "대기중")
-        String studyStatus
+        @Schema(description = "현재 신청 상태 (대기중 / 승낙 / 거절)", example = "대기중")
+        String studyStatus,
+
+        @Schema(description = "지원 순위 (1 = 1순위, 2 = 2순위)", example = "1")
+        int priority
 ) {
     public static UserApplyResponse from(UserApplyInfo userApplyInfo) {
         return UserApplyResponse.builder()
@@ -35,6 +38,7 @@ public record UserApplyResponse(
                 .studyName(userApplyInfo.studyName())
                 .studyComment(userApplyInfo.studyComment())
                 .studyStatus(userApplyInfo.studyStatus())
+                .priority(userApplyInfo.priority())
                 .build();
     }
 }

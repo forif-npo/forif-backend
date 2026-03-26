@@ -17,4 +17,14 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     public Optional<StudyUser> findByUserIdAndStudyId(Long userId, Integer studyId) {
         return studyUserJpaRepository.findByUserIdAndStudyId(userId, studyId);
     }
+
+    @Override
+    public void save(StudyUser studyUser) {
+        studyUserJpaRepository.save(studyUser);
+    }
+
+    @Override
+    public void deleteByUserIdAndStudyId(Long userId, Integer studyId) {
+        studyUserJpaRepository.deleteByUserIdAndStudyId(userId, studyId);
+    }
 }

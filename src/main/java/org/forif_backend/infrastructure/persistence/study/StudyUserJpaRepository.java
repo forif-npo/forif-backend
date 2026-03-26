@@ -14,4 +14,6 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
     Optional<StudyUser> findByUserIdAndStudyId(@Param("userId") Long userId, @Param("studyId") Integer studyId);
 
     void deleteByStudyId(Integer studyId);
+
+    void deleteByUserIdAndStudyId(Long userId, Integer studyId);
 }

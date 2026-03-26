@@ -27,4 +27,11 @@ public class StudyUser {
 
     @Column(length = 300)
     private String certificateUrl;
+
+    public static StudyUser create(Study study, User user) {
+        StudyUser studyUser = new StudyUser();
+        studyUser.study = study;
+        studyUser.user = user;
+        return studyUser;
+    }
 }

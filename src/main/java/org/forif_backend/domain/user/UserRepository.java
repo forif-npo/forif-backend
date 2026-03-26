@@ -1,7 +1,6 @@
 package org.forif_backend.domain.user;
 
 import org.forif_backend.common.type.SortDirection;
-import org.forif_backend.domain.study.Study;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -28,11 +27,11 @@ public interface UserRepository {
 
     boolean existUserApply(int year, int semester, User applier);
 
+    Optional<UserApply> findUserApplyByYearAndSemesterAndUser(int year, int semester, User user);
+
     Page<UserApply> findUserApply(Integer studyId, Pageable pageable, UserApplyStatus statusFilter, SortDirection applyDateDirection);
 
     UserApply findUserApplyById(Long applyId);
 
     Optional<User> findByPhoneNum(String phoneNum);
-
-    List<UserApply> findWaitlistByStudyId(Integer studyId);
 }
