@@ -51,23 +51,22 @@ public class UserApplyService {
         int semester = DateUtils.getCurrentSemester();
 
         if (request.priority() == 1) {
-            // 이번 학기 지원서가 이미 있으면 에러
             if (userRepository.existUserApply(year, semester, user)) {
                 throw new ForifException(ErrorCode.ALREADY_APPLIED_PRIMARY);
             }
             UserApply userApply = UserApply.applyStudy(user, study, request.applyReason());
             userRepository.createUserApply(userApply);
         } else if (request.priority() == 2) {
-            // 이번 학기 지원서 조회 (없으면 에러 - 1순위를 먼저 지원해야 함)
             UserApply existingApply = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user)
                     .orElseThrow(() -> new ForifException(ErrorCode.PRIMARY_NOT_APPLIED));
 
-            // secondaryStudy 이미 있으면 에러
             if (existingApply.getSecondaryStudy() != null) {
                 throw new ForifException(ErrorCode.ALREADY_APPLIED_SECONDARY);
             }
 
             existingApply.addSecondaryStudy(study.getId(), study.getStudyName(), request.applyReason());
+        } else {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
         }
     }
 
@@ -75,26 +74,30 @@ public class UserApplyService {
      * 합격 처리 메서드
      * @param userId 멘토 유저 id
      * @param studyId 스터디 id
-     * @param applierIds 합격 처리할 지원자 id 목록
+     * @param applyIds 합격 처리할 신청서 id 목록
      */
     @Transactional
-    public void acceptApplications(Long userId, Integer studyId, List<Long> applierIds) {
+    public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
         Study study = getStudyIfMentor(userId, studyId);
 
-        for (Long applyId : applierIds) {
+        for (Long applyId : applyIds) {
             UserApply apply = userRepository.findUserApplyById(applyId);
 
-            // 해당 스터디에 지원했는지 검증
             boolean isPrimary = apply.getPrimaryStudy() == studyId;
             boolean isSecondary = studyId.equals(apply.getSecondaryStudy());
             if (!isPrimary && !isSecondary) {
                 throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
             }
 
-            // 이미 1순위 합격이면 스킵 (2순위 무시)
+            // 이미 해당 순위가 합격이면 스킵
             if (isPrimary && apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
                 continue;
             }
+            if (isSecondary && apply.getSecondaryStatus() == UserApplyStatus.ACCEPT) {
+                continue;
+            }
+
+            // 이미 1순위 합격 상태에서 2순위 합격 시도 → 스킵
             if (isSecondary && apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
                 continue;
             }
@@ -107,10 +110,8 @@ public class UserApplyService {
                 apply.updateStatus(apply.getSecondaryStudy(), UserApplyStatus.REJECT);
             }
 
-            // 해당 순위 status를 ACCEPT로 변경
             apply.updateStatus(studyId, UserApplyStatus.ACCEPT);
 
-            // StudyUser 레코드 생성
             StudyUser studyUser = StudyUser.create(study, apply.getApplier());
             studyUserRepository.save(studyUser);
         }
@@ -120,16 +121,15 @@ public class UserApplyService {
      * 불합격 처리 메서드
      * @param userId 멘토 유저 id
      * @param studyId 스터디 id
-     * @param applierIds 불합격 처리할 지원서 id 목록
+     * @param applyIds 불합격 처리할 신청서 id 목록
      */
     @Transactional
-    public void rejectApplications(Long userId, Integer studyId, List<Long> applierIds) {
+    public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
         getStudyIfMentor(userId, studyId);
 
-        for (Long applyId : applierIds) {
+        for (Long applyId : applyIds) {
             UserApply apply = userRepository.findUserApplyById(applyId);
 
-            // 해당 스터디에 지원했는지 검증
             boolean isPrimary = apply.getPrimaryStudy() == studyId;
             boolean isSecondary = studyId.equals(apply.getSecondaryStudy());
             if (!isPrimary && !isSecondary) {
@@ -138,17 +138,14 @@ public class UserApplyService {
 
             UserApplyStatus currentStatus = isPrimary ? apply.getPrimaryStatus() : apply.getSecondaryStatus();
 
-            // 이미 불합격이면 스킵
             if (currentStatus == UserApplyStatus.REJECT) {
                 continue;
             }
 
-            // 합격 상태였다면 StudyUser 삭제
             if (currentStatus == UserApplyStatus.ACCEPT) {
                 studyUserRepository.deleteByUserIdAndStudyId(apply.getApplier().getId(), studyId);
             }
 
-            // 불합격 처리
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
         }
     }
@@ -170,7 +167,7 @@ public class UserApplyService {
         if (applyOpt.isEmpty()) {
             return ApplyStatusResponse.builder()
                     .canApplyPrimary(true)
-                    .canApplySecondary(true)
+                    .canApplySecondary(false)
                     .build();
         }
 
@@ -201,6 +198,12 @@ public class UserApplyService {
     public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
         Study study = getStudyIfMentor(userId, studyId);
         UserApply userApply = userRepository.findUserApplyById(applyId);
+
+        // 신청서가 해당 스터디에 대한 것인지 검증
+        if (userApply.getPrimaryStudy() != study.getId() && !study.getId().equals(userApply.getSecondaryStudy())) {
+            throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
+        }
+
         return ApplyDetailInfo.builder()
                 .applyReason(getApplicationContentForStudy(userApply, study.getId()))
                 .build();
@@ -208,11 +211,23 @@ public class UserApplyService {
 
     /**
      * 멘토가 신청서의 상태를 변경하는 메서드입니다.
+     * 이 엔드포인트에서는 ACCEPT 처리를 허용하지 않습니다. (합격은 /accept 엔드포인트 사용)
      */
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
         Study study = getStudyIfMentor(userId, studyId);
         UserApply userApply = userRepository.findUserApplyById(applyId);
+
+        // 신청서가 해당 스터디에 대한 것인지 검증
+        if (userApply.getPrimaryStudy() != study.getId() && !study.getId().equals(userApply.getSecondaryStudy())) {
+            throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
+        }
+
+        // ACCEPT는 /accept 엔드포인트를 사용해야 함 (StudyUser 동기화 필요)
+        if (request.status() == UserApplyStatus.ACCEPT) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+
         userApply.updateStatus(study.getId(), request.status());
     }
 

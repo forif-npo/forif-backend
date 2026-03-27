@@ -7,8 +7,8 @@ import java.util.List;
 
 @Schema(description = "합격 처리 요청")
 public record AcceptRequest(
-        @Schema(description = "합격 처리할 지원자 ID 목록", example = "[1, 2, 3]")
+        @Schema(description = "합격 처리할 신청서 ID 목록", example = "[1, 2, 3]")
         @NotEmpty
-        List<Long> applierIds
+        List<Long> applyIds
 ) {
 }

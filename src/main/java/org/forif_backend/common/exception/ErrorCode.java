@@ -20,7 +20,7 @@ public enum ErrorCode {
     STUDY_APPLICATION_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "FOR009-400", "스터디 지원 기간이 아닙니다."),
     ALREADY_APPLIED_PRIMARY(HttpStatus.BAD_REQUEST, "FOR010-400", "이미 1순위 스터디에 지원했습니다."),
     ALREADY_APPLIED_SECONDARY(HttpStatus.BAD_REQUEST, "FOR011-400", "이미 2순위 스터디에 지원했습니다."),
-    PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR012-400-1", "1순위 스터디에 먼저 지원해야 합니다."),
+    PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR037-400", "1순위 스터디에 먼저 지원해야 합니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "FOR012-400", "거절 사유는 필수입니다."),
     REAPPLY_ONLY_FOR_REJECTED(HttpStatus.BAD_REQUEST, "FOR013-400", "재요청은 거절된 신청서에만 가능합니다."),
     INVALID_FILE_ATTACHMENT(HttpStatus.BAD_REQUEST, "FOR014-400", "파일 첨부가 잘못됐습니다."),
