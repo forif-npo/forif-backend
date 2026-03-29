@@ -6,7 +6,6 @@ import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.common.type.SortDirection;
-import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
@@ -70,6 +69,19 @@ public class UserRepositoryImpl implements UserRepository {
                 .fetchFirst();
         return isExist != null;
     }
+
+    @Override
+    public Optional<UserApply> findUserApplyByYearAndSemesterAndUser(int year, int semester, User user) {
+        UserApply result = queryFactory.selectFrom(userApply)
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        userApply.applier.eq(user)
+                )
+                .fetchOne();
+        return Optional.ofNullable(result);
+    }
+
     @Override
     public boolean existsByEmail(String email) {
         return userJpaRepository.existsByEmail(email);
@@ -125,17 +137,5 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findByPhoneNum(String phoneNum) {
         return userJpaRepository.findByPhoneNum(phoneNum);
-    }
-
-    @Override
-    public List<UserApply> findWaitlistByStudyId(Integer studyId) {
-        return queryFactory.selectFrom(userApply)
-                .leftJoin(userApply.applier).fetchJoin()
-                .where(
-                        userApply.primaryStudy.eq(studyId).and(userApply.primaryStatus.eq(UserApplyStatus.WAITLIST))
-                        .or(
-                        userApply.secondaryStudy.eq(studyId).and(userApply.secondaryStatus.eq(UserApplyStatus.WAITLIST)))
-                )
-                .fetch();
     }
 }

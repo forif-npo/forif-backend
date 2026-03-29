@@ -5,7 +5,6 @@ import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
-import org.forif_backend.web.userApply.dto.UserApplyRequest;
 
 @Entity
 @Getter
@@ -53,64 +52,39 @@ public class UserApply extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     private UserApplyStatus secondaryStatus;
 
-    private Integer primaryWaitlistOrder;
-
-    private Integer secondaryWaitlistOrder;
-
-    private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, Integer secondaryStudy, String secondaryIntro, String primaryStudyName, String secondaryStudyName) {
+    private UserApply(User applier, int applyYear, int applySemester, int primaryStudy, String primaryIntro, String primaryStudyName) {
         this.applier = applier;
         this.applyYear = applyYear;
         this.applySemester = applySemester;
         this.primaryStudy = primaryStudy;
         this.primaryIntro = primaryIntro;
-        this.secondaryStudy = secondaryStudy;
-        this.secondaryIntro = secondaryIntro;
-        this.primaryStatus = UserApplyStatus.PENDING;
-        this.secondaryStatus = UserApplyStatus.PENDING;
         this.primaryStudyName = primaryStudyName;
-        this.secondaryStudyName = secondaryStudyName;
+        this.primaryStatus = UserApplyStatus.PENDING;
     }
 
-    public void updateStatus(Integer studyId, UserApplyStatus status, Integer waitlistOrder) {
-        Integer order = (status == UserApplyStatus.WAITLIST) ? waitlistOrder : null;
+    public void updateStatus(Integer studyId, UserApplyStatus status) {
         if (this.primaryStudy == studyId) {
             this.primaryStatus = status;
-            this.primaryWaitlistOrder = order;
         } else if (studyId.equals(this.secondaryStudy)) {
             this.secondaryStatus = status;
-            this.secondaryWaitlistOrder = order;
         }
     }
 
-    /**
-     * 해당 스터디에 대한 예비 순번 반환
-     */
-    public Integer getWaitlistOrderForStudy(Integer studyId) {
-        if (this.primaryStudy == studyId) return this.primaryWaitlistOrder;
-        if (studyId.equals(this.secondaryStudy)) return this.secondaryWaitlistOrder;
-        return null;
+    public void addSecondaryStudy(Integer studyId, String studyName, String intro) {
+        this.secondaryStudy = studyId;
+        this.secondaryStudyName = studyName;
+        this.secondaryIntro = intro;
+        this.secondaryStatus = UserApplyStatus.PENDING;
     }
 
-    /**
-     * 해당 스터디에 대해 합격(ACCEPT) 상태인지 확인
-     */
-    public boolean isAcceptedForStudy(Integer studyId) {
-        if (this.primaryStudy == studyId) return this.primaryStatus == UserApplyStatus.ACCEPT;
-        if (studyId.equals(this.secondaryStudy)) return this.secondaryStatus == UserApplyStatus.ACCEPT;
-        return false;
-    }
-
-    public static UserApply applyStudy(UserApplyRequest request, User applier, Study primaryStudy, Study secondaryStudy) {
+    public static UserApply applyStudy(User applier, Study primaryStudy, String applyReason) {
         return new UserApply(
                 applier,
                 DateUtils.getCurrentYear(),
                 DateUtils.getCurrentSemester(),
-                request.primaryStudyId(),
-                request.primaryStudyApplyReason(),
-                request.secondaryStudyId(),
-                request.secondaryStudyApplyReason(),
-                primaryStudy.getStudyName(),
-                secondaryStudy == null ? null : secondaryStudy.getStudyName()
+                primaryStudy.getId(),
+                applyReason,
+                primaryStudy.getStudyName()
         );
     }
 }

@@ -8,8 +8,7 @@ import lombok.Getter;
 public enum UserApplyStatus {
     PENDING("대기중"),
     ACCEPT("승낙"),
-    REJECT("거절"),
-    WAITLIST("예비");
+    REJECT("거절");
 
     private final String statusName;
 }
