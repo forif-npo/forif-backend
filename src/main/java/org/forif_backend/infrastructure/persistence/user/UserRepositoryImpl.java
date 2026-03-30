@@ -17,6 +17,9 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+import static org.forif_backend.domain.study.QStudy.study;
+import static org.forif_backend.domain.study.QStudyUser.studyUser;
+import static org.forif_backend.domain.user.QUser.user;
 import static org.forif_backend.domain.user.QUserApply.userApply;
 
 @Repository
@@ -137,5 +140,73 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public Optional<User> findByPhoneNum(String phoneNum) {
         return userJpaRepository.findByPhoneNum(phoneNum);
+    }
+
+    @Override
+    public List<User> searchUsersWithCursor(Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user)
+                .where(
+                        userCursorLt(cursor),
+                        userSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countUsers(String search) {
+        Long count = queryFactory
+                .select(user.count())
+                .from(user)
+                .where(userSearchKeyword(search))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchUsersByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(studyUser).on(studyUser.user.id.eq(user.id))
+                .join(study).on(studyUser.study.id.eq(study.id))
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        userCursorLt(cursor),
+                        userSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countUsersByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(studyUser).on(studyUser.user.id.eq(user.id))
+                .join(study).on(studyUser.study.id.eq(study.id))
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        userSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    private BooleanExpression userCursorLt(Long cursor) {
+        return cursor != null ? user.id.lt(cursor) : null;
+    }
+
+    private BooleanExpression userSearchKeyword(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return user.userName.containsIgnoreCase(search)
+                .or(user.department.containsIgnoreCase(search));
     }
 }

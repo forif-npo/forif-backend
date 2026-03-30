@@ -1,6 +1,6 @@
 package org.forif_backend.application.user;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
@@ -8,12 +8,17 @@ import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.*;
+import org.forif_backend.web.user.dto.MemberResponse;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -30,6 +35,7 @@ public class UserService {
     private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
+    private final StaffAccountRepository staffAccountRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
@@ -271,5 +277,71 @@ public class UserService {
     public User getUserInfo(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    /**
+     * 전체 부원 목록 조회 (커서 기반 페이지네이션)
+     */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, int size, String search) {
+        List<User> users = userRepository.searchUsersWithCursor(cursor, size, search);
+        long totalElements = userRepository.countUsers(search);
+
+        boolean hasNext = users.size() > size;
+        List<User> content = hasNext ? users.subList(0, size) : users;
+
+        int currentYear = DateUtils.getCurrentYear();
+        int currentSemester = DateUtils.getCurrentSemester();
+
+        List<MemberResponse> responses = content.stream()
+                .map(u -> buildMemberResponse(u, currentYear, currentSemester))
+                .toList();
+
+        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+
+        return new CursorPageResponse<>(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
+    /**
+     * 학기별 부원 목록 조회 (커서 기반 페이지네이션)
+     */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, int size, String search) {
+        List<User> users = userRepository.searchUsersByYearSemester(year, semester, cursor, size, search);
+        long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
+
+        boolean hasNext = users.size() > size;
+        List<User> content = hasNext ? users.subList(0, size) : users;
+
+        List<MemberResponse> responses = content.stream()
+                .map(u -> buildMemberResponse(u, year, semester))
+                .toList();
+
+        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+
+        return new CursorPageResponse<>(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
+    private MemberResponse buildMemberResponse(User u, int year, int semester) {
+        List<Study> studies = studyRepository.findStudiesByUserId(u.getId());
+        String studyName = studies.stream()
+                .filter(s -> s.getActYear() == year && s.getActSemester() == semester)
+                .map(Study::getStudyName)
+                .findFirst()
+                .orElse(null);
+
+        Optional<StaffAccount> staffOpt = staffAccountRepository.findByUserId(u.getId());
+        boolean isMentor = staffOpt.map(s -> s.getRole() == StaffRole.MENTOR).orElse(false);
+        boolean isAdmin = staffOpt.map(s -> s.getRole() == StaffRole.ADMIN).orElse(false);
+
+        return MemberResponse.builder()
+                .userId(u.getId())
+                .department(u.getDepartment())
+                .userName(u.getUserName())
+                .phoneNum(u.getPhoneNum())
+                .currentStudyName(studyName)
+                .isMentor(isMentor)
+                .isAdmin(isAdmin)
+                .build();
     }
 }

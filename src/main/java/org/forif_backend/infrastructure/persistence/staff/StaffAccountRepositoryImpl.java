@@ -64,4 +64,14 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     public long count(String search) {
         return staffAccountQueryRepository.count(search);
     }
+
+    @Override
+    public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return staffAccountQueryRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+    }
+
+    @Override
+    public long countMentorsByYearSemester(int year, int semester, String search) {
+        return staffAccountQueryRepository.countMentorsByYearSemester(year, semester, search);
+    }
 }

@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.staff.StaffAccountService;
+import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
@@ -16,6 +17,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.web.staff.dto.*;
+import org.forif_backend.web.user.dto.MemberResponse;
 import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +33,7 @@ import java.util.List;
 public class StaffAccountController {
 
     private final StaffAccountService staffAccountService;
+    private final UserService userService;
 
     /**
      * 스태프(멘토/운영진) 로그인
@@ -156,9 +159,9 @@ public class StaffAccountController {
     // ==================== 어드민 멘토 관리 API ====================
 
     /**
-     * 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
      */
-    @Operation(summary = "멘토 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 멘토 목록을 조회합니다.")
+    @Operation(summary = "멘토 전체 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 멘토 목록을 조회합니다.")
     @GetMapping("/api/v1/admin/mentors")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentors(
@@ -167,6 +170,32 @@ public class StaffAccountController {
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
         CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(cursor, size, search);
+
+        List<MentorResponse> content = result.content().stream()
+                .map(MentorResponse::from)
+                .toList();
+
+        CursorPageResponse<MentorResponse> response = new CursorPageResponse<>(
+                content, result.nextCursor(), result.hasNext(), result.totalElements()
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * 학기별 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     */
+    @Operation(summary = "학기별 멘토 목록 조회 (어드민 전용)", description = "해당 학기 스터디의 멘토 목록을 커서 기반 페이지네이션으로 조회합니다.")
+    @GetMapping("/api/v1/admin/mentors/{year}/{semester}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentorsByYearSemester(
+            @Parameter(description = "활동 연도") @PathVariable int year,
+            @Parameter(description = "활동 학기") @PathVariable int semester,
+            @Parameter(description = "이전 페이지의 마지막 멘토 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
+    ) {
+        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(year, semester, cursor, size, search);
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
@@ -218,5 +247,39 @@ public class StaffAccountController {
     ) {
         staffAccountService.deleteMentorAccount(userId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // ==================== 어드민 부원 관리 API ====================
+
+    /**
+     * [운영진 전용] 전체 부원 목록 조회 (커서 기반 페이지네이션)
+     */
+    @Operation(summary = "전체 부원 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 부원 목록을 조회합니다.")
+    @GetMapping("/api/v1/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getAllMembers(
+            @Parameter(description = "이전 페이지의 마지막 부원 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
+    ) {
+        CursorPageResponse<MemberResponse> response = userService.getAllMembers(cursor, size, search);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * [운영진 전용] 학기별 부원 목록 조회 (커서 기반 페이지네이션)
+     */
+    @Operation(summary = "학기별 부원 목록 조회 (어드민 전용)", description = "해당 학기에 스터디를 수강한 부원 목록을 커서 기반 페이지네이션으로 조회합니다.")
+    @GetMapping("/api/v1/admin/users/{year}/{semester}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getMembersByYearSemester(
+            @Parameter(description = "활동 연도") @PathVariable int year,
+            @Parameter(description = "활동 학기") @PathVariable int semester,
+            @Parameter(description = "이전 페이지의 마지막 부원 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
+    ) {
+        CursorPageResponse<MemberResponse> response = userService.getAllMembers(year, semester, cursor, size, search);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

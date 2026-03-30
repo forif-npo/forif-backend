@@ -124,12 +124,28 @@ public class StaffAccountService {
     }
 
     /**
-     * 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
      */
     @Transactional(readOnly = true)
     public CursorPageResponse<StaffAccount> getMentors(Long cursor, int size, String search) {
         List<StaffAccount> staffAccounts = staffAccountRepository.searchWithCursor(cursor, size, search);
         long totalElements = staffAccountRepository.count(search);
+
+        boolean hasNext = staffAccounts.size() > size;
+        List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
+
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
+
+        return new CursorPageResponse<>(content, nextCursor, hasNext, totalElements);
+    }
+
+    /**
+     * 학기별 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<StaffAccount> getMentors(int year, int semester, Long cursor, int size, String search) {
+        List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+        long totalElements = staffAccountRepository.countMentorsByYearSemester(year, semester, search);
 
         boolean hasNext = staffAccounts.size() > size;
         List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;

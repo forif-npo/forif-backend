@@ -34,4 +34,12 @@ public interface UserRepository {
     UserApply findUserApplyById(Long applyId);
 
     Optional<User> findByPhoneNum(String phoneNum);
+
+    List<User> searchUsersWithCursor(Long cursor, int size, String search);
+
+    long countUsers(String search);
+
+    List<User> searchUsersByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countUsersByYearSemester(int year, int semester, String search);
 }

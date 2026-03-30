@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import org.forif_backend.domain.staff.QStaffAccount;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.domain.study.QStudy;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -15,6 +16,7 @@ public class StaffAccountQueryRepository {
 
     private final JPAQueryFactory queryFactory;
     private final QStaffAccount staffAccount = QStaffAccount.staffAccount;
+    private final QStudy study = QStudy.study;
 
     public StaffAccountQueryRepository(EntityManager em) {
         this.queryFactory = new JPAQueryFactory(em);
@@ -79,6 +81,46 @@ public class StaffAccountQueryRepository {
                 .select(staffAccount.count())
                 .from(staffAccount)
                 .where(staffAccount.role.eq(StaffRole.MENTOR), searchKeyword(search))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    // ==================== 학기별 멘토 조회 ====================
+
+    public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(staffAccount).distinct()
+                .join(staffAccount.user).fetchJoin()
+                .join(study).on(
+                        study.primaryMentor.id.eq(staffAccount.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                )
+                .where(
+                        staffAccount.role.eq(StaffRole.MENTOR),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        cursorLt(cursor),
+                        searchKeyword(search)
+                )
+                .orderBy(staffAccount.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public long countMentorsByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(staffAccount.countDistinct())
+                .from(staffAccount)
+                .join(study).on(
+                        study.primaryMentor.id.eq(staffAccount.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                )
+                .where(
+                        staffAccount.role.eq(StaffRole.MENTOR),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        searchKeyword(search)
+                )
                 .fetchOne();
         return count != null ? count : 0L;
     }
