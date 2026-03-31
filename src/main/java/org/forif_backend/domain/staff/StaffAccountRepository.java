@@ -26,4 +26,9 @@ public interface StaffAccountRepository {
     List<StaffAccount> searchWithCursor(Long cursor, int size, String search);
 
     long count(String search);
+
+    // FOR-96: 학기별 멘토 조회
+    List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countMentorsByYearSemester(int year, int semester, String search);
 }
