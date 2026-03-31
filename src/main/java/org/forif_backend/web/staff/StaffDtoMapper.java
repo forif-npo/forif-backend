@@ -68,9 +68,12 @@ public class StaffDtoMapper {
     }
 
     public static AdminResponse toAdminResponse(StaffAccount staffAccount) {
+        User user = staffAccount.getUser();
         return AdminResponse.builder()
                 .userId(staffAccount.getUserId())
                 .name(staffAccount.getName())
+                .department(user.getDepartment())
+                .phoneNum(user.getPhoneNum())
                 .affiliation(staffAccount.getAffiliation())
                 .build();
     }
