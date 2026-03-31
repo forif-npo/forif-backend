@@ -37,7 +37,7 @@ public record StudyDetailResponse(
         Boolean requiresInterview,
         List<PlanResponse> plans,
         List<ReferenceResponse> references,
-        List<MentorResponse> mentors
+        List<MentorInfo> mentors
 ) {
     public record PlanResponse(
             Long id,
@@ -61,13 +61,13 @@ public record StudyDetailResponse(
         }
     }
 
-    public record MentorResponse(
+    public record MentorInfo(
             Long mentorId,
             String mentorName,
             Integer mentorNum
     ) {
-        public static MentorResponse from(MentorStudyDto dto) {
-            return new MentorResponse(dto.getMentorId(), dto.getMentorName(), dto.getMentorNum());
+        public static MentorInfo from(MentorStudyDto dto) {
+            return new MentorInfo(dto.getMentorId(), dto.getMentorName(), dto.getMentorNum());
         }
     }
 
@@ -111,7 +111,7 @@ public record StudyDetailResponse(
                 dto.getRequiresInterview(),
                 dto.getPlans().stream().map(PlanResponse::from).toList(),
                 dto.getReferences().stream().map(ReferenceResponse::from).toList(),
-                dto.getMentors().stream().map(MentorResponse::from).toList()
+                dto.getMentors().stream().map(MentorInfo::from).toList()
         );
     }
 }
