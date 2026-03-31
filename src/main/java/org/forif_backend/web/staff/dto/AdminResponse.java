@@ -7,5 +7,7 @@ import lombok.Builder;
 public record AdminResponse(
         @JsonProperty("user_id") Long userId,
         String name,
+        String department,
+        @JsonProperty("phone_num") String phoneNum,
         String affiliation
 ) {}
