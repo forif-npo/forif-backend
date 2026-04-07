@@ -51,6 +51,7 @@ public class StaffDtoMapper {
         return StaffSignInResponse.builder()
             .accessToken(result.accessToken())
             .role(result.role())
+            .affiliation(result.affiliation())
             .build();
     }
 

@@ -7,6 +7,7 @@ package org.forif_backend.application.staff.dto;
 public record StaffSignInResult(
     String accessToken,
     String refreshToken,
-    String role
+    String role,
+    String affiliation
 ) {
 }

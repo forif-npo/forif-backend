@@ -48,6 +48,7 @@ public class StaffAccountService {
             throw new ForifException(ErrorCode.PASSWORD_MISMATCH);
         }
 
+        String affiliation = staffAccount.getAffiliation();
         String role = staffAccount.getRole().getValue();
         String userId = staffAccount.getUserId().toString();
         String accessToken = jwtProvider.generateAccessToken(userId, role);
@@ -59,7 +60,8 @@ public class StaffAccountService {
         return new StaffSignInResult(
                 accessToken,
                 refreshToken,
-                role
+                role,
+                affiliation
         );
     }
 

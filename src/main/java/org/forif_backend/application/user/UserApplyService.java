@@ -15,6 +15,8 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.application.study.dto.StudyDto;
+import org.forif_backend.web.study.dto.StudyResponse;
 import org.forif_backend.web.userApply.dto.ApplyStatusResponse;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
 import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
@@ -174,11 +176,21 @@ public class UserApplyService {
         UserApply apply = applyOpt.get();
         boolean hasSecondary = apply.getSecondaryStudy() != null;
 
+        StudyResponse primaryStudyResponse = studyRepository.findStudyByIdWithTags(apply.getPrimaryStudy())
+                .map(s -> StudyResponse.from(StudyDto.from(s)))
+                .orElse(null);
+
+        StudyResponse secondaryStudyResponse = hasSecondary
+                ? studyRepository.findStudyByIdWithTags(apply.getSecondaryStudy())
+                        .map(s -> StudyResponse.from(StudyDto.from(s)))
+                        .orElse(null)
+                : null;
+
         return ApplyStatusResponse.builder()
                 .canApplyPrimary(false)
                 .canApplySecondary(!hasSecondary)
-                .primaryStudyName(apply.getPrimaryStudyName())
-                .secondaryStudyName(hasSecondary ? apply.getSecondaryStudyName() : null)
+                .primaryStudy(primaryStudyResponse)
+                .secondaryStudy(secondaryStudyResponse)
                 .build();
     }
 
