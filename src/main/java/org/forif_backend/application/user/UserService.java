@@ -9,7 +9,6 @@ import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.dto.response.CursorPageResponse;
-import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
@@ -23,7 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -293,9 +292,7 @@ public class UserService {
         int currentYear = DateUtils.getCurrentYear();
         int currentSemester = DateUtils.getCurrentSemester();
 
-        List<MemberResponse> responses = content.stream()
-                .map(u -> buildMemberResponse(u, currentYear, currentSemester))
-                .toList();
+        List<MemberResponse> responses = buildMemberResponses(content, currentYear, currentSemester);
 
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
 
@@ -313,35 +310,29 @@ public class UserService {
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
 
-        List<MemberResponse> responses = content.stream()
-                .map(u -> buildMemberResponse(u, year, semester))
-                .toList();
+        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
 
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
 
         return new CursorPageResponse<>(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
-    private MemberResponse buildMemberResponse(User u, int year, int semester) {
-        List<Study> studies = studyRepository.findStudiesByUserId(u.getId());
-        String studyName = studies.stream()
-                .filter(s -> s.getActYear() == year && s.getActSemester() == semester)
-                .map(Study::getStudyName)
-                .findFirst()
-                .orElse(null);
+    private List<MemberResponse> buildMemberResponses(List<User> users, int year, int semester) {
+        List<Long> userIds = users.stream().map(User::getId).toList();
 
-        Optional<StaffAccount> staffOpt = staffAccountRepository.findByUserId(u.getId());
-        boolean isMentor = staffOpt.map(s -> s.getRole() == StaffRole.MENTOR).orElse(false);
-        boolean isAdmin = staffOpt.map(s -> s.getRole() == StaffRole.ADMIN).orElse(false);
+        Map<Long, String> studyNameMap = studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
+        Map<Long, StaffRole> staffRoleMap = staffAccountRepository.findStaffRolesByUserIds(userIds);
 
-        return MemberResponse.builder()
-                .userId(u.getId())
-                .department(u.getDepartment())
-                .userName(u.getUserName())
-                .phoneNum(u.getPhoneNum())
-                .currentStudyName(studyName)
-                .isMentor(isMentor)
-                .isAdmin(isAdmin)
-                .build();
+        return users.stream()
+                .map(u -> MemberResponse.builder()
+                        .userId(u.getId())
+                        .department(u.getDepartment())
+                        .userName(u.getUserName())
+                        .phoneNum(u.getPhoneNum())
+                        .currentStudyName(studyNameMap.get(u.getId()))
+                        .isMentor(staffRoleMap.get(u.getId()) == StaffRole.MENTOR)
+                        .isAdmin(staffRoleMap.get(u.getId()) == StaffRole.ADMIN)
+                        .build())
+                .toList();
     }
 }
