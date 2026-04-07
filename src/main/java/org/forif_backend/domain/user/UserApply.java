@@ -3,6 +3,8 @@ package org.forif_backend.domain.user;
 import jakarta.persistence.*;
 import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 
@@ -75,6 +77,24 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryStudyName = studyName;
         this.secondaryIntro = intro;
         this.secondaryStatus = UserApplyStatus.PENDING;
+    }
+
+    public void updatePrimaryApplication(int studyId, String studyName, String applyReason) {
+        if (this.primaryStatus != UserApplyStatus.PENDING) {
+            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        }
+        this.primaryStudy = studyId;
+        this.primaryStudyName = studyName;
+        this.primaryIntro = applyReason;
+    }
+
+    public void updateSecondaryApplication(int studyId, String studyName, String applyReason) {
+        if (this.secondaryStatus != UserApplyStatus.PENDING) {
+            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        }
+        this.secondaryStudy = studyId;
+        this.secondaryStudyName = studyName;
+        this.secondaryIntro = applyReason;
     }
 
     public static UserApply applyStudy(User applier, Study primaryStudy, String applyReason) {

@@ -22,6 +22,7 @@ public enum ErrorCode {
     ALREADY_APPLIED_SECONDARY(HttpStatus.BAD_REQUEST, "FOR011-400", "이미 2순위 스터디에 지원했습니다."),
     PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR037-400", "1순위 스터디에 먼저 지원해야 합니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "FOR012-400", "거절 사유는 필수입니다."),
+    APPLY_NOT_PENDING(HttpStatus.BAD_REQUEST, "FOR038-400", "대기중(PENDING) 상태의 신청서만 수정할 수 있습니다."),
     REAPPLY_ONLY_FOR_REJECTED(HttpStatus.BAD_REQUEST, "FOR013-400", "재요청은 거절된 신청서에만 가능합니다."),
     INVALID_FILE_ATTACHMENT(HttpStatus.BAD_REQUEST, "FOR014-400", "파일 첨부가 잘못됐습니다."),
     INVALID_EMAIL_DOMAIN(HttpStatus.BAD_REQUEST, "FOR015-400", "한양대 이메일(@hanyang.ac.kr)만 사용 가능합니다."),
