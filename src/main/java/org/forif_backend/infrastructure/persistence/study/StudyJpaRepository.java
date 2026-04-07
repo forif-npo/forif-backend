@@ -13,4 +13,7 @@ public interface StudyJpaRepository extends JpaRepository<Study, Integer> {
 
     @Query("SELECT DISTINCT s FROM Study s LEFT JOIN FETCH s.tags WHERE s.id = :studyId")
     Optional<Study> findByIdWithTags(@Param("studyId") Integer studyId);
+
+    @Query("SELECT DISTINCT s FROM Study s LEFT JOIN FETCH s.tags WHERE s.id IN :studyIds")
+    List<Study> findByIdsWithTags(@Param("studyIds") List<Integer> studyIds);
 }
