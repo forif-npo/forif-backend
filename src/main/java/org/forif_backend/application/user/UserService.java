@@ -137,6 +137,7 @@ public class UserService {
     /**
      * 멘티 스터디 신청서 목록 조회
      */
+    @Transactional(readOnly = true)
     public GetStudyApplicationsResult getStudyApplications(Long userId) {
         List<UserApply> userApplies = userApplyRepository.findAllUserApplyByUserId(userId);
 
