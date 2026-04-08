@@ -3,6 +3,7 @@ package org.forif_backend.infrastructure.persistence.study;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.study.Study;
@@ -54,6 +55,15 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public Optional<Study> findStudyByIdWithTags(Integer studyId) {
         return studyJpaRepository.findByIdWithTags(studyId);
+    }
+
+    @Override
+    public Map<Integer, Study> findStudiesByIdsWithTags(List<Integer> studyIds) {
+        if (studyIds == null || studyIds.isEmpty()) {
+            return Map.of();
+        }
+        return studyJpaRepository.findByIdsWithTags(studyIds).stream()
+                .collect(Collectors.toMap(Study::getId, s -> s));
     }
 
     @Override

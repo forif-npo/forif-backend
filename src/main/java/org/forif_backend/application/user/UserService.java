@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -141,18 +142,31 @@ public class UserService {
     public GetStudyApplicationsResult getStudyApplications(Long userId) {
         List<UserApply> userApplies = userApplyRepository.findAllUserApplyByUserId(userId);
 
+        // 모든 스터디 ID를 수집하여 배치 조회
+        List<Integer> studyIds = userApplies.stream()
+                .flatMap(ua -> {
+                    List<Integer> ids = new ArrayList<>();
+                    ids.add(ua.getPrimaryStudy());
+                    if (ua.getSecondaryStudy() != null) {
+                        ids.add(ua.getSecondaryStudy());
+                    }
+                    return ids.stream();
+                })
+                .distinct()
+                .toList();
+
+        Map<Integer, Study> studyMap = studyRepository.findStudiesByIdsWithTags(studyIds);
+
         List<StudyApplicationDto> applications = userApplies.stream()
                 .map(userApply -> {
-                    Study primaryStudy = studyRepository.findStudyByIdWithTags(userApply.getPrimaryStudy())
-                            .orElse(null);
+                    Study primaryStudy = studyMap.get(userApply.getPrimaryStudy());
                     ApplicationDetailDto primaryApplication = createApplicationDetailDto(
                             "PRIMARY", primaryStudy, userApply.getPrimaryStatus(), userApply.getPrimaryIntro()
                     );
 
                     ApplicationDetailDto secondaryApplication = null;
                     if (userApply.getSecondaryStudy() != null) {
-                        Study secondaryStudy = studyRepository.findStudyByIdWithTags(userApply.getSecondaryStudy())
-                                .orElse(null);
+                        Study secondaryStudy = studyMap.get(userApply.getSecondaryStudy());
                         secondaryApplication = createApplicationDetailDto(
                                 "SECONDARY", secondaryStudy, userApply.getSecondaryStatus(), userApply.getSecondaryIntro()
                         );

@@ -24,6 +24,11 @@ public interface StudyRepository {
     Optional<Study> findStudyByIdWithTags(Integer studyId);
 
     /**
+     * 여러 스터디 ID로 스터디 정보 배치 조회 (태그 정보 포함)
+     */
+    Map<Integer, Study> findStudiesByIdsWithTags(List<Integer> studyIds);
+
+    /**
      * 스터디 저장
      */
     void saveStudy(Study study);
