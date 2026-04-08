@@ -12,6 +12,11 @@ public interface StudyRepository {
     List<Study> findStudiesByUserId(Long userId);
 
     /**
+     * 여러 사용자의 현재 학기 스터디명을 배치 조회
+     */
+    Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
      * 스터디 ID로 스터디 정보 조회 (태그 정보 포함)
      * @param studyId 스터디 ID
      * @return 스터디 정보 (태그 포함)

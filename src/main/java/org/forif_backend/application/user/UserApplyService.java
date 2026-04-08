@@ -20,6 +20,7 @@ import org.forif_backend.web.study.dto.StudyResponse;
 import org.forif_backend.web.userApply.dto.ApplyStatusResponse;
 import org.forif_backend.web.userApply.dto.UserApplyRequest;
 import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
+import org.forif_backend.web.userApply.dto.UserApplyUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -67,6 +68,36 @@ public class UserApplyService {
             }
 
             existingApply.addSecondaryStudy(study.getId(), study.getStudyName(), request.applyReason());
+        } else {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    /**
+     * 스터디 수강 신청서 수정 메서드
+     * PENDING 상태인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.
+     * @param userId 유저 id
+     * @param applyId 신청서 id
+     * @param request 수정 요청 dto
+     */
+    @Transactional
+    public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
+        UserApply apply = userRepository.findUserApplyById(applyId);
+
+        if (!apply.getApplier().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        Study study = studyRepository.findStudyById(request.studyId())
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (request.priority() == 1) {
+            apply.updatePrimaryApplication(study.getId(), study.getStudyName(), request.applyReason());
+        } else if (request.priority() == 2) {
+            if (apply.getSecondaryStudy() == null) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            apply.updateSecondaryApplication(study.getId(), study.getStudyName(), request.applyReason());
         } else {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }

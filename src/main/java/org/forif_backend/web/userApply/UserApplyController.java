@@ -42,6 +42,15 @@ public class UserApplyController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @Operation(summary = "수강 신청서 수정", description = "본인의 수강 신청서를 수정합니다. PENDING 상태인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.")
+    @PatchMapping("/{applyId}")
+    public ResponseEntity<ApiResponse<Void>> updateApplication(@AuthenticationPrincipal Long userId,
+                                                               @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
+                                                               @Valid @RequestBody UserApplyUpdateRequest request) {
+        userApplyService.updateApplication(userId, applyId, request);
+        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+    }
+
     @Operation(summary = "신청자 목록 조회 (멘토 전용)", description = "해당 스터디에 신청한 멘티 목록을 조회합니다. 상태 필터 및 날짜 정렬을 지원합니다.")
     @GetMapping("/{studyId}")
     public ResponseEntity<ApiResponse<PageResponse<UserApplyResponse>>> getUserApply(
