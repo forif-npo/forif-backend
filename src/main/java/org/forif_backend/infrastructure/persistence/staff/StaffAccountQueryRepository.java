@@ -10,6 +10,8 @@ import org.forif_backend.domain.study.QStudy;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Repository
 public class StaffAccountQueryRepository {
@@ -123,6 +125,22 @@ public class StaffAccountQueryRepository {
                 )
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    // ==================== 배치 조회 ====================
+
+    public Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<StaffAccount> staffAccounts = queryFactory
+                .selectFrom(staffAccount)
+                .where(staffAccount.id.in(userIds))
+                .fetch();
+
+        return staffAccounts.stream()
+                .collect(Collectors.toMap(StaffAccount::getUserId, StaffAccount::getRole));
     }
 
     // ==================== 공통 ====================

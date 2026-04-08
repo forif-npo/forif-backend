@@ -3,9 +3,11 @@ package org.forif_backend.infrastructure.persistence.staff;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -18,6 +20,11 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
         return staffAccountJpaRepository.findByIdWithUser(userId);
+    }
+
+    @Override
+    public Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds) {
+        return staffAccountQueryRepository.findStaffRolesByUserIds(userIds);
     }
 
     @Override

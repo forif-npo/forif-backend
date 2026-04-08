@@ -1,11 +1,17 @@
 package org.forif_backend.domain.staff;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface StaffAccountRepository {
 
     Optional<StaffAccount> findByUserId(Long userId); // User ID로 StaffAccount 조회 (User가 @Id이므로 findById와 동일)
+
+    /**
+     * 여러 사용자의 StaffRole을 배치 조회
+     */
+    Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds);
 
     StaffAccount save(StaffAccount staffAccount);
 

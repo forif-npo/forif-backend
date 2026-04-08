@@ -108,6 +108,30 @@ public class StudyQueryRepository {
         return studyTag.name.in(tagNames);
     }
 
+    public Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Tuple> results = queryFactory
+                .select(studyUser.user.id, study.studyName)
+                .from(studyUser)
+                .join(studyUser.study, study)
+                .where(
+                        studyUser.user.id.in(userIds),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester)
+                )
+                .fetch();
+
+        return results.stream()
+                .collect(Collectors.toMap(
+                        t -> t.get(studyUser.user.id),
+                        t -> t.get(study.studyName),
+                        (existing, replacement) -> existing
+                ));
+    }
+
     public List<Study> findStudiesByUserId(Long userId) {
         return queryFactory
                 .selectFrom(study).distinct()
