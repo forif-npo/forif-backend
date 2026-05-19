@@ -142,7 +142,8 @@ public class UserController {
 
             // 3. 토큰에서 사용자 ID 추출하여 Refresh Token 삭제
             String userId = jwtProvider.getUserIdFromToken(accessToken);
-            refreshTokenService.deleteRefreshToken(userId);
+            String role = jwtProvider.getRoleFromToken(accessToken);
+            refreshTokenService.deleteRefreshToken(userId, role);
         }
 
         // 4. Refresh Token 쿠키 삭제

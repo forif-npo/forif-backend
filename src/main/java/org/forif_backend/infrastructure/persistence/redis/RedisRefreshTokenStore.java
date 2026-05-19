@@ -6,7 +6,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
-import java.util.Set;
 
 /**
  * Redis 기반 Refresh Token 저장소 구현
@@ -15,15 +14,20 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RedisRefreshTokenStore implements RefreshTokenStore {
 
-    private static final String REFRESH_TOKEN_PREFIX = "refresh_token:user:";
+    private static final String REFRESH_TOKEN_PREFIX = "refresh_token:session:";
     private static final String TOKEN_TO_USER_PREFIX = "refresh_token:token:";
     private final StringRedisTemplate redisTemplate;
 
     @Override
-    public void save(String userId, String refreshToken, long expirationSeconds) {
-        // 1. userId -> refreshToken 매핑 저장
-        String userKey = REFRESH_TOKEN_PREFIX + userId;
-        redisTemplate.opsForValue().set(userKey, refreshToken, Duration.ofSeconds(expirationSeconds));
+    public void save(String userId, String role, String refreshToken, long expirationSeconds) {
+        String previousRefreshToken = get(userId, role);
+        if (previousRefreshToken != null) {
+            redisTemplate.delete(TOKEN_TO_USER_PREFIX + previousRefreshToken);
+        }
+
+        // 1. role + userId -> refreshToken 매핑 저장
+        String sessionKey = sessionKey(userId, role);
+        redisTemplate.opsForValue().set(sessionKey, refreshToken, Duration.ofSeconds(expirationSeconds));
 
         // 2. refreshToken -> userId 역방향 매핑 저장 (exists, getUserIdByToken 용)
         String tokenKey = TOKEN_TO_USER_PREFIX + refreshToken;
@@ -31,19 +35,17 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     }
 
     @Override
-    public String get(String userId) {
-        String key = REFRESH_TOKEN_PREFIX + userId;
-        return redisTemplate.opsForValue().get(key);
+    public String get(String userId, String role) {
+        return redisTemplate.opsForValue().get(sessionKey(userId, role));
     }
 
     @Override
-    public void delete(String userId) {
-        // 1. userId로 기존 토큰 조회
-        String refreshToken = get(userId);
+    public void delete(String userId, String role) {
+        // 1. role + userId로 기존 토큰 조회
+        String refreshToken = get(userId, role);
 
-        // 2. userId -> refreshToken 매핑 삭제
-        String userKey = REFRESH_TOKEN_PREFIX + userId;
-        redisTemplate.delete(userKey);
+        // 2. role + userId -> refreshToken 매핑 삭제
+        redisTemplate.delete(sessionKey(userId, role));
 
         // 3. refreshToken -> userId 역방향 매핑 삭제
         if (refreshToken != null) {
@@ -62,5 +64,9 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     public String getUserIdByToken(String refreshToken) {
         String key = TOKEN_TO_USER_PREFIX + refreshToken;
         return redisTemplate.opsForValue().get(key);
+    }
+
+    private String sessionKey(String userId, String role) {
+        return REFRESH_TOKEN_PREFIX + role + ":" + userId;
     }
 }

@@ -73,10 +73,10 @@ public class UserService {
         String role = "USER";
         String userId = savedUser.getId().toString();
         String accessToken = jwtProvider.generateAccessToken(userId, role);
-        String refreshToken = jwtProvider.generateRefreshToken(userId);
+        String refreshToken = jwtProvider.generateRefreshToken(userId, role);
 
         // 5. Refresh Token을 Redis에 저장
-        refreshTokenService.saveRefreshToken(userId, refreshToken);
+        refreshTokenService.saveRefreshToken(userId, role, refreshToken);
 
         return new UserSignUpResult(
                 accessToken,
@@ -104,10 +104,10 @@ public class UserService {
         String role = "USER";
         String userId = user.getId().toString();
         String accessToken = jwtProvider.generateAccessToken(userId, role);
-        String refreshToken = jwtProvider.generateRefreshToken(userId);
+        String refreshToken = jwtProvider.generateRefreshToken(userId, role);
 
         // 4. Refresh Token을 Redis에 저장
-        refreshTokenService.saveRefreshToken(userId, refreshToken);
+        refreshTokenService.saveRefreshToken(userId, role, refreshToken);
 
 
         return new UserSignInResult(

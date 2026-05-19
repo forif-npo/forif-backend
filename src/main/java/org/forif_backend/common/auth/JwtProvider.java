@@ -21,6 +21,9 @@ import java.util.Date;
 public class JwtProvider {
     private static final long ACCESS_TOKEN_EXPIRATION_TIME = 3600_000; // 1 hour
     private static final long REFRESH_TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60 * 1000L; // 30 days
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
     private final SecretKey key;
 
     public JwtProvider(@Value("${jwt.secret}") String key) {
@@ -32,6 +35,7 @@ public class JwtProvider {
         return Jwts.builder()
                 .setSubject(userId)
                 .claim("role", role)
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TIME))
                 .signWith(key)
@@ -39,9 +43,11 @@ public class JwtProvider {
     }
 
     // 리프레시 토큰 발급
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userId, String role) {
         return Jwts.builder()
                 .setSubject(userId)
+                .claim("role", role)
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_TIME))
                 .signWith(key)
@@ -77,6 +83,23 @@ public class JwtProvider {
                 .parseClaimsJws(token)
                 .getBody()
                 .get("role", String.class);
+    }
+
+    public boolean isAccessToken(String token) {
+        return ACCESS_TOKEN_TYPE.equals(getTokenTypeFromToken(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return REFRESH_TOKEN_TYPE.equals(getTokenTypeFromToken(token));
+    }
+
+    private String getTokenTypeFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get(TOKEN_TYPE_CLAIM, String.class);
     }
 
     // 토큰 만료 여부 확인 (ExpiredJwtException만 true, 그 외 예외는 false)
