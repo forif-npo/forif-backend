@@ -74,7 +74,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                // 5. 블랙리스트 확인 (로그아웃된 토큰인지 검증)
+                // 5. 인증 헤더에는 Access Token만 허용
+                if (!jwtProvider.isAccessToken(token)) {
+                    log.warn("Access Token이 아닙니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                // 6. 블랙리스트 확인 (로그아웃된 토큰인지 검증)
                 if(tokenBlacklistService.isTokenBlacklisted(token)) {
                     log.warn("블랙리스트에 등록된 토큰입니다. URI: {}", request.getRequestURI());
                     request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
@@ -82,7 +90,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                // 6. 토큰에서 사용자 ID 추출 및 인증 정보 설정
+                // 7. 토큰에서 사용자 ID 추출 및 인증 정보 설정
                 setAuthentication(token, request);
                 log.info("JWT 인증 성공. ID: {}", jwtProvider.getUserIdFromToken(token));
 
