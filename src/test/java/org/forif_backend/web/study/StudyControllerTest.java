@@ -64,9 +64,9 @@ class StudyControllerTest {
                 .build();
 
         List<StudyDto> studies = Arrays.asList(study1, study2);
-        CursorPageResponse<StudyDto> cursorResponse = new CursorPageResponse<>(studies, null, false, 2);
+        CursorPageResponse<StudyDto> cursorResponse = CursorPageResponse.ofCursor(studies, null, false, 2);
 
-        when(studyService.getStudies(any(), anyInt(), any(), any(), any(), any(), any(), any()))
+        when(studyService.getStudies(any(), any(), anyInt(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(cursorResponse);
 
         // when & then
@@ -87,9 +87,9 @@ class StudyControllerTest {
     @DisplayName("GET /api/v1/studies - 모든 파라미터 포함 요청")
     void getStudies_withAllParameters() throws Exception {
         // given
-        CursorPageResponse<StudyDto> cursorResponse = new CursorPageResponse<>(new ArrayList<>(), null, false, 0);
+        CursorPageResponse<StudyDto> cursorResponse = CursorPageResponse.ofCursor(new ArrayList<>(), null, false, 0);
 
-        when(studyService.getStudies(any(), anyInt(), eq(2024), eq(2),
+        when(studyService.getStudies(any(), any(), anyInt(), eq(2024), eq(2),
                 any(List.class), any(List.class), any(RecruitStatus.class), eq("spring")))
                 .thenReturn(cursorResponse);
 
