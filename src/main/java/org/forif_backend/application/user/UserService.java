@@ -297,39 +297,46 @@ public class UserService {
      * 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, int size, String search) {
-        List<User> users = userRepository.searchUsersWithCursor(cursor, size, search);
+    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search) {
         long totalElements = userRepository.countUsers(search);
-
-        boolean hasNext = users.size() > size;
-        List<User> content = hasNext ? users.subList(0, size) : users;
-
         int currentYear = DateUtils.getCurrentYear();
         int currentSemester = DateUtils.getCurrentSemester();
 
+        if (page != null) {
+            List<User> users = userRepository.searchUsersWithOffset(page, size, search);
+            List<MemberResponse> responses = buildMemberResponses(users, currentYear, currentSemester);
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
+        }
+
+        List<User> users = userRepository.searchUsersWithCursor(cursor, size, search);
+        boolean hasNext = users.size() > size;
+        List<User> content = hasNext ? users.subList(0, size) : users;
         List<MemberResponse> responses = buildMemberResponses(content, currentYear, currentSemester);
-
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-
-        return new CursorPageResponse<>(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
     /**
-     * 학기별 부원 목록 조회 (커서 기반 페이지네이션)
+     * 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, int size, String search) {
-        List<User> users = userRepository.searchUsersByYearSemester(year, semester, cursor, size, search);
+    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search) {
         long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
 
+        if (page != null) {
+            List<User> users = userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search);
+            List<MemberResponse> responses = buildMemberResponses(users, year, semester);
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
+        }
+
+        List<User> users = userRepository.searchUsersByYearSemester(year, semester, cursor, size, search);
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-
         List<MemberResponse> responses = buildMemberResponses(content, year, semester);
-
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-
-        return new CursorPageResponse<>(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
     private List<MemberResponse> buildMemberResponses(List<User> users, int year, int semester) {

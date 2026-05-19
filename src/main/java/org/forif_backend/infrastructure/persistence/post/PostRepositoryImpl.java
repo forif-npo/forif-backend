@@ -26,6 +26,11 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
+    public List<Post> searchWithOffset(String postType, String searchKeyword, int page, int size) {
+        return postQueryRepository.searchWithOffset(postType, searchKeyword, page, size);
+    }
+
+    @Override
     public long countByPostType(String postType, String searchKeyword) {
         return postQueryRepository.countByPostType(postType, searchKeyword);
     }

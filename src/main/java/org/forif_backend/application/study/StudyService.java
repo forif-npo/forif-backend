@@ -40,7 +40,7 @@ public class StudyService {
     private final StaffAccountRepository staffAccountRepository;
 
     @Transactional(readOnly = true)
-    public CursorPageResponse<StudyDto> getStudies(Integer cursor, int size, Integer year, Integer semester,
+    public CursorPageResponse<StudyDto> getStudies(Integer cursor, Integer page, int size, Integer year, Integer semester,
                                      List<StudyDifficulty> difficulties, List<String> tags,
                                      RecruitStatus recruitStatus, String search) {
 
@@ -53,16 +53,21 @@ public class StudyService {
             .searchKeyword(search)
             .build();
 
-        List<Study> studies = studyRepository.getStudies(searchCond, cursor, size);
         long totalElements = studyRepository.countStudiesForUser(searchCond);
 
+        if (page != null) {
+            List<Study> studies = studyRepository.getStudiesWithOffset(searchCond, page, size);
+            List<StudyDto> dtos = studies.stream().map(StudyDto::from).toList();
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(dtos, hasNext, totalElements, page, size);
+        }
+
+        List<Study> studies = studyRepository.getStudies(searchCond, cursor, size);
         boolean hasNext = studies.size() > size;
         List<Study> content = hasNext ? studies.subList(0, size) : studies;
-
         List<StudyDto> dtos = content.stream().map(StudyDto::from).toList();
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-
-        return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(dtos, nextCursor, hasNext, totalElements);
     }
 
     @Transactional(readOnly = true)
@@ -133,22 +138,30 @@ public class StudyService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, int size, Integer year, Integer semester, String search) {
-        List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, Integer page, int size, Integer year, Integer semester, String search) {
         long totalElements = studyRepository.countStudies(year, semester, search);
 
+        if (page != null) {
+            List<Study> studies = studyRepository.searchAdminStudiesWithOffset(page, size, year, semester, search);
+            List<Integer> studyIds = studies.stream().map(Study::getId).toList();
+            Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
+            List<AdminStudyDto> dtos = studies.stream()
+                    .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
+                    .toList();
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(dtos, hasNext, totalElements, page, size);
+        }
+
+        List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
         boolean hasNext = studies.size() > size;
         List<Study> content = hasNext ? studies.subList(0, size) : studies;
-
         List<Integer> studyIds = content.stream().map(Study::getId).toList();
         Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
-
         List<AdminStudyDto> dtos = content.stream()
                 .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
                 .toList();
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-
-        return new CursorPageResponse<>(dtos, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(dtos, nextCursor, hasNext, totalElements);
     }
 
     @Transactional

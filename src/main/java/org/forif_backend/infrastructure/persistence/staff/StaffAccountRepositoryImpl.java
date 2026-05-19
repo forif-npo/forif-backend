@@ -53,6 +53,11 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     }
 
     @Override
+    public List<StaffAccount> searchAdminsWithOffset(int page, int size, String search) {
+        return staffAccountQueryRepository.searchAdminsWithOffset(page, size, search);
+    }
+
+    @Override
     public long countAdmins(String search) {
         return staffAccountQueryRepository.countAdmins(search);
     }
@@ -68,6 +73,11 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     }
 
     @Override
+    public List<StaffAccount> searchMentorsWithOffset(int page, int size, String search) {
+        return staffAccountQueryRepository.searchMentorsWithOffset(page, size, search);
+    }
+
+    @Override
     public long count(String search) {
         return staffAccountQueryRepository.count(search);
     }
@@ -75,6 +85,11 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
         return staffAccountQueryRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+    }
+
+    @Override
+    public List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
+        return staffAccountQueryRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
     }
 
     @Override

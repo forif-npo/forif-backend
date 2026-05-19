@@ -26,21 +26,24 @@ public class PostController {
     private final PostService postService;
 
     // 자주 묻는 질문 반환
-    @Operation(summary = "FAQ 목록 조회", description = "커서 기반 페이지네이션으로 자주 묻는 질문 목록을 조회합니다.")
+    @Operation(summary = "FAQ 목록 조회", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/faqs")
     public ResponseEntity<ApiResponse<CursorPageResponse<FAQResponse>>> getFAQs(
-            @Parameter(description = "이전 페이지의 마지막 FAQ ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "이전 페이지의 마지막 FAQ ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "검색어 (제목)") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<PostDto> result = postService.getFAQs(cursor, size, search);
+        CursorPageResponse<PostDto> result = postService.getFAQs(cursor, page, size, search);
         List<FAQResponse> content = result.content().stream()
                 .map(PostDtoMapper::toFAQResponse)
                 .toList();
-        CursorPageResponse<FAQResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     // 자주 묻는 질문 생성 (관리자)
@@ -81,21 +84,24 @@ public class PostController {
     }
 
     // 공지사항 반환
-    @Operation(summary = "공지사항 목록 조회", description = "커서 기반 페이지네이션으로 공지사항 목록을 조회합니다.")
+    @Operation(summary = "공지사항 목록 조회", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/announcements")
     public ResponseEntity<ApiResponse<CursorPageResponse<AnnouncementResponse>>> getAnnouncements(
-            @Parameter(description = "이전 페이지의 마지막 공지사항 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "이전 페이지의 마지막 공지사항 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "검색어 (제목)") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<PostDto> result = postService.getAnnouncements(cursor, size, search);
+        CursorPageResponse<PostDto> result = postService.getAnnouncements(cursor, page, size, search);
         List<AnnouncementResponse> content = result.content().stream()
                 .map(PostDtoMapper::toAnnouncementResponse)
                 .toList();
-        CursorPageResponse<AnnouncementResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     // 공지사항(단일) 반환

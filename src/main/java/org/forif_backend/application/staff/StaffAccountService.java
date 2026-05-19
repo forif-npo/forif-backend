@@ -129,32 +129,40 @@ public class StaffAccountService {
      * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getMentors(Long cursor, int size, String search) {
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchWithCursor(cursor, size, search);
+    public CursorPageResponse<StaffAccount> getMentors(Long cursor, Integer page, int size, String search) {
         long totalElements = staffAccountRepository.count(search);
 
+        if (page != null) {
+            List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsWithOffset(page, size, search);
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
+        }
+
+        List<StaffAccount> staffAccounts = staffAccountRepository.searchWithCursor(cursor, size, search);
         boolean hasNext = staffAccounts.size() > size;
         List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-
-        return new CursorPageResponse<>(content, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
     }
 
     /**
-     * 학기별 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     * 학기별 멘토 목록 조회 (운영진 전용, 커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getMentors(int year, int semester, Long cursor, int size, String search) {
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+    public CursorPageResponse<StaffAccount> getMentors(int year, int semester, Long cursor, Integer page, int size, String search) {
         long totalElements = staffAccountRepository.countMentorsByYearSemester(year, semester, search);
 
+        if (page != null) {
+            List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
+        }
+
+        List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
         boolean hasNext = staffAccounts.size() > size;
         List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-
-        return new CursorPageResponse<>(content, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
     }
 
     /**
@@ -201,18 +209,22 @@ public class StaffAccountService {
      * 운영진 목록 조회 (커서 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getAdmins(Long requesterId, Integer cursor, int size, String search) {
+    public CursorPageResponse<StaffAccount> getAdmins(Long requesterId, Integer cursor, Integer page, int size, String search) {
         validatePresidentTeam(requesterId);
 
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithCursor(cursor, size, search);
         long totalElements = staffAccountRepository.countAdmins(search);
 
+        if (page != null) {
+            List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithOffset(page, size, search);
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
+        }
+
+        List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithCursor(cursor, size, search);
         boolean hasNext = staffAccounts.size() > size;
         List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-
-        return new CursorPageResponse<>(content, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
     }
 
     /**

@@ -22,5 +22,5 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY --from=build /app/build/libs/*.jar app.jar
 
-# 운영(release) 환경으로 고정 실행
-ENTRYPOINT ["java", "-jar", "-Dspring.profiles.active=release", "/app/app.jar"]
+# Runtime profile is supplied by SPRING_PROFILES_ACTIVE in the compose/env file.
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

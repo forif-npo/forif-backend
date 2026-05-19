@@ -8,6 +8,7 @@ public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
     List<StudyTag> findAllStudyTagById(List<Long> tagIds);
     List<Study> getStudies(StudySearchCond cond, Integer cursor, int size);
+    List<Study> getStudiesWithOffset(StudySearchCond cond, int page, int size);
     long countStudiesForUser(StudySearchCond cond);
     List<Study> findStudiesByUserId(Long userId);
 
@@ -52,6 +53,7 @@ public interface StudyRepository {
      * 커서 기반 스터디 목록 조회 (Admin용)
      */
     List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search);
+    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search);
 
     /**
      * 조건에 맞는 스터디 총 건수

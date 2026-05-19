@@ -127,6 +127,54 @@ public class StaffAccountQueryRepository {
         return count != null ? count : 0L;
     }
 
+    public List<StaffAccount> searchAdminsWithOffset(int page, int size, String search) {
+        return queryFactory
+                .selectFrom(staffAccount)
+                .join(staffAccount.user).fetchJoin()
+                .where(
+                        staffAccount.role.eq(StaffRole.ADMIN),
+                        searchKeyword(search)
+                )
+                .orderBy(staffAccount.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    public List<StaffAccount> searchMentorsWithOffset(int page, int size, String search) {
+        return queryFactory
+                .selectFrom(staffAccount)
+                .join(staffAccount.user).fetchJoin()
+                .where(
+                        staffAccount.role.eq(StaffRole.MENTOR),
+                        searchKeyword(search)
+                )
+                .orderBy(staffAccount.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    public List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
+        return queryFactory
+                .selectFrom(staffAccount).distinct()
+                .join(staffAccount.user).fetchJoin()
+                .join(study).on(
+                        study.primaryMentor.id.eq(staffAccount.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                )
+                .where(
+                        staffAccount.role.eq(StaffRole.MENTOR),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        searchKeyword(search)
+                )
+                .orderBy(staffAccount.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
     // ==================== 배치 조회 ====================
 
     public Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds) {

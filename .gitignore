@@ -47,3 +47,7 @@ apiSpecification.md
 .claude-code-style.md
 DB_structure.md
 
+# Local database migration dumps
+*.sql
+!src/test/resources/sql/*.sql
+migration-output/
