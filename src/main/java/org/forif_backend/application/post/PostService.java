@@ -37,12 +37,12 @@ public class PostService {
     private static final String POST_TYPE_ANNOUNCEMENT = "공지사항";
     private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-    public CursorPageResponse<PostDto> getFAQs(Integer cursor, int size, String search) {
-        return getPostsByType(POST_TYPE_FAQ, search, cursor, size);
+    public CursorPageResponse<PostDto> getFAQs(Integer cursor, Integer page, int size, String search) {
+        return getPostsByType(POST_TYPE_FAQ, search, cursor, page, size);
     }
 
-    public CursorPageResponse<PostDto> getAnnouncements(Integer cursor, int size, String search) {
-        return getPostsByType(POST_TYPE_ANNOUNCEMENT, search, cursor, size);
+    public CursorPageResponse<PostDto> getAnnouncements(Integer cursor, Integer page, int size, String search) {
+        return getPostsByType(POST_TYPE_ANNOUNCEMENT, search, cursor, page, size);
     }
 
     public PostDto getAnnouncement(Integer id) {
@@ -151,22 +151,23 @@ public class PostService {
         postRepository.deleteById(postId);
     }
 
-    private CursorPageResponse<PostDto> getPostsByType(String postType, String search, Integer cursor, int size) {
+    private CursorPageResponse<PostDto> getPostsByType(String postType, String search, Integer cursor, Integer page, int size) {
         validatePostType(postType);
-
-        List<Post> posts = postRepository.searchWithCursor(postType, search, cursor, size);
         long totalElements = postRepository.countByPostType(postType, search);
 
+        if (page != null) {
+            List<Post> posts = postRepository.searchWithOffset(postType, search, page, size);
+            List<PostDto> postDtos = posts.stream().map(this::convertToDto).toList();
+            boolean hasNext = (long) (page + 1) * size < totalElements;
+            return CursorPageResponse.ofOffset(postDtos, hasNext, totalElements, page, size);
+        }
+
+        List<Post> posts = postRepository.searchWithCursor(postType, search, cursor, size);
         boolean hasNext = posts.size() > size;
         List<Post> content = hasNext ? posts.subList(0, size) : posts;
-
-        List<PostDto> postDtos = content.stream()
-                .map(this::convertToDto)
-                .toList();
-
+        List<PostDto> postDtos = content.stream().map(this::convertToDto).toList();
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-
-        return new CursorPageResponse<>(postDtos, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.ofCursor(postDtos, nextCursor, hasNext, totalElements);
     }
 
     private void validatePostType(String postType) {

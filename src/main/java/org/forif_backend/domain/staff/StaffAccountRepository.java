@@ -23,6 +23,7 @@ public interface StaffAccountRepository {
 
     // FOR-72: 운영진(ADMIN) 관련
     List<StaffAccount> searchAdminsWithCursor(Integer cursor, int size, String search);
+    List<StaffAccount> searchAdminsWithOffset(int page, int size, String search);
 
     long countAdmins(String search);
 
@@ -30,11 +31,13 @@ public interface StaffAccountRepository {
 
     // FOR-73: 멘토(MENTOR) 관련
     List<StaffAccount> searchWithCursor(Long cursor, int size, String search);
+    List<StaffAccount> searchMentorsWithOffset(int page, int size, String search);
 
     long count(String search);
 
     // FOR-96: 학기별 멘토 조회
     List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search);
+    List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search);
 
     long countMentorsByYearSemester(int year, int semester, String search);
 }

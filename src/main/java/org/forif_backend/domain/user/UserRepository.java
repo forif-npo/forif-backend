@@ -36,10 +36,12 @@ public interface UserRepository {
     Optional<User> findByPhoneNum(String phoneNum);
 
     List<User> searchUsersWithCursor(Long cursor, int size, String search);
+    List<User> searchUsersWithOffset(int page, int size, String search);
 
     long countUsers(String search);
 
     List<User> searchUsersByYearSemester(int year, int semester, Long cursor, int size, String search);
+    List<User> searchUsersByYearSemesterWithOffset(int year, int semester, int page, int size, String search);
 
     long countUsersByYearSemester(int year, int semester, String search);
 }

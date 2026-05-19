@@ -33,6 +33,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public List<Study> getStudiesWithOffset(StudySearchCond cond, int page, int size) {
+        return studyQueryRepository.searchStudiesWithOffset(cond, page, size);
+    }
+
+    @Override
     public long countStudiesForUser(StudySearchCond cond) {
         return studyQueryRepository.countStudiesForUser(cond);
     }
@@ -89,6 +94,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
         return studyQueryRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+    }
+
+    @Override
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search) {
+        return studyQueryRepository.searchAdminStudiesWithOffset(page, size, year, semester, search);
     }
 
     @Override

@@ -30,12 +30,19 @@ public class StudyController {
     private final StudyService studyService;
 
     /**
-     * [유저용] 스터디 목록 조회 (cursor pagination)
+     * [유저용] 스터디 목록 조회 (cursor/offset pagination)
      */
-    @Operation(summary = "스터디 목록 조회", description = "커서 기반 페이지네이션으로 승인된 스터디 목록을 조회합니다. 연도/학기/난이도/태그/모집상태/검색어로 필터링할 수 있습니다.")
+    @Operation(summary = "스터디 목록 조회", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            연도/학기/난이도/태그/모집상태/검색어로 필터링할 수 있습니다.
+            """)
     @GetMapping("/api/v1/studies")
     public ResponseEntity<ApiResponse<CursorPageResponse<StudyResponse>>> getStudies(
-            @Parameter(description = "이전 페이지의 마지막 스터디 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "이전 페이지의 마지막 스터디 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "조회 연도 (예: 2025)") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
@@ -47,43 +54,41 @@ public class StudyController {
         List<String> tagList = tags != null ? Arrays.asList(tags) : null;
 
         CursorPageResponse<StudyDto> result = studyService.getStudies(
-                cursor, size, year, semester, difficulties, tagList, recruitStatus, search);
+                cursor, page, size, year, semester, difficulties, tagList, recruitStatus, search);
 
         List<StudyResponse> content = result.content().stream()
                 .map(StudyResponse::from)
                 .toList();
 
-        CursorPageResponse<StudyResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     /**
-     * [어드민용] 스터디 목록 조회 (cursor pagination)
+     * [어드민용] 스터디 목록 조회 (cursor/offset pagination)
      */
-    @Operation(summary = "스터디 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 스터디 목록을 조회합니다. 승인 대기 스터디 포함.")
+    @Operation(summary = "스터디 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/admin/studies")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<AdminStudyResponse>>> getAdminStudies(
-            @Parameter(description = "이전 페이지의 마지막 스터디 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "이전 페이지의 마지막 스터디 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam int size,
             @Parameter(description = "조회 연도") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
             @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, size, year, semester, search);
+        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search);
 
         List<AdminStudyResponse> content = result.content().stream()
                 .map(AdminStudyResponse::from)
                 .toList();
 
-        CursorPageResponse<AdminStudyResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     /**

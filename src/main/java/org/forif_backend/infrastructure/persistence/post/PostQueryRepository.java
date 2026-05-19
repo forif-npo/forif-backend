@@ -53,6 +53,20 @@ public class PostQueryRepository {
         return post.id.lt(cursor);
     }
 
+    public List<Post> searchWithOffset(String postType, String searchKeyword, int page, int size) {
+        return queryFactory
+                .selectFrom(post)
+                .leftJoin(post.user, user).fetchJoin()
+                .where(
+                        post.postType.eq(postType),
+                        titleContains(searchKeyword)
+                )
+                .orderBy(post.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
     private BooleanExpression titleContains(String searchKeyword) {
         if (searchKeyword == null || searchKeyword.trim().isEmpty()) {
             return null;

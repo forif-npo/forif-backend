@@ -190,6 +190,39 @@ public class StudyQueryRepository {
         return count != null ? count : 0L;
     }
 
+    public List<Study> searchStudiesWithOffset(StudySearchCond cond, int page, int size) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                        yearEq(cond.getYear()),
+                        semesterEq(cond.getSemester()),
+                        difficultiesIn(cond.getDifficulties()),
+                        recruitStatusEq(cond.getRecruitStatus()),
+                        searchKeywordEq(cond.getSearchKeyword()),
+                        tagsIn(cond.getStudyTagNames()))
+                .orderBy(study.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(
+                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        yearEq(year),
+                        semesterEq(semester),
+                        searchKeywordEq(search)
+                )
+                .orderBy(study.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
     public Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds) {
         List<Tuple> results = queryFactory
                 .select(studyUser.study.id, studyUser.count())

@@ -156,6 +156,17 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> searchUsersWithOffset(int page, int size, String search) {
+        return queryFactory
+                .selectFrom(user)
+                .where(userSearchKeyword(search))
+                .orderBy(user.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    @Override
     public long countUsers(String search) {
         Long count = queryFactory
                 .select(user.count())
@@ -179,6 +190,23 @@ public class UserRepositoryImpl implements UserRepository {
                 )
                 .orderBy(user.id.desc())
                 .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public List<User> searchUsersByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(studyUser).on(studyUser.user.id.eq(user.id))
+                .join(study).on(studyUser.study.id.eq(study.id))
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        userSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .offset((long) page * size)
+                .limit(size)
                 .fetch();
     }
 

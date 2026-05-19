@@ -1,0 +1,47 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: forif-mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+09:00
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: forif_dev
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - /srv/forif/mysql:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: forif-redis
+    volumes:
+      - /srv/forif/redis:/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    container_name: forif-backend-dev
+    depends_on:
+      - mysql
+      - redis
+    env_file:
+      - .env
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      RDS_URL: jdbc:mysql://mysql:3306
+      RDS_USERNAME: ${MYSQL_USER}
+      RDS_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx768m"
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

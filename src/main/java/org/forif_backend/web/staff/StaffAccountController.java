@@ -72,26 +72,28 @@ public class StaffAccountController {
     /**
      * [회장단 전용] 운영진 목록 조회 (커서 페이지네이션)
      */
-    @Operation(summary = "운영진 목록 조회 (회장단 전용)", description = "커서 기반 페이지네이션으로 운영진 목록을 조회합니다.")
+    @Operation(summary = "운영진 목록 조회 (회장단 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/president/admins")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<AdminResponse>>> getAdmins(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "이전 페이지의 마지막 운영진 ID. 최초 조회 시 생략") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "이전 페이지의 마지막 운영진 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StaffAccount> result = staffAccountService.getAdmins(userId, cursor, size, search);
+        CursorPageResponse<StaffAccount> result = staffAccountService.getAdmins(userId, cursor, page, size, search);
 
         List<AdminResponse> content = result.content().stream()
                 .map(StaffDtoMapper::toAdminResponse)
                 .toList();
 
-        CursorPageResponse<AdminResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     /**
@@ -161,51 +163,55 @@ public class StaffAccountController {
     /**
      * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
      */
-    @Operation(summary = "멘토 전체 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 멘토 목록을 조회합니다.")
+    @Operation(summary = "멘토 전체 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/admin/mentors")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentors(
-            @Parameter(description = "이전 페이지의 마지막 멘토 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(cursor, size, search);
+        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(cursor, page, size, search);
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
                 .toList();
 
-        CursorPageResponse<MentorResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     /**
-     * 학기별 멘토 목록 조회 (운영진 전용, 커서 페이지네이션)
+     * 학기별 멘토 목록 조회 (운영진 전용, 커서/오프셋 페이지네이션)
      */
-    @Operation(summary = "학기별 멘토 목록 조회 (어드민 전용)", description = "해당 학기 스터디의 멘토 목록을 커서 기반 페이지네이션으로 조회합니다.")
+    @Operation(summary = "학기별 멘토 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/admin/mentors/{year}/{semester}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentorsByYearSemester(
             @Parameter(description = "활동 연도") @PathVariable int year,
             @Parameter(description = "활동 학기") @PathVariable int semester,
-            @Parameter(description = "이전 페이지의 마지막 멘토 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(year, semester, cursor, size, search);
+        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(year, semester, cursor, page, size, search);
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
                 .toList();
 
-        CursorPageResponse<MentorResponse> response = new CursorPageResponse<>(
-                content, result.nextCursor(), result.hasNext(), result.totalElements()
-        );
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
     /**
@@ -254,32 +260,42 @@ public class StaffAccountController {
     /**
      * [운영진 전용] 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
-    @Operation(summary = "전체 부원 목록 조회 (어드민 전용)", description = "커서 기반 페이지네이션으로 전체 부원 목록을 조회합니다.")
+    @Operation(summary = "전체 부원 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/admin/users")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getAllMembers(
-            @Parameter(description = "이전 페이지의 마지막 부원 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<MemberResponse> response = userService.getAllMembers(cursor, size, search);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(cursor, page, size, search)));
     }
 
     /**
-     * [운영진 전용] 학기별 부원 목록 조회 (커서 기반 페이지네이션)
+     * [운영진 전용] 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
      */
-    @Operation(summary = "학기별 부원 목록 조회 (어드민 전용)", description = "해당 학기에 스터디를 수강한 부원 목록을 커서 기반 페이지네이션으로 조회합니다.")
+    @Operation(summary = "학기별 부원 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
     @GetMapping("/api/v1/admin/users/{year}/{semester}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getMembersByYearSemester(
             @Parameter(description = "활동 연도") @PathVariable int year,
             @Parameter(description = "활동 학기") @PathVariable int semester,
-            @Parameter(description = "이전 페이지의 마지막 부원 ID. 최초 조회 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<MemberResponse> response = userService.getAllMembers(year, semester, cursor, size, search);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(year, semester, cursor, page, size, search)));
     }
 }
