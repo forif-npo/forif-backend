@@ -21,17 +21,19 @@ public class RedisRefreshTokenStore implements RefreshTokenStore {
     @Override
     public void save(String userId, String role, String refreshToken, long expirationSeconds) {
         String previousRefreshToken = get(userId, role);
-        if (previousRefreshToken != null) {
-            redisTemplate.delete(TOKEN_TO_USER_PREFIX + previousRefreshToken);
-        }
 
-        // 1. role + userId -> refreshToken 매핑 저장
+        // 1. refreshToken -> userId 역방향 매핑 저장 (exists, getUserIdByToken 용)
+        String tokenKey = TOKEN_TO_USER_PREFIX + refreshToken;
+        redisTemplate.opsForValue().set(tokenKey, userId, Duration.ofSeconds(expirationSeconds));
+
+        // 2. role + userId -> refreshToken 매핑 저장
         String sessionKey = sessionKey(userId, role);
         redisTemplate.opsForValue().set(sessionKey, refreshToken, Duration.ofSeconds(expirationSeconds));
 
-        // 2. refreshToken -> userId 역방향 매핑 저장 (exists, getUserIdByToken 용)
-        String tokenKey = TOKEN_TO_USER_PREFIX + refreshToken;
-        redisTemplate.opsForValue().set(tokenKey, userId, Duration.ofSeconds(expirationSeconds));
+        // 3. 새 토큰 저장이 끝난 뒤 이전 refreshToken 역방향 매핑을 제거
+        if (previousRefreshToken != null && !previousRefreshToken.equals(refreshToken)) {
+            redisTemplate.delete(TOKEN_TO_USER_PREFIX + previousRefreshToken);
+        }
     }
 
     @Override

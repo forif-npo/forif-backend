@@ -8,4 +8,6 @@ public interface StudyUserRepository {
     void save(StudyUser studyUser);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);
+
+    boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester);
 }

@@ -27,4 +27,9 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     public void deleteByUserIdAndStudyId(Long userId, Integer studyId) {
         studyUserJpaRepository.deleteByUserIdAndStudyId(userId, studyId);
     }
+
+    @Override
+    public boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester) {
+        return studyUserJpaRepository.existsByUserIdAndStudyYearSemester(userId, year, semester);
+    }
 }

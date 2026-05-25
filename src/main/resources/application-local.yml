@@ -1,33 +1,42 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${RDS_URL}/forif_dev
-    username: ${RDS_USERNAME}
+    url: ${RDS_URL:jdbc:mysql://127.0.0.1:3307}/forif_dev
+    username: ${RDS_USERNAME:root}
     password: ${RDS_PASSWORD}
 
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
 
   cloud:
     aws:
       credentials:
-        access-key: ${AWS_ACCESS_KEY_ID}
-        secret-key: ${AWS_SECRET_ACCESS_KEY}
+        access-key: ${AWS_ACCESS_KEY_ID:test}
+        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
       region:
-        static: ${AWS_REGION}
+        static: ${AWS_REGION:ap-northeast-2}
+      s3:
+        bucket-name: ${S3_BUCKET_NAME:test}
+      presigned-url:
+        expiration-minutes: 60
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:D7s8f9G0h1j2k3L4z5x6c7v8b9n0m1Q2W3E4R5T6Y7u=}
+
+notification:
+  api-key: ${SMS_API_KEY:test}
+  api-secret: ${SMS_API_SECRET:test}
+  pf-id: ${SMS_PF_ID:test}
+  sender-number: ${SMS_SENDER_NUMBER:01000000000}
 
 logging:
   level:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
-

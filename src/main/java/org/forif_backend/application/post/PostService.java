@@ -1,7 +1,7 @@
 package org.forif_backend.application.post;
 
 import lombok.RequiredArgsConstructor;
-import org.forif_backend.application.file.dto.FileInfo;
+import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.post.dto.PostDto;
 import org.forif_backend.common.dto.response.CursorPageResponse;
@@ -18,11 +18,15 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
@@ -85,13 +89,13 @@ public class PostService {
 
         post.update(title, content, tag);
 
-        // 기존 이미지를 S3에서 삭제
-        deletePostFiles(postId);
-
-        // 새로운 이미지 업로드 및 저장
         if (images != null && images.length > 0) {
-            uploadAndSaveImages(post, images);
+            List<PostFile> newPostFiles = uploadImages(post, images);
+            replacePostFiles(postId, newPostFiles);
+            return;
         }
+
+        deletePostFiles(postId);
     }
 
     @Transactional
@@ -199,10 +203,11 @@ public class PostService {
                 .map(postFile -> filePort.generatePresignedViewUrl(postFile.getFileUrl()).presignedUrl())
                 .toList();
 
+        User author = post.getUser();
         return PostDto.builder()
                 .postId(post.getId())
-                .authorId(post.getUser().getId())
-                .authorName(post.getUser().getUserName())
+                .authorId(author != null ? author.getId() : null)
+                .authorName(author != null ? author.getUserName() : null)
                 .type(post.getPostType())
                 .title(post.getTitle())
                 .content(post.getContent())
@@ -213,22 +218,38 @@ public class PostService {
     }
 
     private void uploadAndSaveImages(Post post, MultipartFile[] images) {
-        for (int i = 0; i < images.length; i++) {
-            MultipartFile image = images[i];
+        savePostFiles(uploadImages(post, images));
+    }
 
-            // 파일 검증
-            validateImageFile(image);
+    private List<PostFile> uploadImages(Post post, MultipartFile[] images) {
+        List<PostFile> uploadedPostFiles = new ArrayList<>();
+        List<String> uploadedObjectKeys = new ArrayList<>();
+        try {
+            for (int i = 0; i < images.length; i++) {
+                MultipartFile image = images[i];
 
-            // S3에 실제로 업로드하고 objectKey 받기
-            String objectKey = filePort.uploadFile(image);
+                // 파일 검증
+                validateImageFile(image);
 
-            // 파일 타입 추출
-            String fileType = extractFileType(image.getOriginalFilename());
+                // S3에 실제로 업로드하고 objectKey 받기
+                String objectKey = filePort.uploadFile(image);
+                uploadedObjectKeys.add(objectKey);
 
-            // PostFile 저장 (objectKey를 fileUrl에 저장)
-            PostFile postFile = PostFile.createPostFile(post, i + 1, fileType, objectKey);
-            postFileRepository.save(postFile);
+                // 파일 타입 추출
+                String fileType = extractFileType(image.getOriginalFilename());
+
+                // PostFile 저장 (objectKey를 fileUrl에 저장)
+                uploadedPostFiles.add(PostFile.createPostFile(post, i + 1, fileType, objectKey));
+            }
+        } catch (RuntimeException e) {
+            uploadedObjectKeys.forEach(this::deleteFileQuietly);
+            throw e;
         }
+        return uploadedPostFiles;
+    }
+
+    private void savePostFiles(List<PostFile> postFiles) {
+        postFiles.forEach(postFileRepository::save);
     }
 
     private String extractFileType(String filename) {
@@ -244,18 +265,45 @@ public class PostService {
 
     private void deletePostFiles(Integer postId) {
         List<PostFile> postFiles = postFileRepository.findByPostId(postId);
-
-        // S3에서 파일 삭제
-        for (PostFile postFile : postFiles) {
-            try {
-                filePort.deleteFile(postFile.getFileUrl());
-            } catch (Exception e) {
-                // 삭제 실패 시 로그만 남기고 계속 진행 (이미 삭제된 파일일 수 있음)
-            }
-        }
-
-        // DB에서 PostFile 삭제
         postFileRepository.deleteByPostId(postId);
+        deletePostFilesAfterCommit(postFiles);
+    }
+
+    private void replacePostFiles(Integer postId, List<PostFile> newPostFiles) {
+        List<PostFile> oldPostFiles = postFileRepository.findByPostId(postId);
+        postFileRepository.deleteByPostId(postId);
+        savePostFiles(newPostFiles);
+        deletePostFilesAfterCommit(oldPostFiles);
+    }
+
+    private void deletePostFilesAfterCommit(List<PostFile> postFiles) {
+        if (postFiles == null || postFiles.isEmpty()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deletePhysicalPostFiles(postFiles);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deletePhysicalPostFiles(postFiles);
+            }
+        });
+    }
+
+    private void deletePhysicalPostFiles(List<PostFile> postFiles) {
+        for (PostFile postFile : postFiles) {
+            deleteFileQuietly(postFile.getFileUrl());
+        }
+    }
+
+    private void deleteFileQuietly(String objectKey) {
+        try {
+            filePort.deleteFile(objectKey);
+        } catch (Exception e) {
+            log.warn("게시글 이미지 삭제 실패: {}", objectKey, e);
+        }
     }
 
     private void verifyAdminRole(Long userId) {

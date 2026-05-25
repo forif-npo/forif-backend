@@ -62,14 +62,16 @@ public class RefreshTokenService {
         String role = jwtProvider.getRoleFromToken(oldRefreshToken);
         validateSessionRole(userId, role);
 
-        // 6. 기존 Refresh Token 삭제 (로테이션)
-        refreshTokenStore.delete(userId, role);
+        String storedRefreshToken = refreshTokenStore.get(userId, role);
+        if (!oldRefreshToken.equals(storedRefreshToken)) {
+            throw new ForifException(ErrorCode.INVALID_TOKEN);
+        }
 
-        // 7. 새로운 토큰 발급
+        // 6. 새로운 토큰 발급
         String newAccessToken = jwtProvider.generateAccessToken(userId, role);
         String newRefreshToken = jwtProvider.generateRefreshToken(userId, role);
 
-        // 8. 새 Refresh Token 저장
+        // 7. 새 Refresh Token 저장
         saveRefreshToken(userId, role, newRefreshToken);
 
         return new TokenPair(newAccessToken, newRefreshToken);

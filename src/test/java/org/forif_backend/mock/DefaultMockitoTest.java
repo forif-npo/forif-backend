@@ -19,7 +19,11 @@ import static org.mockito.Mockito.when;
 @SpringBootTest(properties = { // 테스트용 임의값
         "spring.data.redis.host=localhost",
         "spring.data.redis.port=6379",
-        "jwt.secret=D7s8f9G0h1j2k3L4z5x6c7v8b9n0m1Q2W3E4R5T6Y7u="
+        "jwt.secret=D7s8f9G0h1j2k3L4z5x6c7v8b9n0m1Q2W3E4R5T6Y7u=",
+        "notification.api-key=test-api-key",
+        "notification.api-secret=test-api-secret",
+        "notification.pf-id=test-pf-id",
+        "notification.sender-number=01000000000"
 })
 @Transactional
 @Rollback

@@ -53,6 +53,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/studies",
                     "/api/v1/studies/{studyId}",
+                    "/api/v1/hackathons",
+                    "/api/v1/hackathons/{hackathonId}",
+                    "/api/v1/hackathons/{hackathonId}/submissions/**",
+                    "/api/v1/hackathons/{hackathonId}/awards",
+                    "/api/v1/archive/**",
                     "/api/v1/posts/faqs/**",
                     "/api/v1/posts/announcements/**"
                 ).permitAll()
