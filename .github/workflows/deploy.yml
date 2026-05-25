@@ -2,9 +2,9 @@ name: FORIF Backend CI/CD
 
 on:
   push:
-    branches: [ "main", "release", "dev" ]
+    branches: [ "main", "release", "dev", "feature/**" ]
   pull_request:
-    branches: [ "main", "release", "dev" ]
+    branches: [ "main", "release", "dev", "feature/**" ]
 
 jobs:
   # 1. 빌드 및 테스트 (모든 브랜치 공통)

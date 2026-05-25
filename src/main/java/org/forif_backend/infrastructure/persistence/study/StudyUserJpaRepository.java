@@ -16,4 +16,15 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
     void deleteByStudyId(Integer studyId);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(su) > 0 THEN true ELSE false END
+            FROM StudyUser su
+            WHERE su.user.id = :userId
+              AND su.study.actYear = :year
+              AND su.study.actSemester = :semester
+            """)
+    boolean existsByUserIdAndStudyYearSemester(@Param("userId") Long userId,
+                                               @Param("year") int year,
+                                               @Param("semester") int semester);
 }

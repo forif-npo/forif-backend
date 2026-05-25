@@ -39,6 +39,7 @@ public class NotificationService {
 
         // 수신자별 이름 조회 (전화번호 -> 이름)
         Map<String, String> receiverNames = command.receivers().stream()
+                .distinct()
                 .collect(Collectors.toMap(
                         phoneNumber -> phoneNumber,
                         phoneNumber -> userRepository.findByPhoneNum(phoneNumber)
