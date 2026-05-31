@@ -250,11 +250,25 @@ public class StudyService {
         Study study = Study.createPendingStudy(mentor);
 
         List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());
 
         // 공통 데이터 반영
-        study.applyRequestData(request, tags);
+        study.applyRequestData(request, tags, secondaryMentor);
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private User resolveSecondaryMentor(Long primaryMentorId, Long secondaryMentorId) {
+        if (secondaryMentorId == null) {
+            return null;
+        }
+
+        if (primaryMentorId.equals(secondaryMentorId)) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        return userRepository.findUserById(secondaryMentorId)
+                .orElseThrow(() -> new ForifException(ErrorCode.SECOND_MENTOR_NOT_FOUND));
     }
 
     /**
@@ -317,7 +331,8 @@ public class StudyService {
 
         // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
         List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
-        study.applyRequestData(request, tags);
+        User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+        study.applyRequestData(request, tags, secondaryMentor);
 
         // 4. 기존 연관 리소스(커리큘럼, 참고자료) 삭제
         // 재신청은 기존 내용을 덮어쓰는 개념이므로 삭제 후 재등록

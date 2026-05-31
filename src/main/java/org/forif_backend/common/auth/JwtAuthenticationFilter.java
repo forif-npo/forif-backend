@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -40,6 +41,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenBlacklistService tokenBlacklistService;
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int BEARER_PREFIX_LENGTH = 7;
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+    private static final String[] PUBLIC_PATHS = {
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/webjars/**",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/scalar",
+            "/scalar/**",
+            "/favicon.ico"
+    };
+
+    @Override
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String path = request.getServletPath();
+        for (String publicPath : PUBLIC_PATHS) {
+            if (PATH_MATCHER.match(publicPath, path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
