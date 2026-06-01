@@ -90,6 +90,14 @@ public class StudyQueryRepository {
         return study.recruitStatus.eq(recruitStatus);
     }
 
+    private BooleanExpression studyStatusesIn(List<StudyStatus> studyStatuses) {
+        if (studyStatuses == null || studyStatuses.isEmpty()) {
+            return null;
+        }
+
+        return study.studyStatus.in(studyStatuses);
+    }
+
     private BooleanExpression searchKeywordEq(String searchKeyword) {
         if (searchKeyword == null) {
             return null;
@@ -160,12 +168,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         cursorLt(cursor),
                         yearEq(year),
                         semesterEq(semester),
@@ -176,12 +184,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public long countStudies(Integer year, Integer semester, String search) {
+    public long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         Long count = queryFactory
                 .select(study.count())
                 .from(study)
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)
@@ -207,12 +215,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search) {
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)

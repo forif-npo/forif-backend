@@ -52,13 +52,13 @@ public interface StudyRepository {
     /**
      * 커서 기반 스터디 목록 조회 (Admin용)
      */
-    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search);
-    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search);
+    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
+    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
 
     /**
      * 조건에 맞는 스터디 총 건수
      */
-    long countStudies(Integer year, Integer semester, String search);
+    long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
 
     /**
      * 스터디 ID 목록에 해당하는 멘티 수 조회
