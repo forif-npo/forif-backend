@@ -3,6 +3,7 @@ package org.forif_backend.application.hackathon;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.hackathon.*;
@@ -80,6 +81,21 @@ public class HackathonService {
         );
         HackathonEvent saved = hackathonRepository.saveEvent(event);
         return new HackathonIdResponse(saved.getId());
+    }
+
+    public CursorPageResponse<HackathonResponse> getHackathons(
+            Integer year,
+            Integer semester,
+            HackathonStatus status,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
+                .map(HackathonResponse::from)
+                .toList();
+
+        return paginate(responses, cursor, page, size, HackathonResponse::hackathonId);
     }
 
     public List<HackathonResponse> getHackathons(Integer year, Integer semester, HackathonStatus status) {
@@ -175,12 +191,25 @@ public class HackathonService {
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_PARTICIPANT_REQUIRED));
     }
 
+    public CursorPageResponse<ParticipantResponse> getParticipants(
+            Long hackathonId,
+            ParticipantStatus status,
+            boolean withoutTeam,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getParticipants(hackathonId, status, withoutTeam), cursor, page, size, ParticipantResponse::participantId);
+    }
+
     public List<ParticipantResponse> getParticipants(Long hackathonId, ParticipantStatus status, boolean withoutTeam) {
         getEvent(hackathonId);
         List<HackathonParticipant> participants = withoutTeam
                 ? hackathonRepository.findParticipantsWithoutTeam(hackathonId, status)
                 : hackathonRepository.findParticipants(hackathonId, status);
-        return participants.stream().map(ParticipantResponse::from).toList();
+        return participants.stream()
+                .map(ParticipantResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -208,9 +237,23 @@ public class HackathonService {
         return toTeamResponse(savedTeam);
     }
 
+    public CursorPageResponse<TeamResponse> getTeams(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getTeams(hackathonId), cursor, page, size, TeamResponse::hackathonTeamId);
+    }
+
     public List<TeamResponse> getTeams(Long hackathonId) {
         getEvent(hackathonId);
         return getTeamResponses(hackathonId);
+    }
+
+    public CursorPageResponse<TeamResponse> getTeamsForParticipant(
+            Long hackathonId,
+            Long userId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getTeamsForParticipant(hackathonId, userId), cursor, page, size, TeamResponse::hackathonTeamId);
     }
 
     public List<TeamResponse> getTeamsForParticipant(Long hackathonId, Long userId) {
@@ -305,6 +348,24 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<JoinRequestResponse> getJoinRequests(
+            Long hackathonId,
+            Long teamId,
+            Long userId,
+            JoinRequestStatus status,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getJoinRequests(hackathonId, teamId, userId, status),
+                cursor,
+                page,
+                size,
+                JoinRequestResponse::joinRequestId
+        );
+    }
+
     @Transactional
     public JoinRequestResponse approveJoinRequest(Long hackathonId, Long requestId, Long userId) {
         HackathonEvent event = getEvent(hackathonId);
@@ -357,6 +418,7 @@ public class HackathonService {
                 request.description(),
                 request.githubUrl(),
                 request.deployUrl(),
+                request.imageUrl(),
                 presentationFile
         );
         HackathonSubmission saved = hackathonRepository.saveSubmission(submission);
@@ -385,6 +447,7 @@ public class HackathonService {
                 request.description(),
                 request.githubUrl(),
                 request.deployUrl(),
+                request.imageUrl(),
                 presentationFile
         );
         if (request.techStacks() != null) {
@@ -405,6 +468,15 @@ public class HackathonService {
         return submissions.stream()
                 .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
+    }
+
+    public CursorPageResponse<SubmissionResponse> getSubmissions(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getSubmissions(hackathonId), cursor, page, size, SubmissionResponse::submissionId);
     }
 
     public SubmissionResponse getSubmission(Long hackathonId, Long submissionId) {
@@ -450,6 +522,10 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<CriterionResponse> getCriteria(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getCriteria(hackathonId), cursor, page, size, CriterionResponse::criterionId);
+    }
+
     @Transactional
     public EvaluationResponse createEvaluation(Long hackathonId, Long teamId, Long evaluatorId, EvaluationRequest request) {
         if (hackathonRepository.findEvaluation(hackathonId, teamId, evaluatorId).isPresent()) {
@@ -482,6 +558,15 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<EvaluationResponse> getEvaluations(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getEvaluations(hackathonId), cursor, page, size, EvaluationResponse::evaluationId);
+    }
+
     public List<EvaluationSummaryResponse> getEvaluationSummary(Long hackathonId) {
         getEvent(hackathonId);
         List<HackathonEvaluation> evaluations = hackathonRepository.findEvaluations(hackathonId);
@@ -499,6 +584,15 @@ public class HackathonService {
                 .map(entry -> toSummary(entry.getKey(), entry.getValue(), scores, evaluationById, criteria))
                 .sorted(Comparator.comparing(EvaluationSummaryResponse::averageTotalScore).reversed())
                 .toList();
+    }
+
+    public CursorPageResponse<EvaluationSummaryResponse> getEvaluationSummary(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getEvaluationSummary(hackathonId), cursor, page, size, EvaluationSummaryResponse::teamId);
     }
 
     @Transactional
@@ -528,10 +622,24 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<AwardResponse> getAwards(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getAwards(hackathonId), cursor, page, size, AwardResponse::awardId);
+    }
+
     public List<HackathonResponse> getArchiveHackathons(Integer year, Integer semester) {
         return hackathonRepository.findEvents(year, semester, HackathonStatus.ENDED).stream()
                 .map(HackathonResponse::from)
                 .toList();
+    }
+
+    public CursorPageResponse<HackathonResponse> getArchiveHackathons(
+            Integer year,
+            Integer semester,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getArchiveHackathons(year, semester), cursor, page, size, HackathonResponse::hackathonId);
     }
 
     public ArchiveHackathonDetailResponse getArchiveHackathon(Long hackathonId) {
@@ -558,6 +666,23 @@ public class HackathonService {
                 .filter(submission -> matchesTechStack(techStacks.getOrDefault(submission.getId(), List.of()), techStack))
                 .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
+    }
+
+    public CursorPageResponse<SubmissionResponse> getArchiveSubmissions(
+            Long hackathonId,
+            String search,
+            String techStack,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getArchiveSubmissions(hackathonId, search, techStack),
+                cursor,
+                page,
+                size,
+                SubmissionResponse::submissionId
+        );
     }
 
     public ArchiveSubmissionDetailResponse getArchiveSubmission(Long submissionId) {
@@ -600,6 +725,21 @@ public class HackathonService {
                     );
                 })
                 .toList();
+    }
+
+    public CursorPageResponse<SubmissionStatusResponse> getSubmissionStatuses(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getSubmissionStatuses(hackathonId),
+                cursor,
+                page,
+                size,
+                SubmissionStatusResponse::hackathonTeamId
+        );
     }
 
     public HackathonDashboardResponse getDashboard(Long hackathonId) {
@@ -710,6 +850,78 @@ public class HackathonService {
             entities.add(HackathonSubmissionTechStack.create(submission, techStacks.get(i), i + 1));
         }
         hackathonRepository.saveTechStacks(entities);
+    }
+
+    private <T> CursorPageResponse<T> paginate(
+            List<T> items,
+            Integer cursor,
+            Integer page,
+            int size,
+            Function<T, Long> cursorExtractor
+    ) {
+        int pageSize = Math.max(size, 1);
+        long totalElements = items.size();
+
+        if (page != null) {
+            int currentPage = Math.max(page, 0);
+            int fromIndex = Math.min(currentPage * pageSize, items.size());
+            int toIndex = Math.min(fromIndex + pageSize, items.size());
+            List<T> content = items.subList(fromIndex, toIndex);
+            boolean hasNext = toIndex < items.size();
+            return CursorPageResponse.ofOffset(content, hasNext, totalElements, currentPage, pageSize);
+        }
+
+        int startIndex = resolveCursorStartIndex(items, cursor, cursorExtractor);
+        int fromIndex = Math.min(startIndex, items.size());
+        int toIndex = Math.min(fromIndex + pageSize + 1, items.size());
+        List<T> window = items.subList(fromIndex, toIndex);
+        boolean hasNext = window.size() > pageSize;
+        List<T> content = hasNext ? window.subList(0, pageSize) : window;
+        Integer nextCursor = hasNext && !content.isEmpty()
+                ? toIntegerCursor(cursorExtractor.apply(content.get(content.size() - 1)))
+                : null;
+        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
+    }
+
+    private <T> int resolveCursorStartIndex(List<T> items, Integer cursor, Function<T, Long> cursorExtractor) {
+        if (cursor == null) {
+            return 0;
+        }
+        if (items.isEmpty()) {
+            return 0;
+        }
+        Long cursorValue = cursor.longValue();
+        for (int i = 0; i < items.size(); i++) {
+            Long itemCursor = cursorExtractor.apply(items.get(i));
+            if (itemCursor != null && itemCursor.equals(cursorValue)) {
+                return i + 1;
+            }
+        }
+
+        Long firstCursor = cursorExtractor.apply(items.get(0));
+        Long lastCursor = cursorExtractor.apply(items.get(items.size() - 1));
+        if (firstCursor == null || lastCursor == null) {
+            return items.size();
+        }
+
+        boolean descending = firstCursor > lastCursor;
+        for (int i = 0; i < items.size(); i++) {
+            Long itemCursor = cursorExtractor.apply(items.get(i));
+            if (itemCursor == null) {
+                continue;
+            }
+            if (descending && itemCursor < cursorValue) {
+                return i;
+            }
+            if (!descending && itemCursor > cursorValue) {
+                return i;
+            }
+        }
+        return items.size();
+    }
+
+    private Integer toIntegerCursor(Long cursor) {
+        return cursor != null ? cursor.intValue() : null;
     }
 
     private void deleteFileAfterCommit(String objectKey) {

@@ -148,6 +148,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "설명",
                 "https://github.com/forif/example",
                 null,
+                null,
                 List.of("Spring Boot")
         );
         MockMultipartFile presentation = new MockMultipartFile(
@@ -167,6 +168,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                         "요약 수정",
                         "설명 수정",
                         "https://github.com/forif/example-updated",
+                        null,
                         null,
                         List.of("Spring Boot")
                 ),
@@ -194,6 +196,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "요약",
                 "설명",
                 "https://github.com/forif/example",
+                null,
                 null,
                 List.of("Spring Boot")
         );
@@ -244,6 +247,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "요약",
                 "설명",
                 "https://github.com/forif/example",
+                null,
                 null,
                 List.of("Spring Boot")
         );

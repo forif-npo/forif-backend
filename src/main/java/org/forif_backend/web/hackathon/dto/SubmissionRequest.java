@@ -10,6 +10,7 @@ public record SubmissionRequest(
         String description,
         @NotBlank String githubUrl,
         String deployUrl,
+        String imageUrl,
         List<String> techStacks
 ) {
 }

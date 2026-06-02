@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.hackathon.HackathonService;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.hackathon.HackathonStatus;
 import org.forif_backend.domain.hackathon.JoinRequestStatus;
 import org.forif_backend.domain.hackathon.ParticipantStatus;
@@ -17,8 +18,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.util.List;
 
 @Tag(name = "해커톤", description = "해커톤 운영 API")
 @RestController
@@ -38,12 +37,15 @@ public class HackathonController {
 
     @Operation(summary = "해커톤 목록 조회")
     @GetMapping("/api/v1/hackathons")
-    public ResponseEntity<ApiResponse<List<HackathonResponse>>> getHackathons(
+    public ResponseEntity<ApiResponse<CursorPageResponse<HackathonResponse>>> getHackathons(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer semester,
-            @RequestParam(required = false) HackathonStatus status
+            @RequestParam(required = false) HackathonStatus status,
+            @Parameter(description = "이전 페이지의 마지막 해커톤 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getHackathons(year, semester, status)));
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getHackathons(year, semester, status, cursor, page, size)));
     }
 
     @Operation(summary = "해커톤 상세 조회")
@@ -114,12 +116,16 @@ public class HackathonController {
     @Operation(summary = "해커톤 참가자 목록 조회 (어드민 전용)")
     @GetMapping("/api/v1/admin/hackathons/{hackathonId}/participants")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<ParticipantResponse>>> getParticipants(
+    public ResponseEntity<ApiResponse<CursorPageResponse<ParticipantResponse>>> getParticipants(
             @PathVariable Long hackathonId,
             @RequestParam(required = false) ParticipantStatus status,
-            @RequestParam(defaultValue = "false") boolean withoutTeam
+            @RequestParam(defaultValue = "false") boolean withoutTeam,
+            @Parameter(description = "이전 페이지의 마지막 참가자 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getParticipants(hackathonId, status, withoutTeam)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getParticipants(hackathonId, status, withoutTeam, cursor, page, size)));
     }
 
     @Operation(summary = "해커톤 팀 생성")
@@ -134,11 +140,15 @@ public class HackathonController {
 
     @Operation(summary = "해커톤 팀 목록 조회")
     @GetMapping("/api/v1/hackathons/{hackathonId}/teams")
-    public ResponseEntity<ApiResponse<List<TeamResponse>>> getTeams(
+    public ResponseEntity<ApiResponse<CursorPageResponse<TeamResponse>>> getTeams(
             @PathVariable Long hackathonId,
-            @AuthenticationPrincipal Long userId
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "이전 페이지의 마지막 팀 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getTeamsForParticipant(hackathonId, userId)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getTeamsForParticipant(hackathonId, userId, cursor, page, size)));
     }
 
     @Operation(summary = "내 해커톤 팀 조회")
@@ -185,8 +195,13 @@ public class HackathonController {
     @Operation(summary = "해커톤 팀/팀원 현황 조회 (어드민 전용)")
     @GetMapping("/api/v1/admin/hackathons/{hackathonId}/teams")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<TeamResponse>>> getAdminTeams(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getTeams(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<TeamResponse>>> getAdminTeams(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 팀 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getTeams(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "팀 가입 신청")
@@ -213,13 +228,17 @@ public class HackathonController {
 
     @Operation(summary = "팀 가입 신청 목록 조회")
     @GetMapping("/api/v1/hackathons/{hackathonId}/teams/{teamId}/join-requests")
-    public ResponseEntity<ApiResponse<List<JoinRequestResponse>>> getJoinRequests(
+    public ResponseEntity<ApiResponse<CursorPageResponse<JoinRequestResponse>>> getJoinRequests(
             @PathVariable Long hackathonId,
             @PathVariable Long teamId,
             @AuthenticationPrincipal Long userId,
-            @RequestParam(required = false) JoinRequestStatus status
+            @RequestParam(required = false) JoinRequestStatus status,
+            @Parameter(description = "이전 페이지의 마지막 가입 신청 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getJoinRequests(hackathonId, teamId, userId, status)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getJoinRequests(hackathonId, teamId, userId, status, cursor, page, size)));
     }
 
     @Operation(summary = "팀 가입 승인")
@@ -270,8 +289,13 @@ public class HackathonController {
 
     @Operation(summary = "제출물 목록 조회")
     @GetMapping("/api/v1/hackathons/{hackathonId}/submissions")
-    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getSubmissions(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getSubmissions(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<SubmissionResponse>>> getSubmissions(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 제출물 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getSubmissions(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "제출물 상세 조회")
@@ -286,8 +310,14 @@ public class HackathonController {
     @Operation(summary = "제출 현황 조회 (어드민 전용)")
     @GetMapping("/api/v1/admin/hackathons/{hackathonId}/submissions")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<SubmissionStatusResponse>>> getAdminSubmissions(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getSubmissionStatuses(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<SubmissionStatusResponse>>> getAdminSubmissions(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 팀 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getSubmissionStatuses(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "평가 기준 생성 (어드민 전용)")
@@ -324,8 +354,13 @@ public class HackathonController {
 
     @Operation(summary = "평가 기준 조회")
     @GetMapping("/api/v1/hackathons/{hackathonId}/criteria")
-    public ResponseEntity<ApiResponse<List<CriterionResponse>>> getCriteria(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getCriteria(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<CriterionResponse>>> getCriteria(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 평가 기준 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getCriteria(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "팀 평가 제출")
@@ -363,15 +398,26 @@ public class HackathonController {
     @Operation(summary = "평가 원본 목록 조회 (어드민 전용)")
     @GetMapping("/api/v1/admin/hackathons/{hackathonId}/evaluations")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<EvaluationResponse>>> getEvaluations(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getEvaluations(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<EvaluationResponse>>> getEvaluations(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 평가 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getEvaluations(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "평가 집계 결과 조회 (어드민 전용)")
     @GetMapping("/api/v1/admin/hackathons/{hackathonId}/evaluations/summary")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<List<EvaluationSummaryResponse>>> getEvaluationSummary(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getEvaluationSummary(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<EvaluationSummaryResponse>>> getEvaluationSummary(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 팀 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getEvaluationSummary(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "수상 결과 등록 (어드민 전용)")
@@ -408,17 +454,26 @@ public class HackathonController {
 
     @Operation(summary = "수상 결과 조회")
     @GetMapping("/api/v1/hackathons/{hackathonId}/awards")
-    public ResponseEntity<ApiResponse<List<AwardResponse>>> getAwards(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getAwards(hackathonId)));
+    public ResponseEntity<ApiResponse<CursorPageResponse<AwardResponse>>> getAwards(
+            @PathVariable Long hackathonId,
+            @Parameter(description = "이전 페이지의 마지막 수상 결과 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(hackathonService.getAwards(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "종료된 해커톤 목록 조회")
     @GetMapping("/api/v1/archive/hackathons")
-    public ResponseEntity<ApiResponse<List<HackathonResponse>>> getArchiveHackathons(
+    public ResponseEntity<ApiResponse<CursorPageResponse<HackathonResponse>>> getArchiveHackathons(
             @RequestParam(required = false) Integer year,
-            @RequestParam(required = false) Integer semester
+            @RequestParam(required = false) Integer semester,
+            @Parameter(description = "이전 페이지의 마지막 해커톤 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getArchiveHackathons(year, semester)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getArchiveHackathons(year, semester, cursor, page, size)));
     }
 
     @Operation(summary = "해커톤 아카이브 상세 조회")
@@ -429,12 +484,16 @@ public class HackathonController {
 
     @Operation(summary = "아카이브 결과물 갤러리 조회")
     @GetMapping("/api/v1/archive/hackathons/{hackathonId}/submissions")
-    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> getArchiveSubmissions(
+    public ResponseEntity<ApiResponse<CursorPageResponse<SubmissionResponse>>> getArchiveSubmissions(
             @PathVariable Long hackathonId,
             @RequestParam(required = false) String search,
-            @RequestParam(name = "tech_stack", required = false) String techStack
+            @RequestParam(name = "tech_stack", required = false) String techStack,
+            @Parameter(description = "이전 페이지의 마지막 제출물 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getArchiveSubmissions(hackathonId, search, techStack)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getArchiveSubmissions(hackathonId, search, techStack, cursor, page, size)));
     }
 
     @Operation(summary = "아카이브 결과물 상세 조회")
