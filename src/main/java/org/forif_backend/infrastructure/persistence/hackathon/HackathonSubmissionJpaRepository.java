@@ -10,8 +10,6 @@ public interface HackathonSubmissionJpaRepository extends JpaRepository<Hackatho
 
     Optional<HackathonSubmission> findByHackathonIdAndTeamId(Long hackathonId, Long teamId);
 
-    Optional<HackathonSubmission> findByHackathonIdAndId(Long hackathonId, Long id);
-
     List<HackathonSubmission> findByHackathonIdOrderByIdAsc(Long hackathonId);
 
     boolean existsByHackathonIdAndTeamId(Long hackathonId, Long teamId);

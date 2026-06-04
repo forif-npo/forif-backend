@@ -11,6 +11,8 @@ public interface HackathonRepository {
 
     List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status);
 
+    boolean existsActiveEvent();
+
     boolean existsEventRound(int heldYear, int heldSemester, int eventRound);
 
     HackathonParticipant saveParticipant(HackathonParticipant participant);
@@ -54,8 +56,6 @@ public interface HackathonRepository {
     HackathonSubmission saveSubmission(HackathonSubmission submission);
 
     Optional<HackathonSubmission> findSubmissionByTeam(Long hackathonId, Long teamId);
-
-    Optional<HackathonSubmission> findSubmission(Long hackathonId, Long submissionId);
 
     Optional<HackathonSubmission> findSubmissionById(Long submissionId);
 

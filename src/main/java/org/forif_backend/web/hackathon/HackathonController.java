@@ -160,16 +160,6 @@ public class HackathonController {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.getMyTeam(hackathonId, userId)));
     }
 
-    @Operation(summary = "해커톤 팀 상세 조회")
-    @GetMapping("/api/v1/hackathons/{hackathonId}/teams/{teamId}")
-    public ResponseEntity<ApiResponse<TeamResponse>> getTeam(
-            @PathVariable Long hackathonId,
-            @PathVariable Long teamId,
-            @AuthenticationPrincipal Long userId
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getTeamForParticipant(hackathonId, teamId, userId)));
-    }
-
     @Operation(summary = "해커톤 팀 수정")
     @PatchMapping("/api/v1/hackathons/{hackathonId}/teams/{teamId}")
     public ResponseEntity<ApiResponse<TeamResponse>> updateTeam(
@@ -204,6 +194,17 @@ public class HackathonController {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.getTeams(hackathonId, cursor, page, size)));
     }
 
+    @Operation(summary = "해커톤 팀 삭제 (어드민 전용)")
+    @DeleteMapping("/api/v1/admin/hackathons/{hackathonId}/teams/{teamId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteAdminTeam(
+            @PathVariable Long hackathonId,
+            @PathVariable Long teamId
+    ) {
+        hackathonService.deleteTeamByAdmin(hackathonId, teamId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @Operation(summary = "팀 가입 신청")
     @PostMapping("/api/v1/hackathons/{hackathonId}/teams/{teamId}/join-requests")
     public ResponseEntity<ApiResponse<JoinRequestResponse>> createJoinRequest(
@@ -213,17 +214,6 @@ public class HackathonController {
             @RequestBody CreateJoinRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.createJoinRequest(hackathonId, teamId, userId, request)));
-    }
-
-    @Operation(summary = "팀 가입 신청 취소")
-    @DeleteMapping("/api/v1/hackathons/{hackathonId}/join-requests/{requestId}")
-    public ResponseEntity<ApiResponse<Void>> cancelJoinRequest(
-            @PathVariable Long hackathonId,
-            @PathVariable Long requestId,
-            @AuthenticationPrincipal Long userId
-    ) {
-        hackathonService.cancelJoinRequest(hackathonId, requestId, userId);
-        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "팀 가입 신청 목록 조회")
@@ -296,15 +286,6 @@ public class HackathonController {
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.getSubmissions(hackathonId, cursor, page, size)));
-    }
-
-    @Operation(summary = "제출물 상세 조회")
-    @GetMapping("/api/v1/hackathons/{hackathonId}/submissions/{submissionId}")
-    public ResponseEntity<ApiResponse<SubmissionResponse>> getSubmission(
-            @PathVariable Long hackathonId,
-            @PathVariable Long submissionId
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getSubmission(hackathonId, submissionId)));
     }
 
     @Operation(summary = "제출 현황 조회 (어드민 전용)")
@@ -393,18 +374,6 @@ public class HackathonController {
             @AuthenticationPrincipal Long userId
     ) {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.getMyEvaluation(hackathonId, teamId, userId)));
-    }
-
-    @Operation(summary = "평가 원본 목록 조회 (어드민 전용)")
-    @GetMapping("/api/v1/admin/hackathons/{hackathonId}/evaluations")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<CursorPageResponse<EvaluationResponse>>> getEvaluations(
-            @PathVariable Long hackathonId,
-            @Parameter(description = "이전 페이지의 마지막 평가 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
-            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
-            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getEvaluations(hackathonId, cursor, page, size)));
     }
 
     @Operation(summary = "평가 집계 결과 조회 (어드민 전용)")
@@ -504,10 +473,4 @@ public class HackathonController {
         return ResponseEntity.ok(ApiResponse.success(hackathonService.getArchiveSubmission(submissionId)));
     }
 
-    @Operation(summary = "해커톤 운영 현황 조회 (어드민 전용)")
-    @GetMapping("/api/v1/admin/hackathons/{hackathonId}/dashboard")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<HackathonDashboardResponse>> getDashboard(@PathVariable Long hackathonId) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getDashboard(hackathonId)));
-    }
 }

@@ -65,6 +65,10 @@ public class HackathonService {
             throw new ForifException(ErrorCode.HACKATHON_ALREADY_EXISTS);
         }
 
+        if (hackathonRepository.existsActiveEvent()) {
+            throw new ForifException(ErrorCode.HACKATHON_ACTIVE_EVENT_EXISTS);
+        }
+
         HackathonEvent event = HackathonEvent.create(
                 request.heldYear(),
                 request.heldSemester(),
@@ -268,15 +272,6 @@ public class HackathonService {
                 .toList();
     }
 
-    public TeamResponse getTeam(Long hackathonId, Long teamId) {
-        return toTeamResponse(getTeamOrThrow(hackathonId, teamId));
-    }
-
-    public TeamResponse getTeamForParticipant(Long hackathonId, Long teamId, Long userId) {
-        assertRegisteredParticipant(hackathonId, userId);
-        return getTeam(hackathonId, teamId);
-    }
-
     public TeamResponse getMyTeam(Long hackathonId, Long userId) {
         HackathonTeamMember member = hackathonRepository.findTeamMember(hackathonId, userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_TEAM_NOT_FOUND));
@@ -305,10 +300,14 @@ public class HackathonService {
         assertStatus(event, HackathonStatus.TEAM_BUILDING);
         HackathonTeam team = getTeamOrThrow(hackathonId, teamId);
         assertTeamLeader(team, userId);
-        team.disband();
-        hackathonRepository.findJoinRequests(teamId, JoinRequestStatus.PENDING)
-                .forEach(HackathonJoinRequest::cancel);
-        hackathonRepository.deleteTeamMembersByTeamId(teamId);
+        disbandTeam(team);
+    }
+
+    @Transactional
+    public void deleteTeamByAdmin(Long hackathonId, Long teamId) {
+        HackathonEvent event = getEvent(hackathonId);
+        assertStatus(event, HackathonStatus.TEAM_BUILDING);
+        disbandTeam(getTeamOrThrow(hackathonId, teamId));
     }
 
     @Transactional
@@ -326,18 +325,6 @@ public class HackathonService {
 
         HackathonJoinRequest joinRequest = HackathonJoinRequest.create(event, team, getUser(userId), request.message());
         return JoinRequestResponse.from(hackathonRepository.saveJoinRequest(joinRequest));
-    }
-
-    @Transactional
-    public void cancelJoinRequest(Long hackathonId, Long requestId, Long userId) {
-        HackathonJoinRequest request = getJoinRequestOrThrow(hackathonId, requestId);
-        if (!request.getUser().getId().equals(userId)) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
-        if (request.getStatus() != JoinRequestStatus.PENDING) {
-            throw new ForifException(ErrorCode.HACKATHON_JOIN_REQUEST_NOT_PENDING);
-        }
-        request.cancel();
     }
 
     public List<JoinRequestResponse> getJoinRequests(Long hackathonId, Long teamId, Long userId, JoinRequestStatus status) {
@@ -479,12 +466,6 @@ public class HackathonService {
         return paginate(getSubmissions(hackathonId), cursor, page, size, SubmissionResponse::submissionId);
     }
 
-    public SubmissionResponse getSubmission(Long hackathonId, Long submissionId) {
-        HackathonSubmission submission = hackathonRepository.findSubmission(hackathonId, submissionId)
-                .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_SUBMISSION_NOT_FOUND));
-        return toSubmissionResponse(submission);
-    }
-
     @Transactional
     public CriterionResponse createCriterion(Long hackathonId, CriterionRequest request) {
         HackathonEvent event = getEvent(hackathonId);
@@ -547,24 +528,6 @@ public class HackathonService {
         HackathonEvaluation evaluation = hackathonRepository.findEvaluation(hackathonId, teamId, evaluatorId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_EVALUATION_NOT_FOUND));
         return toEvaluationResponse(evaluation);
-    }
-
-    public List<EvaluationResponse> getEvaluations(Long hackathonId) {
-        getEvent(hackathonId);
-        List<HackathonEvaluation> evaluations = hackathonRepository.findEvaluations(hackathonId);
-        Map<Long, List<EvaluationRequest.Score>> scoreMap = scoresByEvaluationId(evaluations);
-        return evaluations.stream()
-                .map(evaluation -> EvaluationResponse.of(evaluation, scoreMap.getOrDefault(evaluation.getId(), List.of())))
-                .toList();
-    }
-
-    public CursorPageResponse<EvaluationResponse> getEvaluations(
-            Long hackathonId,
-            Integer cursor,
-            Integer page,
-            int size
-    ) {
-        return paginate(getEvaluations(hackathonId), cursor, page, size, EvaluationResponse::evaluationId);
     }
 
     public List<EvaluationSummaryResponse> getEvaluationSummary(Long hackathonId) {
@@ -739,26 +702,6 @@ public class HackathonService {
                 page,
                 size,
                 SubmissionStatusResponse::hackathonTeamId
-        );
-    }
-
-    public HackathonDashboardResponse getDashboard(Long hackathonId) {
-        getEvent(hackathonId);
-        long participantCount = hackathonRepository.findParticipants(hackathonId, ParticipantStatus.REGISTERED).size();
-        List<HackathonTeam> teams = hackathonRepository.findTeams(hackathonId);
-        long teamCount = teams.stream().filter(team -> team.getStatus() != TeamStatus.DISBANDED).count();
-        long participantsWithoutTeamCount = hackathonRepository.findParticipantsWithoutTeam(
-                hackathonId, ParticipantStatus.REGISTERED).size();
-        long submittedTeamCount = hackathonRepository.findSubmissions(hackathonId).size();
-        long evaluationCount = hackathonRepository.findEvaluations(hackathonId).size();
-
-        return new HackathonDashboardResponse(
-                participantCount,
-                teamCount,
-                participantsWithoutTeamCount,
-                submittedTeamCount,
-                Math.max(teamCount - submittedTeamCount, 0),
-                evaluationCount
         );
     }
 
@@ -946,6 +889,13 @@ public class HackathonService {
         } catch (Exception e) {
             log.warn("해커톤 제출 발표자료 삭제 실패: {}", objectKey, e);
         }
+    }
+
+    private void disbandTeam(HackathonTeam team) {
+        team.disband();
+        hackathonRepository.findJoinRequests(team.getId(), JoinRequestStatus.PENDING)
+                .forEach(HackathonJoinRequest::cancel);
+        hackathonRepository.deleteTeamMembersByTeamId(team.getId());
     }
 
     private HackathonEvent getEvent(Long hackathonId) {

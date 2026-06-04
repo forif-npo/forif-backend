@@ -89,13 +89,12 @@ public class PostService {
 
         post.update(title, content, tag);
 
-        if (images != null && images.length > 0) {
-            List<PostFile> newPostFiles = uploadImages(post, images);
-            replacePostFiles(postId, newPostFiles);
+        if (images == null || images.length == 0) {
             return;
         }
 
-        deletePostFiles(postId);
+        List<PostFile> newPostFiles = uploadImages(post, images);
+        replacePostFiles(postId, newPostFiles);
     }
 
     @Transactional
