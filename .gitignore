@@ -56,3 +56,4 @@ migration-output/
 /docs/legacy-db-migration-plan.md
 /docs/legacy-non-hackathon-migration.sql
 /docs/s3-to-local-storage-migration.md
+/docs/local-file-url-normalization.sql
