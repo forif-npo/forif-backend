@@ -36,7 +36,12 @@ services:
       RDS_PASSWORD: ${MYSQL_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      FILE_STORAGE: ${FILE_STORAGE:-local}
+      FILE_STORAGE_ROOT: ${FILE_STORAGE_ROOT:-/srv/forif/uploads}
+      FILE_PUBLIC_URL: ${FILE_PUBLIC_URL:-}
       JAVA_TOOL_OPTIONS: "-Xms256m -Xmx768m"
+    volumes:
+      - ${FILE_STORAGE_HOST_PATH:-/srv/forif/uploads}:${FILE_STORAGE_ROOT:-/srv/forif/uploads}
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped

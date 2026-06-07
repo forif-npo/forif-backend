@@ -453,7 +453,7 @@ public class HackathonService {
         List<HackathonSubmission> submissions = hackathonRepository.findSubmissions(hackathonId);
         Map<Long, List<String>> techStacks = techStacksBySubmissionId(submissions);
         return submissions.stream()
-                .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
+                .map(submission -> toSubmissionResponse(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
     }
 
@@ -627,7 +627,7 @@ public class HackathonService {
         return submissions.stream()
                 .filter(submission -> matchesSubmissionSearch(submission, search))
                 .filter(submission -> matchesTechStack(techStacks.getOrDefault(submission.getId(), List.of()), techStack))
-                .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
+                .map(submission -> toSubmissionResponse(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
     }
 
@@ -661,7 +661,7 @@ public class HackathonService {
                 .filter(award -> award.getTeam().getId().equals(submission.getTeam().getId()))
                 .map(AwardResponse::from)
                 .toList();
-        return ArchiveSubmissionDetailResponse.of(submission, techStacks, teamMembers, awards);
+        return ArchiveSubmissionDetailResponse.of(submission, techStacks, teamMembers, awards, toFileViewUrl(submission.getPresentationFile()));
     }
 
     public List<SubmissionStatusResponse> getSubmissionStatuses(Long hackathonId) {
@@ -683,8 +683,7 @@ public class HackathonService {
                     return SubmissionStatusResponse.of(
                             team,
                             hackathonRepository.countTeamMembers(team.getId()),
-                            submission,
-                            submissionTechStacks
+                            submission != null ? toSubmissionResponse(submission, submissionTechStacks) : null
                     );
                 })
                 .toList();
@@ -1040,7 +1039,21 @@ public class HackathonService {
     private SubmissionResponse toSubmissionResponse(HackathonSubmission submission) {
         List<String> techStacks = techStacksBySubmissionId(List.of(submission))
                 .getOrDefault(submission.getId(), List.of());
-        return SubmissionResponse.of(submission, techStacks);
+        return toSubmissionResponse(submission, techStacks);
+    }
+
+    private SubmissionResponse toSubmissionResponse(HackathonSubmission submission, List<String> techStacks) {
+        return SubmissionResponse.of(submission, techStacks, toFileViewUrl(submission.getPresentationFile()));
+    }
+
+    private String toFileViewUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return objectKey;
+        }
+        if (objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+            return objectKey;
+        }
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
     }
 
     private Map<Long, List<String>> techStacksBySubmissionId(List<HackathonSubmission> submissions) {

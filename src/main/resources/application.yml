@@ -24,6 +24,13 @@ notification:
   pf-id: ${SMS_PF_ID}
   sender-number: ${SMS_SENDER_NUMBER}
 
+app:
+  file:
+    storage: ${FILE_STORAGE:local}
+    local:
+      root-path: ${FILE_STORAGE_ROOT:./storage/uploads}
+      public-url: ${FILE_PUBLIC_URL:}
+
 springdoc:
   swagger-ui:
     groups-order: desc

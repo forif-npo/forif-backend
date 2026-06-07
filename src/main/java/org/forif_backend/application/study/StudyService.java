@@ -241,7 +241,7 @@ public class StudyService {
      * @param request 신청 정보
      * @param thumbnail 썸네일 이미지 파일 정보
      * @param referenceFiles 참고 자료 파일 정보.
-     * @return 클라이언트가 S3에 직접 파일을 업로드하는 데 사용할 Presigned URL 정보
+     * @return 서버에 저장된 파일의 조회 URL 정보
      */
     @Transactional
     public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
@@ -289,7 +289,7 @@ public class StudyService {
 
     /**
      * Reference DTO를 StudyReference 엔티티로 변환하고,
-     * 파일 타입일 경우 Presigned URL 정보를 'referenceUploadInfos' 리스트에 추가합니다.
+     * 파일 타입일 경우 저장된 파일 정보를 'referenceUploadInfos' 리스트에 추가합니다.
      */
     private StudyReference toReferenceEntity(CreateStudyApplyRequest.Reference reference, Study study, List<MultipartFile> referenceFiles, List<FileInfo> referenceUploadInfos) {
         String content;
@@ -301,8 +301,7 @@ public class StudyService {
             MultipartFile file = referenceFiles.stream().filter(referenceFile -> Objects.equals(referenceFile.getOriginalFilename(), reference.getFileName())).findAny()
                     .orElseThrow(() -> new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT));
 
-            // 업로드용 presigned url 생성
-            FileInfo fileInfo = filePort.generatePresignedUploadUrl(file);
+            FileInfo fileInfo = uploadAndBuildFileInfo(file);
 
             // 반환값에 추가
             referenceUploadInfos.add(fileInfo);
@@ -316,7 +315,7 @@ public class StudyService {
 
     /**
      * 거절된 스터디 수정 후 재요청
-     * @return S3 업로드를 위한 Presigned URL 정보가 담긴 Info 객체
+     * @return 서버에 저장된 파일의 조회 URL 정보가 담긴 Info 객체
      */
     @Transactional
     public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
@@ -342,7 +341,7 @@ public class StudyService {
         studyRepository.deleteStudyPlansByStudyId(studyId);
         studyRepository.deleteStudyReferencesByStudyId(studyId);
 
-        // 5. 신규 리소스 저장 및 Presigned URL 생성
+        // 5. 신규 리소스 저장 및 파일 조회 URL 생성
         // 기존에 만들어둔 공통 메서드를 호출하고 그 결과를 그대로 반환합니다.
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
     }
@@ -354,8 +353,8 @@ public class StudyService {
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         // 썸네일 처리
         FileInfo thumbnailInfo = null;
-        if (thumbnail != null) {
-            thumbnailInfo = filePort.generatePresignedUploadUrl(thumbnail);
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
             study.setThumbnailImage(thumbnailInfo.objectKey());
         }
 
@@ -368,11 +367,13 @@ public class StudyService {
 
         // 참고자료 생성 (null을 빈 리스트로 처리)
         List<FileInfo> referenceUploadInfos = new ArrayList<>();
+        List<MultipartFile> safeReferenceFiles = Optional.ofNullable(referenceFiles)
+                .orElseGet(Collections::emptyList);
 
         List<StudyReference> referenceList = Optional.ofNullable(request.getReferences())
                 .orElseGet(Collections::emptyList) // null이면 빈 리스트 반환
                 .stream()
-                .map(ref -> toReferenceEntity(ref, study, referenceFiles, referenceUploadInfos))
+                .map(ref -> toReferenceEntity(ref, study, safeReferenceFiles, referenceUploadInfos))
                 .toList();
 
         // DB 저장
@@ -384,6 +385,11 @@ public class StudyService {
                 .thumbnailUploadInfo(thumbnailInfo)
                 .referenceUploadInfos(referenceUploadInfos)
                 .build();
+    }
+
+    private FileInfo uploadAndBuildFileInfo(MultipartFile file) {
+        String objectKey = filePort.uploadFile(file);
+        return filePort.generatePresignedViewUrl(objectKey);
     }
 
     /**

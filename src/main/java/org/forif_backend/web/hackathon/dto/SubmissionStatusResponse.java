@@ -18,6 +18,16 @@ public record SubmissionStatusResponse(
                                               long memberCount,
                                               HackathonSubmission submission,
                                               List<String> techStacks) {
+        return of(
+                team,
+                memberCount,
+                submission != null ? SubmissionResponse.of(submission, techStacks) : null
+        );
+    }
+
+    public static SubmissionStatusResponse of(HackathonTeam team,
+                                              long memberCount,
+                                              SubmissionResponse submission) {
         return new SubmissionStatusResponse(
                 team.getId(),
                 team.getName(),
@@ -25,7 +35,7 @@ public record SubmissionStatusResponse(
                 team.getLeader().getUserName(),
                 memberCount,
                 submission != null,
-                submission != null ? SubmissionResponse.of(submission, techStacks) : null
+                submission
         );
     }
 }

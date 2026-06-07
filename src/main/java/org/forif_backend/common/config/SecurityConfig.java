@@ -63,6 +63,7 @@ public class SecurityConfig {
                     "/api/v1/hackathons/{hackathonId}/submissions/**",
                     "/api/v1/hackathons/{hackathonId}/awards",
                     "/api/v1/archive/**",
+                    "/api/v1/files/**",
                     "/api/v1/forif-team",
                     "/api/v1/forif-team/{year}/{semester}",
                     "/api/v1/posts/faqs/**",

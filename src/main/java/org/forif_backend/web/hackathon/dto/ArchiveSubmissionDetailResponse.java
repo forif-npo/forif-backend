@@ -28,6 +28,14 @@ public record ArchiveSubmissionDetailResponse(
                                                      List<String> techStacks,
                                                      List<TeamMemberResponse> teamMembers,
                                                      List<AwardResponse> awards) {
+        return of(submission, techStacks, teamMembers, awards, submission.getPresentationFile());
+    }
+
+    public static ArchiveSubmissionDetailResponse of(HackathonSubmission submission,
+                                                     List<String> techStacks,
+                                                     List<TeamMemberResponse> teamMembers,
+                                                     List<AwardResponse> awards,
+                                                     String presentationFile) {
         return new ArchiveSubmissionDetailResponse(
                 submission.getId(),
                 submission.getHackathon().getId(),
@@ -39,7 +47,7 @@ public record ArchiveSubmissionDetailResponse(
                 submission.getGithubUrl(),
                 submission.getDeployUrl(),
                 submission.getImageUrl(),
-                submission.getPresentationFile(),
+                presentationFile,
                 techStacks,
                 teamMembers,
                 !awards.isEmpty(),
