@@ -16,10 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriUtils;
 
 import java.net.MalformedURLException;
+import java.text.Normalizer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @RestController
 @ConditionalOnProperty(name = "app.file.storage", havingValue = "local", matchIfMissing = true)
@@ -35,11 +38,7 @@ public class FileController {
             throw new ForifException(ErrorCode.FILE_NOT_FOUND);
         }
 
-        Path root = Paths.get(rootPath).toAbsolutePath().normalize();
-        Path filePath = root.resolve(objectKey).normalize();
-        if (!filePath.startsWith(root) || !Files.isRegularFile(filePath)) {
-            throw new ForifException(ErrorCode.FILE_NOT_FOUND);
-        }
+        Path filePath = resolveFilePath(objectKey);
 
         try {
             Resource resource = new UrlResource(filePath.toUri());
@@ -51,6 +50,36 @@ public class FileController {
         } catch (MalformedURLException e) {
             throw new ForifException(ErrorCode.FILE_NOT_FOUND);
         }
+    }
+
+    private Path resolveFilePath(String objectKey) {
+        Path root = Paths.get(rootPath).toAbsolutePath().normalize();
+
+        for (String candidate : buildObjectKeyCandidates(objectKey)) {
+            Path filePath = root.resolve(candidate).normalize();
+            if (filePath.startsWith(root) && Files.isRegularFile(filePath)) {
+                return filePath;
+            }
+        }
+
+        throw new ForifException(ErrorCode.FILE_NOT_FOUND);
+    }
+
+    private Set<String> buildObjectKeyCandidates(String objectKey) {
+        Set<String> candidates = new LinkedHashSet<>();
+        addUnicodeVariants(candidates, objectKey);
+
+        if (objectKey.contains("+")) {
+            addUnicodeVariants(candidates, objectKey.replace('+', ' '));
+        }
+
+        return candidates;
+    }
+
+    private void addUnicodeVariants(Set<String> candidates, String objectKey) {
+        candidates.add(objectKey);
+        candidates.add(Normalizer.normalize(objectKey, Normalizer.Form.NFC));
+        candidates.add(Normalizer.normalize(objectKey, Normalizer.Form.NFD));
     }
 
     private String extractObjectKey(HttpServletRequest request) {
