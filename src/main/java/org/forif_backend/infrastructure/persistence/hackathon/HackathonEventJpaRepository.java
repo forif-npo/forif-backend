@@ -14,6 +14,8 @@ public interface HackathonEventJpaRepository extends JpaRepository<HackathonEven
 
     boolean existsByDeletedAtIsNullAndStatusNot(HackathonStatus status);
 
+    List<HackathonEvent> findByDeletedAtIsNullAndStatusNot(HackathonStatus status);
+
     @Query("""
             SELECT h FROM HackathonEvent h
             WHERE h.deletedAt IS NULL

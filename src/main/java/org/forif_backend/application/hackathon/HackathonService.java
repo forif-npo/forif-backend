@@ -15,6 +15,7 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.hackathon.dto.*;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -87,6 +88,7 @@ public class HackathonService {
         return new HackathonIdResponse(saved.getId());
     }
 
+    @Transactional
     public CursorPageResponse<HackathonResponse> getHackathons(
             Integer year,
             Integer semester,
@@ -95,6 +97,7 @@ public class HackathonService {
             Integer page,
             int size
     ) {
+        synchronizeHackathonStatuses(LocalDateTime.now());
         List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
                 .map(HackathonResponse::from)
                 .toList();
@@ -102,12 +105,15 @@ public class HackathonService {
         return paginate(responses, cursor, page, size, HackathonResponse::hackathonId);
     }
 
+    @Transactional
     public List<HackathonResponse> getHackathons(Integer year, Integer semester, HackathonStatus status) {
+        synchronizeHackathonStatuses(LocalDateTime.now());
         return hackathonRepository.findEvents(year, semester, status).stream()
                 .map(HackathonResponse::from)
                 .toList();
     }
 
+    @Transactional
     public HackathonDetailResponse getHackathon(Long hackathonId) {
         return HackathonDetailResponse.from(getEvent(hackathonId), LocalDateTime.now());
     }
@@ -150,9 +156,25 @@ public class HackathonService {
         getEvent(hackathonId).delete(LocalDateTime.now());
     }
 
+    @Scheduled(
+            initialDelayString = "${hackathon.status-sync.initial-delay-ms:30000}",
+            fixedDelayString = "${hackathon.status-sync.fixed-delay-ms:30000}"
+    )
+    @Transactional
+    public void synchronizeHackathonStatuses() {
+        synchronizeHackathonStatuses(LocalDateTime.now());
+    }
+
+    private void synchronizeHackathonStatuses(LocalDateTime now) {
+        hackathonRepository.findActiveEvents()
+                .forEach(event -> promoteHackathonStatusBySchedule(event, now));
+    }
+
     @Transactional
     public ParticipantResponse registerParticipant(Long hackathonId, Long userId) {
         HackathonEvent event = getEvent(hackathonId);
+        LocalDateTime now = LocalDateTime.now();
+        assertRegistrationOpen(event, now);
         assertStatus(event, HackathonStatus.RECRUITING);
 
         User user = getUser(userId);
@@ -160,7 +182,6 @@ public class HackathonService {
             throw new ForifException(ErrorCode.HACKATHON_PARTICIPATION_NOT_ALLOWED);
         }
 
-        LocalDateTime now = LocalDateTime.now();
         Optional<HackathonParticipant> existing = hackathonRepository.findParticipant(hackathonId, userId);
         if (existing.isPresent()) {
             HackathonParticipant participant = existing.get();
@@ -898,8 +919,10 @@ public class HackathonService {
     }
 
     private HackathonEvent getEvent(Long hackathonId) {
-        return hackathonRepository.findEventById(hackathonId)
+        HackathonEvent event = hackathonRepository.findEventById(hackathonId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_NOT_FOUND));
+        promoteHackathonStatusBySchedule(event, LocalDateTime.now());
+        return event;
     }
 
     private User getUser(Long userId) {
@@ -938,6 +961,43 @@ public class HackathonService {
         return staffAccountRepository.existsById(userId)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
                 userId, event.getHeldYear(), event.getHeldSemester());
+    }
+
+    private void promoteHackathonStatusBySchedule(HackathonEvent event, LocalDateTime now) {
+        if (event.getStatus() == HackathonStatus.ENDED) {
+            return;
+        }
+
+        HackathonStatus scheduledStatus = resolveScheduledStatus(event, now);
+        if (isLaterStatus(scheduledStatus, event.getStatus())) {
+            event.changeStatus(scheduledStatus);
+        }
+    }
+
+    private HackathonStatus resolveScheduledStatus(HackathonEvent event, LocalDateTime now) {
+        if (!now.isBefore(event.getEndsAt())) {
+            return HackathonStatus.JUDGING;
+        }
+        if (!now.isBefore(event.getStartsAt())) {
+            return HackathonStatus.IN_PROGRESS;
+        }
+        if (event.getTeamBuildingStartsAt() != null && !now.isBefore(event.getTeamBuildingStartsAt())) {
+            return HackathonStatus.TEAM_BUILDING;
+        }
+        return HackathonStatus.RECRUITING;
+    }
+
+    private boolean isLaterStatus(HackathonStatus candidate, HackathonStatus current) {
+        return STATUS_FLOW.indexOf(candidate) > STATUS_FLOW.indexOf(current);
+    }
+
+    private void assertRegistrationOpen(HackathonEvent event, LocalDateTime now) {
+        if (event.getRecruitStartsAt() != null && now.isBefore(event.getRecruitStartsAt())) {
+            throw new ForifException(ErrorCode.HACKATHON_REGISTRATION_CLOSED);
+        }
+        if (event.getRecruitEndsAt() != null && !now.isBefore(event.getRecruitEndsAt())) {
+            throw new ForifException(ErrorCode.HACKATHON_REGISTRATION_CLOSED);
+        }
     }
 
     private void assertRegisteredParticipant(Long hackathonId, Long userId) {

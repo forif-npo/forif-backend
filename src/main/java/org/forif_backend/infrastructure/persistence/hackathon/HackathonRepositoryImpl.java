@@ -35,6 +35,11 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
+    public List<HackathonEvent> findActiveEvents() {
+        return eventJpaRepository.findByDeletedAtIsNullAndStatusNot(HackathonStatus.ENDED);
+    }
+
+    @Override
     public List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status) {
         return eventJpaRepository.search(year, semester, status);
     }

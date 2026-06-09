@@ -43,6 +43,7 @@ public enum ErrorCode {
     HACKATHON_INVALID_EVALUATION_SCORE(HttpStatus.BAD_REQUEST, "FOR062-400", "평가 점수가 유효하지 않습니다."),
     HACKATHON_EVALUATION_CRITERIA_REQUIRED(HttpStatus.BAD_REQUEST, "FOR063-400", "평가 기준이 필요합니다."),
     HACKATHON_EVALUATION_CRITERION_HAS_SCORES(HttpStatus.BAD_REQUEST, "FOR075-400", "이미 평가에 사용된 기준은 삭제할 수 없습니다."),
+    HACKATHON_REGISTRATION_CLOSED(HttpStatus.BAD_REQUEST, "FOR078-400", "해커톤 참가 모집 기간이 아닙니다."),
 
     // 401 Unauthorized
     MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "FOR017-401", "토큰이 없습니다."),

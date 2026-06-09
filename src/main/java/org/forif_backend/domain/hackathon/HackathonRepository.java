@@ -9,6 +9,8 @@ public interface HackathonRepository {
 
     Optional<HackathonEvent> findEventById(Long hackathonId);
 
+    List<HackathonEvent> findActiveEvents();
+
     List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status);
 
     boolean existsActiveEvent();

@@ -87,6 +87,54 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("팀 빌딩 시작 시간이 지나면 모집 상태가 자동으로 팀 빌딩으로 전환되고 참가 등록은 막힌다")
+    void autoPromoteToTeamBuildingAfterRecruitmentEnds() {
+        LocalDateTime now = LocalDateTime.now();
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                99,
+                "자동 전환 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.minusHours(1),
+                now.minusHours(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).status())
+                .isEqualTo(HackathonStatus.TEAM_BUILDING);
+        assertThatThrownBy(() -> hackathonService.registerParticipant(hackathonId, 1L))
+                .hasMessage(ErrorCode.HACKATHON_REGISTRATION_CLOSED.getMessage());
+    }
+
+    @Test
+    @DisplayName("해커톤 종료 시간이 지나면 자동으로 심사 상태로 전환된다")
+    void autoPromoteToJudgingAfterHackathonEnds() {
+        LocalDateTime now = LocalDateTime.now();
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                100,
+                "심사 전환 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(4),
+                now.minusDays(3),
+                now.minusDays(3),
+                now.minusDays(2),
+                now.minusDays(2),
+                now.minusDays(1)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).status())
+                .isEqualTo(HackathonStatus.JUDGING);
+    }
+
+    @Test
     @DisplayName("팀 목록은 해커톤 참가 등록자만 조회할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
