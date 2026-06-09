@@ -7,11 +7,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriUtils;
 
@@ -32,7 +35,10 @@ public class FileController {
     private String rootPath;
 
     @GetMapping("/api/v1/files/**")
-    public ResponseEntity<Resource> getFile(HttpServletRequest request) {
+    public ResponseEntity<Resource> getFile(
+            HttpServletRequest request,
+            @RequestParam(value = "download", defaultValue = "false") boolean download
+    ) {
         String objectKey = extractObjectKey(request);
         if (!StringUtils.hasText(objectKey)) {
             throw new ForifException(ErrorCode.FILE_NOT_FOUND);
@@ -44,9 +50,20 @@ public class FileController {
             Resource resource = new UrlResource(filePath.toUri());
             MediaType mediaType = MediaTypeFactory.getMediaType(resource)
                     .orElse(MediaType.APPLICATION_OCTET_STREAM);
-            return ResponseEntity.ok()
-                    .contentType(mediaType)
-                    .body(resource);
+            ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
+                    .contentType(mediaType);
+
+            if (download) {
+                responseBuilder.header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(filePath.getFileName().toString(), StandardCharsets.UTF_8)
+                                .build()
+                                .toString()
+                );
+            }
+
+            return responseBuilder.body(resource);
         } catch (MalformedURLException e) {
             throw new ForifException(ErrorCode.FILE_NOT_FOUND);
         }
