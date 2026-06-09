@@ -12,6 +12,8 @@ services:
       FILE_STORAGE: ${FILE_STORAGE:-local}
       FILE_STORAGE_ROOT: ${FILE_STORAGE_ROOT:-/srv/forif/uploads}
       FILE_PUBLIC_URL: ${FILE_PUBLIC_URL:-}
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul"
     volumes:
       - ${FILE_STORAGE_HOST_PATH:-/srv/forif/uploads}:${FILE_STORAGE_ROOT:-/srv/forif/uploads}
     # 컨테이너가 비정상 종료 시 자동으로 재시작되도록 설정합니다.

@@ -39,7 +39,8 @@ services:
       FILE_STORAGE: ${FILE_STORAGE:-local}
       FILE_STORAGE_ROOT: ${FILE_STORAGE_ROOT:-/srv/forif/uploads}
       FILE_PUBLIC_URL: ${FILE_PUBLIC_URL:-}
-      JAVA_TOOL_OPTIONS: "-Xms256m -Xmx768m"
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul -Xms256m -Xmx768m"
     volumes:
       - ${FILE_STORAGE_HOST_PATH:-/srv/forif/uploads}:${FILE_STORAGE_ROOT:-/srv/forif/uploads}
     ports:

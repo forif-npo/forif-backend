@@ -6,6 +6,7 @@ import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.hackathon.*;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
@@ -97,7 +98,7 @@ public class HackathonService {
             Integer page,
             int size
     ) {
-        synchronizeHackathonStatuses(LocalDateTime.now());
+        synchronizeHackathonStatuses(now());
         List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
                 .map(HackathonResponse::from)
                 .toList();
@@ -107,7 +108,7 @@ public class HackathonService {
 
     @Transactional
     public List<HackathonResponse> getHackathons(Integer year, Integer semester, HackathonStatus status) {
-        synchronizeHackathonStatuses(LocalDateTime.now());
+        synchronizeHackathonStatuses(now());
         return hackathonRepository.findEvents(year, semester, status).stream()
                 .map(HackathonResponse::from)
                 .toList();
@@ -115,7 +116,7 @@ public class HackathonService {
 
     @Transactional
     public HackathonDetailResponse getHackathon(Long hackathonId) {
-        return HackathonDetailResponse.from(getEvent(hackathonId), LocalDateTime.now());
+        return HackathonDetailResponse.from(getEvent(hackathonId), now());
     }
 
     @Transactional
@@ -141,7 +142,7 @@ public class HackathonService {
                 request.startsAt(),
                 request.endsAt()
         );
-        return HackathonDetailResponse.from(event, LocalDateTime.now());
+        return HackathonDetailResponse.from(event, now());
     }
 
     @Transactional
@@ -153,7 +154,7 @@ public class HackathonService {
 
     @Transactional
     public void deleteHackathon(Long hackathonId) {
-        getEvent(hackathonId).delete(LocalDateTime.now());
+        getEvent(hackathonId).delete(now());
     }
 
     @Scheduled(
@@ -162,7 +163,7 @@ public class HackathonService {
     )
     @Transactional
     public void synchronizeHackathonStatuses() {
-        synchronizeHackathonStatuses(LocalDateTime.now());
+        synchronizeHackathonStatuses(now());
     }
 
     private void synchronizeHackathonStatuses(LocalDateTime now) {
@@ -173,7 +174,7 @@ public class HackathonService {
     @Transactional
     public ParticipantResponse registerParticipant(Long hackathonId, Long userId) {
         HackathonEvent event = getEvent(hackathonId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         assertRegistrationOpen(event, now);
         assertStatus(event, HackathonStatus.RECRUITING);
 
@@ -207,7 +208,7 @@ public class HackathonService {
         }
         HackathonParticipant participant = hackathonRepository.findParticipant(hackathonId, userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_PARTICIPANT_REQUIRED));
-        participant.cancel(LocalDateTime.now());
+        participant.cancel(now());
     }
 
     public ParticipantResponse getMyParticipant(Long hackathonId, Long userId) {
@@ -258,7 +259,7 @@ public class HackathonService {
                 request.maxMembers()
         );
         HackathonTeam savedTeam = hackathonRepository.saveTeam(team);
-        hackathonRepository.saveTeamMember(HackathonTeamMember.createLeader(event, savedTeam, leader, LocalDateTime.now()));
+        hackathonRepository.saveTeamMember(HackathonTeamMember.createLeader(event, savedTeam, leader, now()));
         return toTeamResponse(savedTeam);
     }
 
@@ -386,8 +387,8 @@ public class HackathonService {
         assertTeamCapacity(team);
 
         User reviewer = getUser(userId);
-        request.approve(reviewer, LocalDateTime.now());
-        hackathonRepository.saveTeamMember(HackathonTeamMember.createMember(event, team, request.getUser(), LocalDateTime.now()));
+        request.approve(reviewer, now());
+        hackathonRepository.saveTeamMember(HackathonTeamMember.createMember(event, team, request.getUser(), now()));
         return JoinRequestResponse.from(request);
     }
 
@@ -399,7 +400,7 @@ public class HackathonService {
         assertTeamLeader(request.getTeam(), userId);
         assertPendingJoinRequest(request);
 
-        request.reject(getUser(userId), LocalDateTime.now());
+        request.reject(getUser(userId), now());
         return JoinRequestResponse.from(request);
     }
 
@@ -736,7 +737,7 @@ public class HackathonService {
 
         EvaluatorType evaluatorType = resolveEvaluatorType(hackathonId, teamId, evaluatorId);
         ScoreValidationResult validation = validateScores(hackathonId, request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
 
         Optional<HackathonEvaluation> existing = hackathonRepository.findEvaluation(hackathonId, teamId, evaluatorId);
         HackathonEvaluation evaluation;
@@ -921,7 +922,7 @@ public class HackathonService {
     private HackathonEvent getEvent(Long hackathonId) {
         HackathonEvent event = hackathonRepository.findEventById(hackathonId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_NOT_FOUND));
-        promoteHackathonStatusBySchedule(event, LocalDateTime.now());
+        promoteHackathonStatusBySchedule(event, now());
         return event;
     }
 
@@ -1051,9 +1052,13 @@ public class HackathonService {
 
     private void assertSubmissionOpen(HackathonEvent event) {
         assertStatus(event, HackathonStatus.IN_PROGRESS);
-        if (LocalDateTime.now().isAfter(event.getEndsAt())) {
+        if (now().isAfter(event.getEndsAt())) {
             throw new ForifException(ErrorCode.HACKATHON_SUBMISSION_CLOSED);
         }
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(DateUtils.ZONE_SEOUL);
     }
 
     private void validatePeriod(LocalDateTime recruitStartsAt, LocalDateTime recruitEndsAt,
