@@ -11,6 +11,7 @@ import org.forif_backend.domain.hackathon.*;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -48,6 +49,7 @@ public class HackathonService {
 
     private final HackathonRepository hackathonRepository;
     private final UserRepository userRepository;
+    private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final StaffAccountRepository staffAccountRepository;
     private final FilePort filePort;
@@ -961,7 +963,11 @@ public class HackathonService {
     private boolean canRegister(HackathonEvent event, Long userId) {
         return staffAccountRepository.existsById(userId)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
-                userId, event.getHeldYear(), event.getHeldSemester());
+                        userId, event.getHeldYear(), event.getHeldSemester()
+                )
+                || studyRepository.existsMentorStudyByMentorIdAndStudyYearSemester(
+                        userId, event.getHeldYear(), event.getHeldSemester()
+                );
     }
 
     private void promoteHackathonStatusBySchedule(HackathonEvent event, LocalDateTime now) {

@@ -81,6 +81,11 @@ public interface StudyRepository {
     List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
 
     /**
+     * 해당 학기에 멘토로 참여한 이력이 있는지 확인
+     */
+    boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester);
+
+    /**
      * 스터디 삭제
      */
     void deleteStudyById(Integer studyId);

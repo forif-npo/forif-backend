@@ -127,6 +127,15 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester) {
+        return mentorStudyJpaRepository.existsByMentorIdAndStudyActYearAndStudyActSemester(
+                mentorId,
+                year,
+                semester
+        );
+    }
+
+    @Override
     public void deleteStudyById(Integer studyId) {
         studyJpaRepository.deleteById(studyId);
     }

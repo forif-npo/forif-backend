@@ -8,5 +8,6 @@ import java.util.List;
 
 interface MentorStudyJpaRepository extends JpaRepository<MentorStudy, MentorStudyId> {
     List<MentorStudy> findByStudyId(Integer studyId);
+    boolean existsByMentorIdAndStudyActYearAndStudyActSemester(Long mentorId, int actYear, int actSemester);
     void deleteByStudyId(Integer studyId);
 }
