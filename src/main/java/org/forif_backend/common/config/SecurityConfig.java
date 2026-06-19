@@ -41,14 +41,22 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/webjars/**",
+                    "/v3/api-docs",
                     "/v3/api-docs/**",
                     "/scalar",
+                    "/scalar/**",
+                    "/favicon.ico",
                     "/api/v1/auth/**",
                     "/api/v1/users/signup",
                     "/api/v1/users/signin",
                     "/api/v1/users/refresh",
                     "/api/v1/users/google/userinfo",
                     "/api/v1/staff/signin"
+                ).permitAll()
+                .requestMatchers(HttpMethod.HEAD,
+                    "/api/v1/files/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
                     "/api/v1/studies",
@@ -58,6 +66,9 @@ public class SecurityConfig {
                     "/api/v1/hackathons/{hackathonId}/submissions/**",
                     "/api/v1/hackathons/{hackathonId}/awards",
                     "/api/v1/archive/**",
+                    "/api/v1/files/**",
+                    "/api/v1/forif-team",
+                    "/api/v1/forif-team/{year}/{semester}",
                     "/api/v1/posts/faqs/**",
                     "/api/v1/posts/announcements/**"
                 ).permitAll()

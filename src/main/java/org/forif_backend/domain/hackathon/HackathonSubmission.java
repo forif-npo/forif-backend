@@ -43,25 +43,29 @@ public class HackathonSubmission extends BaseTimeEntity {
     private String deployUrl;
 
     @Column(length = 500)
+    private String imageUrl;
+
+    @Column(length = 500)
     private String presentationFile;
 
     public static HackathonSubmission create(HackathonEvent hackathon, HackathonTeam team, String projectName,
                                              String summary, String description, String githubUrl,
-                                             String deployUrl, String presentationFile) {
+                                             String deployUrl, String imageUrl, String presentationFile) {
         HackathonSubmission submission = new HackathonSubmission();
         submission.hackathon = hackathon;
         submission.team = team;
-        submission.update(projectName, summary, description, githubUrl, deployUrl, presentationFile);
+        submission.update(projectName, summary, description, githubUrl, deployUrl, imageUrl, presentationFile);
         return submission;
     }
 
     public void update(String projectName, String summary, String description, String githubUrl,
-                       String deployUrl, String presentationFile) {
+                       String deployUrl, String imageUrl, String presentationFile) {
         if (projectName != null) this.projectName = projectName;
         if (summary != null) this.summary = summary;
         if (description != null) this.description = description;
         if (githubUrl != null) this.githubUrl = githubUrl;
         if (deployUrl != null) this.deployUrl = deployUrl;
+        if (imageUrl != null) this.imageUrl = imageUrl;
         if (presentationFile != null) this.presentationFile = presentationFile;
     }
 }

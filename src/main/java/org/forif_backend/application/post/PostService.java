@@ -89,13 +89,12 @@ public class PostService {
 
         post.update(title, content, tag);
 
-        if (images != null && images.length > 0) {
-            List<PostFile> newPostFiles = uploadImages(post, images);
-            replacePostFiles(postId, newPostFiles);
+        if (images == null || images.length == 0) {
             return;
         }
 
-        deletePostFiles(postId);
+        List<PostFile> newPostFiles = uploadImages(post, images);
+        replacePostFiles(postId, newPostFiles);
     }
 
     @Transactional
@@ -109,7 +108,7 @@ public class PostService {
             throw new ForifException(ErrorCode.SPECIFIC_NOTICE_NOT_FOUND);
         }
 
-        // S3와 DB에서 파일 삭제
+        // 파일 저장소와 DB에서 파일 삭제
         deletePostFiles(postId);
 
         // 게시글 삭제
@@ -231,7 +230,7 @@ public class PostService {
                 // 파일 검증
                 validateImageFile(image);
 
-                // S3에 실제로 업로드하고 objectKey 받기
+                // 파일 저장소에 업로드하고 objectKey 받기
                 String objectKey = filePort.uploadFile(image);
                 uploadedObjectKeys.add(objectKey);
 

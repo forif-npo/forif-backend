@@ -18,6 +18,16 @@ public interface StudyRepository {
     Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester);
 
     /**
+     * 여러 사용자의 해당 학기 수강 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
+     * 여러 사용자의 해당 학기 멘토 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
      * 스터디 ID로 스터디 정보 조회 (태그 정보 포함)
      * @param studyId 스터디 ID
      * @return 스터디 정보 (태그 포함)
@@ -52,13 +62,13 @@ public interface StudyRepository {
     /**
      * 커서 기반 스터디 목록 조회 (Admin용)
      */
-    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search);
-    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search);
+    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
+    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
 
     /**
      * 조건에 맞는 스터디 총 건수
      */
-    long countStudies(Integer year, Integer semester, String search);
+    long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
 
     /**
      * 스터디 ID 목록에 해당하는 멘티 수 조회
@@ -79,6 +89,11 @@ public interface StudyRepository {
      * 스터디 ID로 멘토-스터디 매핑 목록 조회
      */
     List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 해당 학기에 멘토로 참여한 이력이 있는지 확인
+     */
+    boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester);
 
     /**
      * 스터디 삭제

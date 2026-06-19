@@ -17,6 +17,7 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
@@ -49,5 +50,10 @@ DB_structure.md
 
 # Local database migration dumps
 *.sql
+!docs/*.sql
 !src/test/resources/sql/*.sql
 migration-output/
+/docs/legacy-db-migration-plan.md
+/docs/legacy-non-hackathon-migration.sql
+/docs/s3-to-local-storage-migration.md
+/docs/local-file-url-normalization.sql

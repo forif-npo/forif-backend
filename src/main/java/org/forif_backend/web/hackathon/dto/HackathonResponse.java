@@ -11,8 +11,13 @@ public record HackathonResponse(
         int heldSemester,
         int eventRound,
         String title,
+        String description,
         String location,
         HackathonStatus status,
+        LocalDateTime recruitStartsAt,
+        LocalDateTime recruitEndsAt,
+        LocalDateTime teamBuildingStartsAt,
+        LocalDateTime teamBuildingEndsAt,
         LocalDateTime startsAt,
         LocalDateTime endsAt
 ) {
@@ -23,8 +28,13 @@ public record HackathonResponse(
                 event.getHeldSemester(),
                 event.getEventRound(),
                 event.getTitle(),
+                event.getDescription(),
                 event.getLocation(),
                 event.getStatus(),
+                event.getRecruitStartsAt(),
+                event.getRecruitEndsAt(),
+                event.getTeamBuildingStartsAt(),
+                event.getTeamBuildingEndsAt(),
                 event.getStartsAt(),
                 event.getEndsAt()
         );

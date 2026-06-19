@@ -19,6 +19,7 @@ public class StudyQueryRepository {
     private final QStudy study = QStudy.study;
     private final QStudyTag studyTag = QStudyTag.studyTag;
     private final QStudyUser studyUser = QStudyUser.studyUser;
+    private final QMentorStudy mentorStudy = QMentorStudy.mentorStudy;
     private final QUser secondaryMentor = new QUser("secondaryMentor");
 
     public StudyQueryRepository(EntityManager em) {
@@ -90,6 +91,14 @@ public class StudyQueryRepository {
         return study.recruitStatus.eq(recruitStatus);
     }
 
+    private BooleanExpression studyStatusesIn(List<StudyStatus> studyStatuses) {
+        if (studyStatuses == null || studyStatuses.isEmpty()) {
+            return null;
+        }
+
+        return study.studyStatus.in(studyStatuses);
+    }
+
     private BooleanExpression searchKeywordEq(String searchKeyword) {
         if (searchKeyword == null) {
             return null;
@@ -132,6 +141,54 @@ public class StudyQueryRepository {
                 ));
     }
 
+    public Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Tuple> results = queryFactory
+                .select(studyUser.user.id, study)
+                .from(studyUser)
+                .join(studyUser.study, study)
+                .where(
+                        studyUser.user.id.in(userIds),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester)
+                )
+                .orderBy(study.studyName.asc())
+                .fetch();
+
+        return groupStudiesByUserId(results, studyUser.user.id);
+    }
+
+    public Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Tuple> results = queryFactory
+                .select(mentorStudy.mentor.id, study)
+                .from(mentorStudy)
+                .join(mentorStudy.study, study)
+                .where(
+                        mentorStudy.mentor.id.in(userIds),
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester)
+                )
+                .orderBy(study.studyName.asc())
+                .fetch();
+
+        return groupStudiesByUserId(results, mentorStudy.mentor.id);
+    }
+
+    private Map<Long, List<Study>> groupStudiesByUserId(List<Tuple> results, com.querydsl.core.types.Expression<Long> userIdExpression) {
+        return results.stream()
+                .collect(Collectors.groupingBy(
+                        t -> t.get(userIdExpression),
+                        Collectors.mapping(t -> t.get(study), Collectors.toList())
+                ));
+    }
+
     public List<Study> findStudiesByUserId(Long userId) {
         return queryFactory
                 .selectFrom(study).distinct()
@@ -160,12 +217,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         cursorLt(cursor),
                         yearEq(year),
                         semesterEq(semester),
@@ -176,12 +233,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public long countStudies(Integer year, Integer semester, String search) {
+    public long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         Long count = queryFactory
                 .select(study.count())
                 .from(study)
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)
@@ -207,12 +264,12 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search) {
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
                 .where(
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        studyStatusesIn(studyStatuses),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)

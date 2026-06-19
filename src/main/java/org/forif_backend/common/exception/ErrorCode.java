@@ -43,6 +43,7 @@ public enum ErrorCode {
     HACKATHON_INVALID_EVALUATION_SCORE(HttpStatus.BAD_REQUEST, "FOR062-400", "평가 점수가 유효하지 않습니다."),
     HACKATHON_EVALUATION_CRITERIA_REQUIRED(HttpStatus.BAD_REQUEST, "FOR063-400", "평가 기준이 필요합니다."),
     HACKATHON_EVALUATION_CRITERION_HAS_SCORES(HttpStatus.BAD_REQUEST, "FOR075-400", "이미 평가에 사용된 기준은 삭제할 수 없습니다."),
+    HACKATHON_REGISTRATION_CLOSED(HttpStatus.BAD_REQUEST, "FOR078-400", "해커톤 참가 모집 기간이 아닙니다."),
 
     // 401 Unauthorized
     MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "FOR017-401", "토큰이 없습니다."),
@@ -81,6 +82,7 @@ public enum ErrorCode {
     HACKATHON_EVALUATION_CRITERION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR071-404", "해커톤 평가 기준을 찾을 수 없습니다."),
     HACKATHON_EVALUATION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR072-404", "해커톤 평가를 찾을 수 없습니다."),
     HACKATHON_AWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR073-404", "해커톤 수상 결과를 찾을 수 없습니다."),
+    FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR077-404", "파일을 찾을 수 없습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),
@@ -89,6 +91,7 @@ public enum ErrorCode {
     STUDENT_ID_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR047-409", "이미 가입된 학번입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR048-409", "이미 가입된 이메일입니다."),
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
+    HACKATHON_ACTIVE_EVENT_EXISTS(HttpStatus.CONFLICT, "FOR076-409", "진행 중인 해커톤이 있어 새 해커톤을 생성할 수 없습니다."),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),

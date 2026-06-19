@@ -35,8 +35,18 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
+    public List<HackathonEvent> findActiveEvents() {
+        return eventJpaRepository.findByDeletedAtIsNullAndStatusNot(HackathonStatus.ENDED);
+    }
+
+    @Override
     public List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status) {
         return eventJpaRepository.search(year, semester, status);
+    }
+
+    @Override
+    public boolean existsActiveEvent() {
+        return eventJpaRepository.existsByDeletedAtIsNullAndStatusNot(HackathonStatus.ENDED);
     }
 
     @Override
@@ -155,11 +165,6 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     @Override
     public Optional<HackathonSubmission> findSubmissionByTeam(Long hackathonId, Long teamId) {
         return submissionJpaRepository.findByHackathonIdAndTeamId(hackathonId, teamId);
-    }
-
-    @Override
-    public Optional<HackathonSubmission> findSubmission(Long hackathonId, Long submissionId) {
-        return submissionJpaRepository.findByHackathonIdAndId(hackathonId, submissionId);
     }
 
     @Override

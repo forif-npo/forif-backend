@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.Study;
+import org.forif_backend.domain.study.StudyStatus;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -20,6 +22,9 @@ public class AdminStudyDto {
     private final String oneLiner;
     private final long menteeCount;
     private final RecruitStatus recruitStatus;
+    private final StudyStatus studyStatus;
+    private final String rejectReason;
+    private final LocalDateTime createdAt;
 
     public static AdminStudyDto of(Study study, long menteeCount) {
         return AdminStudyDto.builder()
@@ -31,6 +36,9 @@ public class AdminStudyDto {
                 .oneLiner(study.getOneLiner())
                 .menteeCount(menteeCount)
                 .recruitStatus(study.getRecruitStatus())
+                .studyStatus(study.getStudyStatus())
+                .rejectReason(study.getRejectReason())
+                .createdAt(study.getCreatedAt())
                 .build();
     }
 }

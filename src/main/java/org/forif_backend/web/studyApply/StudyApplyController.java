@@ -49,7 +49,7 @@ public class StudyApplyController {
             - `thumbnail`: 썸네일 이미지 파일 (선택)
             - `references`: 참고 자료 파일 목록 (선택)
 
-            승인 대기(PENDING) 상태로 생성되며, 파일 업로드용 Presigned URL이 응답에 포함됩니다.
+            승인 대기(PENDING) 상태로 생성되며, 업로드된 파일의 조회 URL이 응답에 포함됩니다.
             """)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> applyStudy(

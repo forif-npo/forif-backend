@@ -232,4 +232,17 @@ public class UserController {
         UserInfoResponse response = UserDtoMapper.toResponse(user);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    /**
+     * 학번/유저 ID로 사용자 정보 조회
+     */
+    @Operation(summary = "유저 정보 조회", description = "스터디 개설 신청에서 공동 멘토를 찾기 위해 학번으로 사용자 기본 정보를 조회합니다.")
+    @GetMapping("/{targetUserId}")
+    public ResponseEntity<ApiResponse<UserInfoResponse>> getUserInfoById(
+            @Parameter(description = "조회할 유저 ID") @PathVariable Long targetUserId
+    ) {
+        User user = userService.getUserInfo(targetUserId);
+        UserInfoResponse response = UserDtoMapper.toResponse(user);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

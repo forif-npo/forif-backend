@@ -13,6 +13,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.web.study.dto.*;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -80,9 +81,10 @@ public class StudyController {
             @Parameter(description = "페이지 당 항목 수") @RequestParam int size,
             @Parameter(description = "조회 연도") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
-            @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "스터디 승인 상태 필터") @RequestParam(value = "study_status", required = false) List<StudyStatus> studyStatuses
     ) {
-        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search);
+        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search, studyStatuses);
 
         List<AdminStudyResponse> content = result.content().stream()
                 .map(AdminStudyResponse::from)

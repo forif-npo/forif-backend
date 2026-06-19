@@ -15,12 +15,17 @@ public record SubmissionResponse(
         String description,
         String githubUrl,
         String deployUrl,
+        String imageUrl,
         String presentationFile,
         List<String> techStacks,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
     public static SubmissionResponse of(HackathonSubmission submission, List<String> techStacks) {
+        return of(submission, techStacks, submission.getPresentationFile());
+    }
+
+    public static SubmissionResponse of(HackathonSubmission submission, List<String> techStacks, String presentationFile) {
         return new SubmissionResponse(
                 submission.getId(),
                 submission.getHackathon().getId(),
@@ -31,7 +36,8 @@ public record SubmissionResponse(
                 submission.getDescription(),
                 submission.getGithubUrl(),
                 submission.getDeployUrl(),
-                submission.getPresentationFile(),
+                submission.getImageUrl(),
+                presentationFile,
                 techStacks,
                 submission.getCreatedAt(),
                 submission.getUpdatedAt()

@@ -3,17 +3,24 @@ package org.forif_backend.application.hackathon;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.hackathon.*;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.web.hackathon.dto.ParticipantResponse.ParticipantStudyResponse;
+import org.forif_backend.web.hackathon.dto.ParticipantResponse.ParticipantStudyRole;
 import org.forif_backend.web.hackathon.dto.*;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -45,6 +52,7 @@ public class HackathonService {
 
     private final HackathonRepository hackathonRepository;
     private final UserRepository userRepository;
+    private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final StaffAccountRepository staffAccountRepository;
     private final FilePort filePort;
@@ -62,6 +70,10 @@ public class HackathonService {
 
         if (hackathonRepository.existsEventRound(request.heldYear(), request.heldSemester(), request.eventRound())) {
             throw new ForifException(ErrorCode.HACKATHON_ALREADY_EXISTS);
+        }
+
+        if (hackathonRepository.existsActiveEvent()) {
+            throw new ForifException(ErrorCode.HACKATHON_ACTIVE_EVENT_EXISTS);
         }
 
         HackathonEvent event = HackathonEvent.create(
@@ -82,14 +94,34 @@ public class HackathonService {
         return new HackathonIdResponse(saved.getId());
     }
 
+    @Transactional
+    public CursorPageResponse<HackathonResponse> getHackathons(
+            Integer year,
+            Integer semester,
+            HackathonStatus status,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        synchronizeHackathonStatuses(now());
+        List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
+                .map(HackathonResponse::from)
+                .toList();
+
+        return paginate(responses, cursor, page, size, HackathonResponse::hackathonId);
+    }
+
+    @Transactional
     public List<HackathonResponse> getHackathons(Integer year, Integer semester, HackathonStatus status) {
+        synchronizeHackathonStatuses(now());
         return hackathonRepository.findEvents(year, semester, status).stream()
                 .map(HackathonResponse::from)
                 .toList();
     }
 
+    @Transactional
     public HackathonDetailResponse getHackathon(Long hackathonId) {
-        return HackathonDetailResponse.from(getEvent(hackathonId), LocalDateTime.now());
+        return HackathonDetailResponse.from(getEvent(hackathonId), now());
     }
 
     @Transactional
@@ -115,7 +147,7 @@ public class HackathonService {
                 request.startsAt(),
                 request.endsAt()
         );
-        return HackathonDetailResponse.from(event, LocalDateTime.now());
+        return HackathonDetailResponse.from(event, now());
     }
 
     @Transactional
@@ -127,12 +159,28 @@ public class HackathonService {
 
     @Transactional
     public void deleteHackathon(Long hackathonId) {
-        getEvent(hackathonId).delete(LocalDateTime.now());
+        getEvent(hackathonId).delete(now());
+    }
+
+    @Scheduled(
+            initialDelayString = "${hackathon.status-sync.initial-delay-ms:30000}",
+            fixedDelayString = "${hackathon.status-sync.fixed-delay-ms:30000}"
+    )
+    @Transactional
+    public void synchronizeHackathonStatuses() {
+        synchronizeHackathonStatuses(now());
+    }
+
+    private void synchronizeHackathonStatuses(LocalDateTime now) {
+        hackathonRepository.findActiveEvents()
+                .forEach(event -> promoteHackathonStatusBySchedule(event, now));
     }
 
     @Transactional
     public ParticipantResponse registerParticipant(Long hackathonId, Long userId) {
         HackathonEvent event = getEvent(hackathonId);
+        LocalDateTime now = now();
+        assertRegistrationOpen(event, now);
         assertStatus(event, HackathonStatus.RECRUITING);
 
         User user = getUser(userId);
@@ -140,7 +188,6 @@ public class HackathonService {
             throw new ForifException(ErrorCode.HACKATHON_PARTICIPATION_NOT_ALLOWED);
         }
 
-        LocalDateTime now = LocalDateTime.now();
         Optional<HackathonParticipant> existing = hackathonRepository.findParticipant(hackathonId, userId);
         if (existing.isPresent()) {
             HackathonParticipant participant = existing.get();
@@ -166,7 +213,7 @@ public class HackathonService {
         }
         HackathonParticipant participant = hackathonRepository.findParticipant(hackathonId, userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_PARTICIPANT_REQUIRED));
-        participant.cancel(LocalDateTime.now());
+        participant.cancel(now());
     }
 
     public ParticipantResponse getMyParticipant(Long hackathonId, Long userId) {
@@ -175,12 +222,69 @@ public class HackathonService {
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_PARTICIPANT_REQUIRED));
     }
 
+    public CursorPageResponse<ParticipantResponse> getParticipants(
+            Long hackathonId,
+            ParticipantStatus status,
+            boolean withoutTeam,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getParticipants(hackathonId, status, withoutTeam), cursor, page, size, ParticipantResponse::participantId);
+    }
+
     public List<ParticipantResponse> getParticipants(Long hackathonId, ParticipantStatus status, boolean withoutTeam) {
-        getEvent(hackathonId);
+        HackathonEvent event = getEvent(hackathonId);
         List<HackathonParticipant> participants = withoutTeam
                 ? hackathonRepository.findParticipantsWithoutTeam(hackathonId, status)
                 : hackathonRepository.findParticipants(hackathonId, status);
-        return participants.stream().map(ParticipantResponse::from).toList();
+        Map<Long, List<ParticipantStudyResponse>> studiesByUserId = getParticipantStudiesByUserId(participants, event);
+        return participants.stream()
+                .map(participant -> ParticipantResponse.from(
+                        participant,
+                        studiesByUserId.getOrDefault(participant.getUser().getId(), List.of())
+                ))
+                .toList();
+    }
+
+    private Map<Long, List<ParticipantStudyResponse>> getParticipantStudiesByUserId(
+            List<HackathonParticipant> participants,
+            HackathonEvent event
+    ) {
+        List<Long> userIds = participants.stream()
+                .map(participant -> participant.getUser().getId())
+                .distinct()
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<Study>> menteeStudies = studyRepository.findCurrentStudiesByUserIds(
+                userIds,
+                event.getHeldYear(),
+                event.getHeldSemester()
+        );
+        Map<Long, List<Study>> mentorStudies = studyRepository.findCurrentMentorStudiesByUserIds(
+                userIds,
+                event.getHeldYear(),
+                event.getHeldSemester()
+        );
+
+        Map<Long, List<ParticipantStudyResponse>> studiesByUserId = new HashMap<>();
+        for (Long userId : userIds) {
+            List<ParticipantStudyResponse> studies = new ArrayList<>();
+            menteeStudies.getOrDefault(userId, List.of())
+                    .forEach(study -> studies.add(ParticipantStudyResponse.of(study, ParticipantStudyRole.MENTEE)));
+            mentorStudies.getOrDefault(userId, List.of())
+                    .forEach(study -> studies.add(ParticipantStudyResponse.of(study, ParticipantStudyRole.MENTOR)));
+
+            if (!studies.isEmpty()) {
+                studiesByUserId.put(userId, studies);
+            }
+        }
+
+        return studiesByUserId;
     }
 
     @Transactional
@@ -204,13 +308,27 @@ public class HackathonService {
                 request.maxMembers()
         );
         HackathonTeam savedTeam = hackathonRepository.saveTeam(team);
-        hackathonRepository.saveTeamMember(HackathonTeamMember.createLeader(event, savedTeam, leader, LocalDateTime.now()));
+        hackathonRepository.saveTeamMember(HackathonTeamMember.createLeader(event, savedTeam, leader, now()));
         return toTeamResponse(savedTeam);
+    }
+
+    public CursorPageResponse<TeamResponse> getTeams(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getTeams(hackathonId), cursor, page, size, TeamResponse::hackathonTeamId);
     }
 
     public List<TeamResponse> getTeams(Long hackathonId) {
         getEvent(hackathonId);
         return getTeamResponses(hackathonId);
+    }
+
+    public CursorPageResponse<TeamResponse> getTeamsForParticipant(
+            Long hackathonId,
+            Long userId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getTeamsForParticipant(hackathonId, userId), cursor, page, size, TeamResponse::hackathonTeamId);
     }
 
     public List<TeamResponse> getTeamsForParticipant(Long hackathonId, Long userId) {
@@ -223,15 +341,6 @@ public class HackathonService {
         return hackathonRepository.findTeams(hackathonId).stream()
                 .map(this::toTeamResponse)
                 .toList();
-    }
-
-    public TeamResponse getTeam(Long hackathonId, Long teamId) {
-        return toTeamResponse(getTeamOrThrow(hackathonId, teamId));
-    }
-
-    public TeamResponse getTeamForParticipant(Long hackathonId, Long teamId, Long userId) {
-        assertRegisteredParticipant(hackathonId, userId);
-        return getTeam(hackathonId, teamId);
     }
 
     public TeamResponse getMyTeam(Long hackathonId, Long userId) {
@@ -262,10 +371,14 @@ public class HackathonService {
         assertStatus(event, HackathonStatus.TEAM_BUILDING);
         HackathonTeam team = getTeamOrThrow(hackathonId, teamId);
         assertTeamLeader(team, userId);
-        team.disband();
-        hackathonRepository.findJoinRequests(teamId, JoinRequestStatus.PENDING)
-                .forEach(HackathonJoinRequest::cancel);
-        hackathonRepository.deleteTeamMembersByTeamId(teamId);
+        disbandTeam(team);
+    }
+
+    @Transactional
+    public void deleteTeamByAdmin(Long hackathonId, Long teamId) {
+        HackathonEvent event = getEvent(hackathonId);
+        assertStatus(event, HackathonStatus.TEAM_BUILDING);
+        disbandTeam(getTeamOrThrow(hackathonId, teamId));
     }
 
     @Transactional
@@ -285,24 +398,30 @@ public class HackathonService {
         return JoinRequestResponse.from(hackathonRepository.saveJoinRequest(joinRequest));
     }
 
-    @Transactional
-    public void cancelJoinRequest(Long hackathonId, Long requestId, Long userId) {
-        HackathonJoinRequest request = getJoinRequestOrThrow(hackathonId, requestId);
-        if (!request.getUser().getId().equals(userId)) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
-        if (request.getStatus() != JoinRequestStatus.PENDING) {
-            throw new ForifException(ErrorCode.HACKATHON_JOIN_REQUEST_NOT_PENDING);
-        }
-        request.cancel();
-    }
-
     public List<JoinRequestResponse> getJoinRequests(Long hackathonId, Long teamId, Long userId, JoinRequestStatus status) {
         HackathonTeam team = getTeamOrThrow(hackathonId, teamId);
         assertTeamLeader(team, userId);
         return hackathonRepository.findJoinRequests(teamId, status).stream()
                 .map(JoinRequestResponse::from)
                 .toList();
+    }
+
+    public CursorPageResponse<JoinRequestResponse> getJoinRequests(
+            Long hackathonId,
+            Long teamId,
+            Long userId,
+            JoinRequestStatus status,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getJoinRequests(hackathonId, teamId, userId, status),
+                cursor,
+                page,
+                size,
+                JoinRequestResponse::joinRequestId
+        );
     }
 
     @Transactional
@@ -317,8 +436,8 @@ public class HackathonService {
         assertTeamCapacity(team);
 
         User reviewer = getUser(userId);
-        request.approve(reviewer, LocalDateTime.now());
-        hackathonRepository.saveTeamMember(HackathonTeamMember.createMember(event, team, request.getUser(), LocalDateTime.now()));
+        request.approve(reviewer, now());
+        hackathonRepository.saveTeamMember(HackathonTeamMember.createMember(event, team, request.getUser(), now()));
         return JoinRequestResponse.from(request);
     }
 
@@ -330,7 +449,7 @@ public class HackathonService {
         assertTeamLeader(request.getTeam(), userId);
         assertPendingJoinRequest(request);
 
-        request.reject(getUser(userId), LocalDateTime.now());
+        request.reject(getUser(userId), now());
         return JoinRequestResponse.from(request);
     }
 
@@ -357,6 +476,7 @@ public class HackathonService {
                 request.description(),
                 request.githubUrl(),
                 request.deployUrl(),
+                request.imageUrl(),
                 presentationFile
         );
         HackathonSubmission saved = hackathonRepository.saveSubmission(submission);
@@ -385,6 +505,7 @@ public class HackathonService {
                 request.description(),
                 request.githubUrl(),
                 request.deployUrl(),
+                request.imageUrl(),
                 presentationFile
         );
         if (request.techStacks() != null) {
@@ -403,14 +524,17 @@ public class HackathonService {
         List<HackathonSubmission> submissions = hackathonRepository.findSubmissions(hackathonId);
         Map<Long, List<String>> techStacks = techStacksBySubmissionId(submissions);
         return submissions.stream()
-                .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
+                .map(submission -> toSubmissionResponse(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
     }
 
-    public SubmissionResponse getSubmission(Long hackathonId, Long submissionId) {
-        HackathonSubmission submission = hackathonRepository.findSubmission(hackathonId, submissionId)
-                .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_SUBMISSION_NOT_FOUND));
-        return toSubmissionResponse(submission);
+    public CursorPageResponse<SubmissionResponse> getSubmissions(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getSubmissions(hackathonId), cursor, page, size, SubmissionResponse::submissionId);
     }
 
     @Transactional
@@ -450,6 +574,10 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<CriterionResponse> getCriteria(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getCriteria(hackathonId), cursor, page, size, CriterionResponse::criterionId);
+    }
+
     @Transactional
     public EvaluationResponse createEvaluation(Long hackathonId, Long teamId, Long evaluatorId, EvaluationRequest request) {
         if (hackathonRepository.findEvaluation(hackathonId, teamId, evaluatorId).isPresent()) {
@@ -473,15 +601,6 @@ public class HackathonService {
         return toEvaluationResponse(evaluation);
     }
 
-    public List<EvaluationResponse> getEvaluations(Long hackathonId) {
-        getEvent(hackathonId);
-        List<HackathonEvaluation> evaluations = hackathonRepository.findEvaluations(hackathonId);
-        Map<Long, List<EvaluationRequest.Score>> scoreMap = scoresByEvaluationId(evaluations);
-        return evaluations.stream()
-                .map(evaluation -> EvaluationResponse.of(evaluation, scoreMap.getOrDefault(evaluation.getId(), List.of())))
-                .toList();
-    }
-
     public List<EvaluationSummaryResponse> getEvaluationSummary(Long hackathonId) {
         getEvent(hackathonId);
         List<HackathonEvaluation> evaluations = hackathonRepository.findEvaluations(hackathonId);
@@ -499,6 +618,15 @@ public class HackathonService {
                 .map(entry -> toSummary(entry.getKey(), entry.getValue(), scores, evaluationById, criteria))
                 .sorted(Comparator.comparing(EvaluationSummaryResponse::averageTotalScore).reversed())
                 .toList();
+    }
+
+    public CursorPageResponse<EvaluationSummaryResponse> getEvaluationSummary(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getEvaluationSummary(hackathonId), cursor, page, size, EvaluationSummaryResponse::teamId);
     }
 
     @Transactional
@@ -528,10 +656,24 @@ public class HackathonService {
                 .toList();
     }
 
+    public CursorPageResponse<AwardResponse> getAwards(Long hackathonId, Integer cursor, Integer page, int size) {
+        return paginate(getAwards(hackathonId), cursor, page, size, AwardResponse::awardId);
+    }
+
     public List<HackathonResponse> getArchiveHackathons(Integer year, Integer semester) {
         return hackathonRepository.findEvents(year, semester, HackathonStatus.ENDED).stream()
                 .map(HackathonResponse::from)
                 .toList();
+    }
+
+    public CursorPageResponse<HackathonResponse> getArchiveHackathons(
+            Integer year,
+            Integer semester,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(getArchiveHackathons(year, semester), cursor, page, size, HackathonResponse::hackathonId);
     }
 
     public ArchiveHackathonDetailResponse getArchiveHackathon(Long hackathonId) {
@@ -556,8 +698,25 @@ public class HackathonService {
         return submissions.stream()
                 .filter(submission -> matchesSubmissionSearch(submission, search))
                 .filter(submission -> matchesTechStack(techStacks.getOrDefault(submission.getId(), List.of()), techStack))
-                .map(submission -> SubmissionResponse.of(submission, techStacks.getOrDefault(submission.getId(), List.of())))
+                .map(submission -> toSubmissionResponse(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
+    }
+
+    public CursorPageResponse<SubmissionResponse> getArchiveSubmissions(
+            Long hackathonId,
+            String search,
+            String techStack,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getArchiveSubmissions(hackathonId, search, techStack),
+                cursor,
+                page,
+                size,
+                SubmissionResponse::submissionId
+        );
     }
 
     public ArchiveSubmissionDetailResponse getArchiveSubmission(Long submissionId) {
@@ -573,7 +732,7 @@ public class HackathonService {
                 .filter(award -> award.getTeam().getId().equals(submission.getTeam().getId()))
                 .map(AwardResponse::from)
                 .toList();
-        return ArchiveSubmissionDetailResponse.of(submission, techStacks, teamMembers, awards);
+        return ArchiveSubmissionDetailResponse.of(submission, techStacks, teamMembers, awards, toFileViewUrl(submission.getPresentationFile()));
     }
 
     public List<SubmissionStatusResponse> getSubmissionStatuses(Long hackathonId) {
@@ -595,30 +754,24 @@ public class HackathonService {
                     return SubmissionStatusResponse.of(
                             team,
                             hackathonRepository.countTeamMembers(team.getId()),
-                            submission,
-                            submissionTechStacks
+                            submission != null ? toSubmissionResponse(submission, submissionTechStacks) : null
                     );
                 })
                 .toList();
     }
 
-    public HackathonDashboardResponse getDashboard(Long hackathonId) {
-        getEvent(hackathonId);
-        long participantCount = hackathonRepository.findParticipants(hackathonId, ParticipantStatus.REGISTERED).size();
-        List<HackathonTeam> teams = hackathonRepository.findTeams(hackathonId);
-        long teamCount = teams.stream().filter(team -> team.getStatus() != TeamStatus.DISBANDED).count();
-        long participantsWithoutTeamCount = hackathonRepository.findParticipantsWithoutTeam(
-                hackathonId, ParticipantStatus.REGISTERED).size();
-        long submittedTeamCount = hackathonRepository.findSubmissions(hackathonId).size();
-        long evaluationCount = hackathonRepository.findEvaluations(hackathonId).size();
-
-        return new HackathonDashboardResponse(
-                participantCount,
-                teamCount,
-                participantsWithoutTeamCount,
-                submittedTeamCount,
-                Math.max(teamCount - submittedTeamCount, 0),
-                evaluationCount
+    public CursorPageResponse<SubmissionStatusResponse> getSubmissionStatuses(
+            Long hackathonId,
+            Integer cursor,
+            Integer page,
+            int size
+    ) {
+        return paginate(
+                getSubmissionStatuses(hackathonId),
+                cursor,
+                page,
+                size,
+                SubmissionStatusResponse::hackathonTeamId
         );
     }
 
@@ -633,7 +786,7 @@ public class HackathonService {
 
         EvaluatorType evaluatorType = resolveEvaluatorType(hackathonId, teamId, evaluatorId);
         ScoreValidationResult validation = validateScores(hackathonId, request);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
 
         Optional<HackathonEvaluation> existing = hackathonRepository.findEvaluation(hackathonId, teamId, evaluatorId);
         HackathonEvaluation evaluation;
@@ -712,6 +865,78 @@ public class HackathonService {
         hackathonRepository.saveTechStacks(entities);
     }
 
+    private <T> CursorPageResponse<T> paginate(
+            List<T> items,
+            Integer cursor,
+            Integer page,
+            int size,
+            Function<T, Long> cursorExtractor
+    ) {
+        int pageSize = Math.max(size, 1);
+        long totalElements = items.size();
+
+        if (page != null) {
+            int currentPage = Math.max(page, 0);
+            int fromIndex = Math.min(currentPage * pageSize, items.size());
+            int toIndex = Math.min(fromIndex + pageSize, items.size());
+            List<T> content = items.subList(fromIndex, toIndex);
+            boolean hasNext = toIndex < items.size();
+            return CursorPageResponse.ofOffset(content, hasNext, totalElements, currentPage, pageSize);
+        }
+
+        int startIndex = resolveCursorStartIndex(items, cursor, cursorExtractor);
+        int fromIndex = Math.min(startIndex, items.size());
+        int toIndex = Math.min(fromIndex + pageSize + 1, items.size());
+        List<T> window = items.subList(fromIndex, toIndex);
+        boolean hasNext = window.size() > pageSize;
+        List<T> content = hasNext ? window.subList(0, pageSize) : window;
+        Integer nextCursor = hasNext && !content.isEmpty()
+                ? toIntegerCursor(cursorExtractor.apply(content.get(content.size() - 1)))
+                : null;
+        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
+    }
+
+    private <T> int resolveCursorStartIndex(List<T> items, Integer cursor, Function<T, Long> cursorExtractor) {
+        if (cursor == null) {
+            return 0;
+        }
+        if (items.isEmpty()) {
+            return 0;
+        }
+        Long cursorValue = cursor.longValue();
+        for (int i = 0; i < items.size(); i++) {
+            Long itemCursor = cursorExtractor.apply(items.get(i));
+            if (itemCursor != null && itemCursor.equals(cursorValue)) {
+                return i + 1;
+            }
+        }
+
+        Long firstCursor = cursorExtractor.apply(items.get(0));
+        Long lastCursor = cursorExtractor.apply(items.get(items.size() - 1));
+        if (firstCursor == null || lastCursor == null) {
+            return items.size();
+        }
+
+        boolean descending = firstCursor > lastCursor;
+        for (int i = 0; i < items.size(); i++) {
+            Long itemCursor = cursorExtractor.apply(items.get(i));
+            if (itemCursor == null) {
+                continue;
+            }
+            if (descending && itemCursor < cursorValue) {
+                return i;
+            }
+            if (!descending && itemCursor > cursorValue) {
+                return i;
+            }
+        }
+        return items.size();
+    }
+
+    private Integer toIntegerCursor(Long cursor) {
+        return cursor != null ? cursor.intValue() : null;
+    }
+
     private void deleteFileAfterCommit(String objectKey) {
         if (objectKey == null || objectKey.isBlank()) {
             return;
@@ -736,9 +961,18 @@ public class HackathonService {
         }
     }
 
+    private void disbandTeam(HackathonTeam team) {
+        team.disband();
+        hackathonRepository.findJoinRequests(team.getId(), JoinRequestStatus.PENDING)
+                .forEach(HackathonJoinRequest::cancel);
+        hackathonRepository.deleteTeamMembersByTeamId(team.getId());
+    }
+
     private HackathonEvent getEvent(Long hackathonId) {
-        return hackathonRepository.findEventById(hackathonId)
+        HackathonEvent event = hackathonRepository.findEventById(hackathonId)
                 .orElseThrow(() -> new ForifException(ErrorCode.HACKATHON_NOT_FOUND));
+        promoteHackathonStatusBySchedule(event, now());
+        return event;
     }
 
     private User getUser(Long userId) {
@@ -776,7 +1010,48 @@ public class HackathonService {
     private boolean canRegister(HackathonEvent event, Long userId) {
         return staffAccountRepository.existsById(userId)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
-                userId, event.getHeldYear(), event.getHeldSemester());
+                        userId, event.getHeldYear(), event.getHeldSemester()
+                )
+                || studyRepository.existsMentorStudyByMentorIdAndStudyYearSemester(
+                        userId, event.getHeldYear(), event.getHeldSemester()
+                );
+    }
+
+    private void promoteHackathonStatusBySchedule(HackathonEvent event, LocalDateTime now) {
+        if (event.getStatus() == HackathonStatus.ENDED) {
+            return;
+        }
+
+        HackathonStatus scheduledStatus = resolveScheduledStatus(event, now);
+        if (isLaterStatus(scheduledStatus, event.getStatus())) {
+            event.changeStatus(scheduledStatus);
+        }
+    }
+
+    private HackathonStatus resolveScheduledStatus(HackathonEvent event, LocalDateTime now) {
+        if (!now.isBefore(event.getEndsAt())) {
+            return HackathonStatus.JUDGING;
+        }
+        if (!now.isBefore(event.getStartsAt())) {
+            return HackathonStatus.IN_PROGRESS;
+        }
+        if (event.getTeamBuildingStartsAt() != null && !now.isBefore(event.getTeamBuildingStartsAt())) {
+            return HackathonStatus.TEAM_BUILDING;
+        }
+        return HackathonStatus.RECRUITING;
+    }
+
+    private boolean isLaterStatus(HackathonStatus candidate, HackathonStatus current) {
+        return STATUS_FLOW.indexOf(candidate) > STATUS_FLOW.indexOf(current);
+    }
+
+    private void assertRegistrationOpen(HackathonEvent event, LocalDateTime now) {
+        if (event.getRecruitStartsAt() != null && now.isBefore(event.getRecruitStartsAt())) {
+            throw new ForifException(ErrorCode.HACKATHON_REGISTRATION_CLOSED);
+        }
+        if (event.getRecruitEndsAt() != null && !now.isBefore(event.getRecruitEndsAt())) {
+            throw new ForifException(ErrorCode.HACKATHON_REGISTRATION_CLOSED);
+        }
     }
 
     private void assertRegisteredParticipant(Long hackathonId, Long userId) {
@@ -830,9 +1105,13 @@ public class HackathonService {
 
     private void assertSubmissionOpen(HackathonEvent event) {
         assertStatus(event, HackathonStatus.IN_PROGRESS);
-        if (LocalDateTime.now().isAfter(event.getEndsAt())) {
+        if (now().isAfter(event.getEndsAt())) {
             throw new ForifException(ErrorCode.HACKATHON_SUBMISSION_CLOSED);
         }
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(DateUtils.ZONE_SEOUL);
     }
 
     private void validatePeriod(LocalDateTime recruitStartsAt, LocalDateTime recruitEndsAt,
@@ -878,7 +1157,21 @@ public class HackathonService {
     private SubmissionResponse toSubmissionResponse(HackathonSubmission submission) {
         List<String> techStacks = techStacksBySubmissionId(List.of(submission))
                 .getOrDefault(submission.getId(), List.of());
-        return SubmissionResponse.of(submission, techStacks);
+        return toSubmissionResponse(submission, techStacks);
+    }
+
+    private SubmissionResponse toSubmissionResponse(HackathonSubmission submission, List<String> techStacks) {
+        return SubmissionResponse.of(submission, techStacks, toFileViewUrl(submission.getPresentationFile()));
+    }
+
+    private String toFileViewUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return objectKey;
+        }
+        if (objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+            return objectKey;
+        }
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
     }
 
     private Map<Long, List<String>> techStacksBySubmissionId(List<HackathonSubmission> submissions) {

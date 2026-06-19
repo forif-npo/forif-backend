@@ -9,7 +9,11 @@ public interface HackathonRepository {
 
     Optional<HackathonEvent> findEventById(Long hackathonId);
 
+    List<HackathonEvent> findActiveEvents();
+
     List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status);
+
+    boolean existsActiveEvent();
 
     boolean existsEventRound(int heldYear, int heldSemester, int eventRound);
 
@@ -54,8 +58,6 @@ public interface HackathonRepository {
     HackathonSubmission saveSubmission(HackathonSubmission submission);
 
     Optional<HackathonSubmission> findSubmissionByTeam(Long hackathonId, Long teamId);
-
-    Optional<HackathonSubmission> findSubmission(Long hackathonId, Long submissionId);
 
     Optional<HackathonSubmission> findSubmissionById(Long submissionId);
 

@@ -22,7 +22,7 @@ spring:
   cloud:
     aws:
       s3:
-        bucket-name: ${S3_BUCKET_NAME}
+        bucket-name: ${S3_BUCKET_NAME:}
       region:
         static: ap-northeast-2
       presigned-url:

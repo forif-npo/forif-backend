@@ -77,6 +77,8 @@ public class CreateStudyApplyRequest {
 
     private List<Reference> references;     // 참고자료
 
+    private Long secondaryMentorId;         // 부멘토 유저 ID
+
     @Getter
     @Setter
     @NoArgsConstructor

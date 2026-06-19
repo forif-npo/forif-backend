@@ -135,6 +135,7 @@ public class Study extends BaseTimeEntity {
     public static Study createPendingStudy(User mentor) {
         Study study = new Study();
         study.primaryMentor = mentor;
+        study.primaryMentorName = mentor.getUserName();
         study.actYear = DateUtils.getCurrentYear();
         study.actSemester = DateUtils.getCurrentSemester();
 
@@ -145,7 +146,7 @@ public class Study extends BaseTimeEntity {
      * DTO로부터 스터디 데이터를 반영하는 도메인 메서드
      * 최초 신청(Create)과 재요청(Re-apply) 시 공통으로 사용됩니다.
      */
-    public void applyRequestData(CreateStudyApplyRequest request, List<StudyTag> tags) {
+    public void applyRequestData(CreateStudyApplyRequest request, List<StudyTag> tags, User secondaryMentor) {
         this.studyName = request.getTitle();
         this.subTitle = request.getSubTitle();
         this.goal = request.getGoal();
@@ -164,6 +165,9 @@ public class Study extends BaseTimeEntity {
 
         // 연관 관계 설정
         this.tags = tags;
+        this.primaryMentorName = this.primaryMentor.getUserName();
+        this.secondaryMentor = secondaryMentor;
+        this.secondaryMentorName = secondaryMentor != null ? secondaryMentor.getUserName() : null;
     }
 
     /**

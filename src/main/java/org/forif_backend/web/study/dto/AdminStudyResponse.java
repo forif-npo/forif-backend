@@ -3,6 +3,7 @@ package org.forif_backend.web.study.dto;
 import org.forif_backend.application.study.dto.AdminStudyDto;
 import org.forif_backend.application.study.dto.StudyTagDto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public record AdminStudyResponse(
@@ -13,7 +14,10 @@ public record AdminStudyResponse(
         List<String> tags,
         String oneLiner,
         long menteeCount,
-        String recruitStatus
+        String recruitStatus,
+        String studyStatus,
+        String rejectReason,
+        LocalDateTime createdAt
 ) {
     public static AdminStudyResponse from(AdminStudyDto dto) {
         List<String> tagNames = dto.getTags().stream()
@@ -24,6 +28,10 @@ public record AdminStudyResponse(
                 ? dto.getRecruitStatus().getValue()
                 : null;
 
+        String studyStatusValue = dto.getStudyStatus() != null
+                ? dto.getStudyStatus().getValue()
+                : null;
+
         return new AdminStudyResponse(
                 dto.getId(),
                 dto.getStudyName(),
@@ -32,7 +40,10 @@ public record AdminStudyResponse(
                 tagNames,
                 dto.getOneLiner(),
                 dto.getMenteeCount(),
-                recruitStatusValue
+                recruitStatusValue,
+                studyStatusValue,
+                dto.getRejectReason(),
+                dto.getCreatedAt()
         );
     }
 }

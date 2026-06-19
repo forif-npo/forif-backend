@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @SpringBootTest(properties = { // 테스트용 임의값
@@ -54,6 +55,19 @@ public class DefaultMockitoTest {
                     return FileInfo.builder()
                             .objectKey(objectKey)
                             .presignedUrl("http://mock-s3-url.com/" + objectKey)
+                            .build();
+                });
+        when(filePort.uploadFile(any(MultipartFile.class)))
+                .thenAnswer((Answer<String>) invocation -> {
+                    MultipartFile file = invocation.getArgument(0);
+                    return "mock-uuid-" + file.getOriginalFilename();
+                });
+        when(filePort.generatePresignedViewUrl(anyString()))
+                .thenAnswer((Answer<FileInfo>) invocation -> {
+                    String objectKey = invocation.getArgument(0);
+                    return FileInfo.builder()
+                            .objectKey(objectKey)
+                            .presignedUrl("http://mock-file-url.com/" + objectKey)
                             .build();
                 });
     }

@@ -47,6 +47,43 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("이번 학기 멘토는 study_user에 없어도 해커톤에 참가 등록할 수 있다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_study (study_id, act_year, act_semester, study_name, primary_mentor_id, primary_mentor_name, study_status, created_at, updated_at) VALUES (1001, 2025, 2, '웹 스터디', 1, '표준성', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_mentor_study (mentor_id, study_id, mentor_num) VALUES (1, 1001, 1)"
+    })
+    void registerParticipantByCurrentSemesterMentorStudy() {
+        Long hackathonId = createDefaultHackathon();
+
+        ParticipantResponse response = hackathonService.registerParticipant(hackathonId, 1L);
+
+        assertThat(response.status().name()).isEqualTo("REGISTERED");
+    }
+
+    @Test
+    @DisplayName("어드민 참가자 목록에서 참가자의 이번 학기 스터디를 함께 조회한다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_study (study_id, act_year, act_semester, study_name, primary_mentor_id, primary_mentor_name, study_status, created_at, updated_at) VALUES (1001, 2025, 2, '웹 스터디', 1, '표준성', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_mentor_study (mentor_id, study_id, mentor_num) VALUES (1, 1001, 1)"
+    })
+    void getParticipantsIncludesCurrentSemesterStudies() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+
+        ParticipantResponse participant = hackathonService.getParticipants(
+                hackathonId,
+                null,
+                false
+        ).get(0);
+
+        assertThat(participant.studies()).hasSize(1);
+        assertThat(participant.studies().get(0).studyName()).isEqualTo("웹 스터디");
+        assertThat(participant.studies().get(0).role().name()).isEqualTo("MENTOR");
+    }
+
+    @Test
     @DisplayName("팀 생성자는 리더로 자동 등록되고 한 해커톤에서 두 팀에 들어갈 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
@@ -87,7 +124,55 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("팀 목록과 상세는 해커톤 참가 등록자만 조회할 수 있다")
+    @DisplayName("팀 빌딩 시작 시간이 지나면 모집 상태가 자동으로 팀 빌딩으로 전환되고 참가 등록은 막힌다")
+    void autoPromoteToTeamBuildingAfterRecruitmentEnds() {
+        LocalDateTime now = LocalDateTime.now();
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                99,
+                "자동 전환 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.minusHours(1),
+                now.minusHours(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).status())
+                .isEqualTo(HackathonStatus.TEAM_BUILDING);
+        assertThatThrownBy(() -> hackathonService.registerParticipant(hackathonId, 1L))
+                .hasMessage(ErrorCode.HACKATHON_REGISTRATION_CLOSED.getMessage());
+    }
+
+    @Test
+    @DisplayName("해커톤 종료 시간이 지나면 자동으로 심사 상태로 전환된다")
+    void autoPromoteToJudgingAfterHackathonEnds() {
+        LocalDateTime now = LocalDateTime.now();
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                100,
+                "심사 전환 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(4),
+                now.minusDays(3),
+                now.minusDays(3),
+                now.minusDays(2),
+                now.minusDays(2),
+                now.minusDays(1)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).status())
+                .isEqualTo(HackathonStatus.JUDGING);
+    }
+
+    @Test
+    @DisplayName("팀 목록은 해커톤 참가 등록자만 조회할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
@@ -97,10 +182,9 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
 
         assertThat(hackathonService.getTeamsForParticipant(hackathonId, 1L)).hasSize(1);
-        assertThat(hackathonService.getTeamForParticipant(hackathonId, team.hackathonTeamId(), 1L).name()).isEqualTo("팀 A");
         assertThatThrownBy(() -> hackathonService.getTeamsForParticipant(hackathonId, 2L))
                 .hasMessage(ErrorCode.HACKATHON_PARTICIPANT_REQUIRED.getMessage());
     }
@@ -148,6 +232,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "설명",
                 "https://github.com/forif/example",
                 null,
+                null,
                 List.of("Spring Boot")
         );
         MockMultipartFile presentation = new MockMultipartFile(
@@ -168,12 +253,13 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                         "설명 수정",
                         "https://github.com/forif/example-updated",
                         null,
+                        null,
                         List.of("Spring Boot")
                 ),
                 null
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("presentation-v1.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v1.pdf");
     }
 
     @Test
@@ -194,6 +280,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "요약",
                 "설명",
                 "https://github.com/forif/example",
+                null,
                 null,
                 List.of("Spring Boot")
         );
@@ -219,7 +306,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 secondPresentation
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("presentation-v2.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v2.pdf");
     }
 
     @Test
@@ -244,6 +331,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "요약",
                 "설명",
                 "https://github.com/forif/example",
+                null,
                 null,
                 List.of("Spring Boot")
         );

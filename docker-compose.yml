@@ -8,6 +8,14 @@ services:
     # GitHub Actions가 생성한 .env 파일을 읽어 환경변수를 주입합니다.
     env_file:
       - .env
+    environment:
+      FILE_STORAGE: ${FILE_STORAGE:-local}
+      FILE_STORAGE_ROOT: ${FILE_STORAGE_ROOT:-/srv/forif/uploads}
+      FILE_PUBLIC_URL: ${FILE_PUBLIC_URL:-}
+      TZ: Asia/Seoul
+      JAVA_TOOL_OPTIONS: "-Duser.timezone=Asia/Seoul"
+    volumes:
+      - ${FILE_STORAGE_HOST_PATH:-/srv/forif/uploads}:${FILE_STORAGE_ROOT:-/srv/forif/uploads}
     # 컨테이너가 비정상 종료 시 자동으로 재시작되도록 설정합니다.
     restart: always
     # 로그 확인을 용이하게 하기 위한 설정입니다.

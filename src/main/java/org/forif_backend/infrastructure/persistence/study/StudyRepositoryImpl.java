@@ -58,6 +58,16 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        return studyQueryRepository.findCurrentStudiesByUserIds(userIds, year, semester);
+    }
+
+    @Override
+    public Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        return studyQueryRepository.findCurrentMentorStudiesByUserIds(userIds, year, semester);
+    }
+
+    @Override
     public Optional<Study> findStudyByIdWithTags(Integer studyId) {
         return studyJpaRepository.findByIdWithTags(studyId);
     }
@@ -92,18 +102,18 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search) {
-        return studyQueryRepository.searchStudiesWithCursor(cursor, size, year, semester, search);
+    public List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
+        return studyQueryRepository.searchStudiesWithCursor(cursor, size, year, semester, search, studyStatuses);
     }
 
     @Override
-    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search) {
-        return studyQueryRepository.searchAdminStudiesWithOffset(page, size, year, semester, search);
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
+        return studyQueryRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, studyStatuses);
     }
 
     @Override
-    public long countStudies(Integer year, Integer semester, String search) {
-        return studyQueryRepository.countStudies(year, semester, search);
+    public long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
+        return studyQueryRepository.countStudies(year, semester, search, studyStatuses);
     }
 
     @Override
@@ -124,6 +134,15 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public List<MentorStudy> findMentorStudiesByStudyId(Integer studyId) {
         return mentorStudyJpaRepository.findByStudyId(studyId);
+    }
+
+    @Override
+    public boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester) {
+        return mentorStudyJpaRepository.existsByMentorIdAndStudyActYearAndStudyActSemester(
+                mentorId,
+                year,
+                semester
+        );
     }
 
     @Override
