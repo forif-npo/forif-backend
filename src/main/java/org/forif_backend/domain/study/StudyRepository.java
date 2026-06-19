@@ -18,6 +18,16 @@ public interface StudyRepository {
     Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester);
 
     /**
+     * 여러 사용자의 해당 학기 수강 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
+     * 여러 사용자의 해당 학기 멘토 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
      * 스터디 ID로 스터디 정보 조회 (태그 정보 포함)
      * @param studyId 스터디 ID
      * @return 스터디 정보 (태그 포함)

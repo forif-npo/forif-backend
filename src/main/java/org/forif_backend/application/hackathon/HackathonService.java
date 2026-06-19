@@ -13,8 +13,11 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
+import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.web.hackathon.dto.ParticipantResponse.ParticipantStudyResponse;
+import org.forif_backend.web.hackathon.dto.ParticipantResponse.ParticipantStudyRole;
 import org.forif_backend.web.hackathon.dto.*;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -231,13 +234,57 @@ public class HackathonService {
     }
 
     public List<ParticipantResponse> getParticipants(Long hackathonId, ParticipantStatus status, boolean withoutTeam) {
-        getEvent(hackathonId);
+        HackathonEvent event = getEvent(hackathonId);
         List<HackathonParticipant> participants = withoutTeam
                 ? hackathonRepository.findParticipantsWithoutTeam(hackathonId, status)
                 : hackathonRepository.findParticipants(hackathonId, status);
+        Map<Long, List<ParticipantStudyResponse>> studiesByUserId = getParticipantStudiesByUserId(participants, event);
         return participants.stream()
-                .map(ParticipantResponse::from)
+                .map(participant -> ParticipantResponse.from(
+                        participant,
+                        studiesByUserId.getOrDefault(participant.getUser().getId(), List.of())
+                ))
                 .toList();
+    }
+
+    private Map<Long, List<ParticipantStudyResponse>> getParticipantStudiesByUserId(
+            List<HackathonParticipant> participants,
+            HackathonEvent event
+    ) {
+        List<Long> userIds = participants.stream()
+                .map(participant -> participant.getUser().getId())
+                .distinct()
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, List<Study>> menteeStudies = studyRepository.findCurrentStudiesByUserIds(
+                userIds,
+                event.getHeldYear(),
+                event.getHeldSemester()
+        );
+        Map<Long, List<Study>> mentorStudies = studyRepository.findCurrentMentorStudiesByUserIds(
+                userIds,
+                event.getHeldYear(),
+                event.getHeldSemester()
+        );
+
+        Map<Long, List<ParticipantStudyResponse>> studiesByUserId = new HashMap<>();
+        for (Long userId : userIds) {
+            List<ParticipantStudyResponse> studies = new ArrayList<>();
+            menteeStudies.getOrDefault(userId, List.of())
+                    .forEach(study -> studies.add(ParticipantStudyResponse.of(study, ParticipantStudyRole.MENTEE)));
+            mentorStudies.getOrDefault(userId, List.of())
+                    .forEach(study -> studies.add(ParticipantStudyResponse.of(study, ParticipantStudyRole.MENTOR)));
+
+            if (!studies.isEmpty()) {
+                studiesByUserId.put(userId, studies);
+            }
+        }
+
+        return studiesByUserId;
     }
 
     @Transactional

@@ -58,6 +58,16 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        return studyQueryRepository.findCurrentStudiesByUserIds(userIds, year, semester);
+    }
+
+    @Override
+    public Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester) {
+        return studyQueryRepository.findCurrentMentorStudiesByUserIds(userIds, year, semester);
+    }
+
+    @Override
     public Optional<Study> findStudyByIdWithTags(Integer studyId) {
         return studyJpaRepository.findByIdWithTags(studyId);
     }

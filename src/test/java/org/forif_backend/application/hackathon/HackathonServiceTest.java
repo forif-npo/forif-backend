@@ -62,6 +62,28 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("어드민 참가자 목록에서 참가자의 이번 학기 스터디를 함께 조회한다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_study (study_id, act_year, act_semester, study_name, primary_mentor_id, primary_mentor_name, study_status, created_at, updated_at) VALUES (1001, 2025, 2, '웹 스터디', 1, '표준성', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_mentor_study (mentor_id, study_id, mentor_num) VALUES (1, 1001, 1)"
+    })
+    void getParticipantsIncludesCurrentSemesterStudies() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+
+        ParticipantResponse participant = hackathonService.getParticipants(
+                hackathonId,
+                null,
+                false
+        ).get(0);
+
+        assertThat(participant.studies()).hasSize(1);
+        assertThat(participant.studies().get(0).studyName()).isEqualTo("웹 스터디");
+        assertThat(participant.studies().get(0).role().name()).isEqualTo("MENTOR");
+    }
+
+    @Test
     @DisplayName("팀 생성자는 리더로 자동 등록되고 한 해커톤에서 두 팀에 들어갈 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
