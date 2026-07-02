@@ -91,6 +91,7 @@ public class HackathonService {
                 request.endsAt()
         );
         HackathonEvent saved = hackathonRepository.saveEvent(event);
+        filePort.createDirectory(hackathonUploadDirectory(saved));
         return new HackathonIdResponse(saved.getId());
     }
 
@@ -466,7 +467,7 @@ public class HackathonService {
         }
 
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation)
+                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
                 : null;
         HackathonSubmission submission = HackathonSubmission.create(
                 event,
@@ -497,7 +498,7 @@ public class HackathonService {
 
         String previousPresentationFile = submission.getPresentationFile();
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation)
+                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
                 : previousPresentationFile;
         submission.update(
                 request.projectName(),
@@ -1198,6 +1199,10 @@ public class HackathonService {
             return 3;
         }
         return Integer.MAX_VALUE;
+    }
+
+    private String hackathonUploadDirectory(HackathonEvent event) {
+        return "hackathons/%d-%d".formatted(event.getHeldYear(), event.getHeldSemester());
     }
 
     private boolean containsIgnoreCase(String value, String search) {

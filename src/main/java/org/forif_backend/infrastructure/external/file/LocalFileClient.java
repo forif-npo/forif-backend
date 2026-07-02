@@ -62,11 +62,16 @@ public class LocalFileClient implements FilePort {
 
     @Override
     public String uploadFile(MultipartFile file) {
+        return uploadFile(file, null);
+    }
+
+    @Override
+    public String uploadFile(MultipartFile file, String directory) {
         if (file == null || file.isEmpty()) {
             throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
 
-        String objectKey = createObjectKey(file);
+        String objectKey = createObjectKey(file, directory);
         Path targetPath = resolvePath(objectKey);
 
         try {
@@ -76,6 +81,18 @@ public class LocalFileClient implements FilePort {
             return objectKey;
         } catch (IOException e) {
             log.error("로컬 파일 업로드 중 오류 발생: {}", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
+    public void createDirectory(String directory) {
+        Path directoryPath = resolveDirectoryPath(directory);
+        try {
+            Files.createDirectories(directoryPath);
+            log.info("로컬 파일 저장소 디렉터리 준비 완료: {}", directoryPath);
+        } catch (IOException e) {
+            log.error("로컬 파일 저장소 디렉터리 생성 실패: {}", directoryPath, e);
             throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }
@@ -105,13 +122,43 @@ public class LocalFileClient implements FilePort {
         return targetPath;
     }
 
-    private String createObjectKey(MultipartFile file) {
+    private Path resolveDirectoryPath(String directory) {
+        Path directoryPath = rootPath.resolve(normalizeDirectory(directory)).normalize();
+        if (!directoryPath.startsWith(rootPath)) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        return directoryPath;
+    }
+
+    private String createObjectKey(MultipartFile file, String directory) {
         String originalFilename = Optional.ofNullable(file.getOriginalFilename())
                 .filter(StringUtils::hasText)
                 .map(StringUtils::cleanPath)
                 .orElse("file");
         String safeFilename = originalFilename.replace("\\", "_").replace("/", "_");
-        return UUID.randomUUID() + "-" + safeFilename;
+        String filename = UUID.randomUUID() + "-" + safeFilename;
+        String normalizedDirectory = normalizeDirectory(directory);
+        return StringUtils.hasText(normalizedDirectory)
+                ? normalizedDirectory + "/" + filename
+                : filename;
+    }
+
+    private String normalizeDirectory(String directory) {
+        if (!StringUtils.hasText(directory)) {
+            return "";
+        }
+
+        String normalized = StringUtils.cleanPath(directory).replace("\\", "/");
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (normalized.contains("..")) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        return normalized;
     }
 
     private String buildViewUrl(String objectKey) {

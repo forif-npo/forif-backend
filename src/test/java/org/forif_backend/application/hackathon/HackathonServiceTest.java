@@ -20,6 +20,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class HackathonServiceTest extends DefaultMockitoTest {
@@ -166,6 +168,14 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("해커톤 생성 시 회차별 업로드 디렉터리를 준비한다")
+    void createHackathonPreparesUploadDirectory() {
+        createDefaultHackathon();
+
+        verify(filePort).createDirectory("hackathons/2025-2");
+    }
+
+    @Test
     @DisplayName("해커톤 상태는 정해진 순서로만 전환할 수 있다")
     void changeStatusRequiresNextFlow() {
         Long hackathonId = createDefaultHackathon();
@@ -276,7 +286,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionKeepsExistingPresentationFile() {
-        when(filePort.uploadFile(any(MultipartFile.class))).thenReturn("presentation-v1.pdf");
+        when(filePort.uploadFile(any(MultipartFile.class), anyString()))
+                .thenReturn("hackathons/2025-2/presentation-v1.pdf");
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
@@ -315,7 +326,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 null
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v1.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/hackathons/2025-2/presentation-v1.pdf");
     }
 
     @Test
@@ -325,7 +336,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionReplacesPresentationFile() {
-        when(filePort.uploadFile(any(MultipartFile.class))).thenReturn("presentation-v1.pdf", "presentation-v2.pdf");
+        when(filePort.uploadFile(any(MultipartFile.class), anyString()))
+                .thenReturn("hackathons/2025-2/presentation-v1.pdf", "hackathons/2025-2/presentation-v2.pdf");
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
@@ -362,7 +374,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 secondPresentation
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v2.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/hackathons/2025-2/presentation-v2.pdf");
     }
 
     @Test
