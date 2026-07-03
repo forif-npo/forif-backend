@@ -12,6 +12,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -414,7 +415,7 @@ public class StudyService {
      * 멘토 계정이 없으면 기본 비밀번호로 자동 생성
      */
     private void createMentorAccountIfAbsent(User mentor, String studyName) {
-        if (staffAccountRepository.existsById(mentor.getId())) {
+        if (staffAccountRepository.existsByUserIdAndRole(mentor.getId(), StaffRole.MENTOR)) {
             return;
         }
 

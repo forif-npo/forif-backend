@@ -35,7 +35,7 @@ public class StaffAccountQueryRepository {
                         cursorLt(cursor),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .limit(size + 1)
                 .fetch();
     }
@@ -73,7 +73,7 @@ public class StaffAccountQueryRepository {
                         cursorLt(cursor),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .limit(size + 1)
                 .fetch();
     }
@@ -94,8 +94,8 @@ public class StaffAccountQueryRepository {
                 .selectFrom(staffAccount).distinct()
                 .join(staffAccount.user).fetchJoin()
                 .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                        study.primaryMentor.id.eq(staffAccount.user.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
                 )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
@@ -104,7 +104,7 @@ public class StaffAccountQueryRepository {
                         cursorLt(cursor),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .limit(size + 1)
                 .fetch();
     }
@@ -114,8 +114,8 @@ public class StaffAccountQueryRepository {
                 .select(staffAccount.countDistinct())
                 .from(staffAccount)
                 .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                        study.primaryMentor.id.eq(staffAccount.user.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
                 )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
@@ -135,7 +135,7 @@ public class StaffAccountQueryRepository {
                         staffAccount.role.eq(StaffRole.ADMIN),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
@@ -149,7 +149,7 @@ public class StaffAccountQueryRepository {
                         staffAccount.role.eq(StaffRole.MENTOR),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
@@ -160,8 +160,8 @@ public class StaffAccountQueryRepository {
                 .selectFrom(staffAccount).distinct()
                 .join(staffAccount.user).fetchJoin()
                 .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.id))
+                        study.primaryMentor.id.eq(staffAccount.user.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
                 )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
@@ -169,7 +169,7 @@ public class StaffAccountQueryRepository {
                         study.actSemester.eq(semester),
                         searchKeyword(search)
                 )
-                .orderBy(staffAccount.id.desc())
+                .orderBy(staffAccount.user.id.desc())
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
@@ -184,11 +184,16 @@ public class StaffAccountQueryRepository {
 
         List<StaffAccount> staffAccounts = queryFactory
                 .selectFrom(staffAccount)
-                .where(staffAccount.id.in(userIds))
+                .where(staffAccount.user.id.in(userIds))
                 .fetch();
 
         return staffAccounts.stream()
-                .collect(Collectors.toMap(StaffAccount::getUserId, StaffAccount::getRole));
+                .collect(Collectors.toMap(
+                        StaffAccount::getUserId,
+                        StaffAccount::getRole,
+                        // 역할이 둘(MENTOR, ADMIN)이면 ADMIN을 대표 역할로
+                        (a, b) -> a == StaffRole.ADMIN || b == StaffRole.ADMIN ? StaffRole.ADMIN : a
+                ));
     }
 
     // ==================== 공통 ====================
@@ -197,11 +202,11 @@ public class StaffAccountQueryRepository {
         if (cursor == null) {
             return null;
         }
-        return staffAccount.id.lt(cursor.longValue());
+        return staffAccount.user.id.lt(cursor.longValue());
     }
 
     private BooleanExpression cursorLt(Long cursor) {
-        return cursor != null ? staffAccount.id.lt(cursor) : null;
+        return cursor != null ? staffAccount.user.id.lt(cursor) : null;
     }
 
     private BooleanExpression searchKeyword(String search) {

@@ -10,6 +10,7 @@ public record StaffInfoResponse(
         String phoneNum,
         String department,
         String imgUrl,
-        String role
+        String role,
+        String affiliation
 ) {
 }

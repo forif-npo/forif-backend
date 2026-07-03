@@ -108,11 +108,9 @@ public class RefreshTokenService {
             throw new ForifException(ErrorCode.INVALID_TOKEN);
         }
 
-        StaffRole currentRole = staffAccountRepository.findByUserId(parsedUserId)
-                .orElseThrow(() -> new ForifException(ErrorCode.INVALID_TOKEN))
-                .getRole();
-
-        if (currentRole != staffRole) {
+        // 세션 role에 해당하는 스태프 계정이 여전히 존재하는지 확인
+        // (한 유저가 MENTOR/ADMIN 계정을 모두 가질 수 있음)
+        if (!staffAccountRepository.existsByUserIdAndRole(parsedUserId, staffRole)) {
             throw new ForifException(ErrorCode.INVALID_TOKEN);
         }
     }

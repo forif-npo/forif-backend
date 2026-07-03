@@ -1029,7 +1029,7 @@ public class HackathonService {
     }
 
     private boolean canRegister(HackathonEvent event, Long userId) {
-        return staffAccountRepository.existsById(userId)
+        return staffAccountRepository.existsByUserId(userId)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
                         userId, event.getHeldYear(), event.getHeldSemester()
                 )

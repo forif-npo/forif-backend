@@ -16,11 +16,13 @@ import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.web.staff.dto.*;
 import org.forif_backend.web.user.dto.MemberResponse;
 import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -57,12 +59,19 @@ public class StaffAccountController {
     /**
      * 현재 로그인한 스태프 정보 조회
      */
-    @Operation(summary = "내 스태프 정보 조회", description = "현재 로그인한 스태프의 이름, 역할, 소속 정보를 조회합니다.")
+    @Operation(summary = "내 스태프 정보 조회", description = "현재 로그인한 스태프의 이름, 역할, 소속 정보를 조회합니다. 한 유저가 멘토/운영진 계정을 모두 가진 경우 로그인한 세션의 역할 계정을 반환합니다.")
     @GetMapping("/api/v1/staff/me")
     public ResponseEntity<ApiResponse<StaffInfoResponse>> getStaffInfo(
-            @AuthenticationPrincipal Long userId
+            @AuthenticationPrincipal Long userId,
+            Authentication authentication
     ) {
-        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
+        // 토큰 권한으로 로그인 세션의 역할 판별 (ADMIN 토큰은 ROLE_ADMIN 포함)
+        StaffRole sessionRole = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))
+                ? StaffRole.ADMIN
+                : StaffRole.MENTOR;
+
+        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId, sessionRole);
         StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

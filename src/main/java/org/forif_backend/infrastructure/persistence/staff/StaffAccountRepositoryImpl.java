@@ -6,6 +6,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.springframework.stereotype.Repository;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,7 +20,19 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
-        return staffAccountJpaRepository.findByIdWithUser(userId);
+        // 역할이 둘(MENTOR, ADMIN)이면 ADMIN 계정을 대표로 반환
+        return staffAccountJpaRepository.findAllByUserIdWithUser(userId).stream()
+                .max(Comparator.comparing(sa -> sa.getRole() == StaffRole.ADMIN ? 1 : 0));
+    }
+
+    @Override
+    public Optional<StaffAccount> findByUserIdAndRole(Long userId, StaffRole role) {
+        return staffAccountJpaRepository.findByUserIdAndRole(userId, role);
+    }
+
+    @Override
+    public List<StaffAccount> findAllByUserId(Long userId) {
+        return staffAccountJpaRepository.findAllByUserIdWithUser(userId);
     }
 
     @Override
@@ -33,18 +46,18 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     }
 
     @Override
-    public Optional<StaffAccount> findById(Long id) {
-        return staffAccountJpaRepository.findById(id);
+    public boolean existsByUserId(Long userId) {
+        return staffAccountJpaRepository.existsByUserId(userId);
     }
 
     @Override
-    public boolean existsById(Long userId) {
-        return staffAccountJpaRepository.existsById(userId);
+    public boolean existsByUserIdAndRole(Long userId, StaffRole role) {
+        return staffAccountJpaRepository.existsByUserIdAndRole(userId, role);
     }
 
     @Override
-    public void deleteById(Long userId) {
-        staffAccountJpaRepository.deleteById(userId);
+    public void delete(StaffAccount staffAccount) {
+        staffAccountJpaRepository.delete(staffAccount);
     }
 
     @Override
