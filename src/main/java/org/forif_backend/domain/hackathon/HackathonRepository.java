@@ -25,6 +25,11 @@ public interface HackathonRepository {
 
     List<HackathonParticipant> findParticipantsWithoutTeam(Long hackathonId, ParticipantStatus status);
 
+    /**
+     * 해당 학기에 열린 해커톤에 참가 등록(REGISTERED)한 유저 ID 목록
+     */
+    List<Long> findRegisteredUserIdsBySemester(int heldYear, int heldSemester);
+
     HackathonTeam saveTeam(HackathonTeam team);
 
     Optional<HackathonTeam> findTeam(Long hackathonId, Long teamId);

@@ -57,3 +57,6 @@ migration-output/
 /docs/legacy-non-hackathon-migration.sql
 /docs/s3-to-local-storage-migration.md
 /docs/local-file-url-normalization.sql
+
+# 로컬 파일 저장소 (업로드/생성 파일)
+/storage/

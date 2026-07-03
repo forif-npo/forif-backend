@@ -78,6 +78,11 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
+    public List<Long> findRegisteredUserIdsBySemester(int heldYear, int heldSemester) {
+        return participantJpaRepository.findRegisteredUserIdsBySemester(heldYear, heldSemester);
+    }
+
+    @Override
     public HackathonTeam saveTeam(HackathonTeam team) {
         return teamJpaRepository.save(team);
     }

@@ -1,0 +1,169 @@
+package org.forif_backend.application.study;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.study.dto.CertificateTargetsResult;
+import org.forif_backend.application.study.dto.IssueCertificatesResult;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.domain.hackathon.HackathonRepository;
+import org.forif_backend.domain.study.Study;
+import org.forif_backend.domain.study.StudyAttendanceRepository;
+import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyUser;
+import org.forif_backend.domain.study.StudyUserRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * 수료증 발급 서비스 (운영진 전용)
+ * 발급 자격: 해당 스터디 출석 5회 이상 + 해당 학기 해커톤 참가 등록
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class CertificateService {
+
+    private static final int REQUIRED_ATTENDANCE = 5;
+    private static final DateTimeFormatter ISSUE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
+
+    private final StudyRepository studyRepository;
+    private final StudyUserRepository studyUserRepository;
+    private final StudyAttendanceRepository studyAttendanceRepository;
+    private final HackathonRepository hackathonRepository;
+    private final CertificateImageGenerator certificateImageGenerator;
+    private final FilePort filePort;
+
+    /**
+     * 발급 대상 조회: 스터디 멘티 전원의 출석 횟수, 해커톤 참여, 자격 여부, 발급 상태
+     */
+    @Transactional(readOnly = true)
+    public CertificateTargetsResult getCertificateTargets(Integer studyId) {
+        Study study = getStudy(studyId);
+
+        List<StudyUser> mentees = studyUserRepository.findAllByStudyId(studyId);
+        Map<Long, Long> presentCounts = studyAttendanceRepository.countPresentByStudyId(studyId);
+        Set<Long> hackathonUserIds = new HashSet<>(hackathonRepository.findRegisteredUserIdsBySemester(
+                study.getActYear(), study.getActSemester()));
+
+        List<CertificateTargetsResult.Target> targets = mentees.stream()
+                .map(mentee -> {
+                    Long userId = mentee.getUser().getId();
+                    long attendanceCount = presentCounts.getOrDefault(userId, 0L);
+                    boolean hackathonParticipated = hackathonUserIds.contains(userId);
+                    return CertificateTargetsResult.Target.builder()
+                            .userId(userId)
+                            .userName(mentee.getUser().getUserName())
+                            .department(mentee.getUser().getDepartment())
+                            .attendanceCount(attendanceCount)
+                            .hackathonParticipated(hackathonParticipated)
+                            .eligible(attendanceCount >= REQUIRED_ATTENDANCE && hackathonParticipated)
+                            .certificateStatus(mentee.getCertificateStatus() != null
+                                    ? mentee.getCertificateStatus() : 0)
+                            .certificateUrl(mentee.getCertificateUrl())
+                            .build();
+                })
+                .toList();
+
+        return CertificateTargetsResult.builder()
+                .studyId(study.getId())
+                .studyName(study.getStudyName())
+                .actYear(study.getActYear())
+                .actSemester(study.getActSemester())
+                .requiredAttendance(REQUIRED_ATTENDANCE)
+                .targets(targets)
+                .build();
+    }
+
+    /**
+     * 수료증 발급: 자격을 충족한 유저만 이미지 생성 → 파일 저장 → 발급 상태/URL 갱신.
+     * 자격 미달 유저는 스킵되고 결과에 사유가 담긴다. 이미 발급된 유저는 재발급(덮어쓰기)된다.
+     */
+    @Transactional
+    public IssueCertificatesResult issueCertificates(Integer studyId, List<Long> userIds, String activityPeriod) {
+        Study study = getStudy(studyId);
+
+        Map<Long, StudyUser> menteeMap = studyUserRepository.findAllByStudyId(studyId).stream()
+                .collect(Collectors.toMap(su -> su.getUser().getId(), su -> su));
+        Map<Long, Long> presentCounts = studyAttendanceRepository.countPresentByStudyId(studyId);
+        Set<Long> hackathonUserIds = new HashSet<>(hackathonRepository.findRegisteredUserIdsBySemester(
+                study.getActYear(), study.getActSemester()));
+
+        String issueDate = LocalDate.now().format(ISSUE_DATE_FORMAT);
+        String directory = "certificates/%d-%d/%d".formatted(
+                study.getActYear(), study.getActSemester(), study.getId());
+
+        List<IssueCertificatesResult.ItemResult> results = new ArrayList<>();
+        int successCount = 0;
+
+        for (Long userId : userIds) {
+            StudyUser mentee = menteeMap.get(userId);
+            if (mentee == null) {
+                results.add(itemResult(userId, null, false, "스터디 멘티가 아닙니다.", null));
+                continue;
+            }
+
+            String userName = mentee.getUser().getUserName();
+            long attendanceCount = presentCounts.getOrDefault(userId, 0L);
+            if (attendanceCount < REQUIRED_ATTENDANCE) {
+                results.add(itemResult(userId, userName, false,
+                        "출석 횟수 미달 (%d/%d회)".formatted(attendanceCount, REQUIRED_ATTENDANCE), null));
+                continue;
+            }
+            if (!hackathonUserIds.contains(userId)) {
+                results.add(itemResult(userId, userName, false, "해당 학기 해커톤 미참여", null));
+                continue;
+            }
+
+            byte[] image = certificateImageGenerator.generate(
+                    userName,
+                    String.valueOf(userId),
+                    mentee.getUser().getDepartment(),
+                    study.getStudyName(),
+                    activityPeriod,
+                    issueDate
+            );
+
+            String objectKey = filePort.uploadBytes(image, userId + ".png", directory, "image/png");
+            String certificateUrl = filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+
+            mentee.issueCertificate(certificateUrl);
+            studyUserRepository.save(mentee);
+
+            results.add(itemResult(userId, userName, true, "발급 완료", certificateUrl));
+            successCount++;
+        }
+
+        return IssueCertificatesResult.builder()
+                .successCount(successCount)
+                .skippedCount(results.size() - successCount)
+                .results(results)
+                .build();
+    }
+
+    private IssueCertificatesResult.ItemResult itemResult(Long userId, String userName, boolean success,
+                                                          String message, String certificateUrl) {
+        return IssueCertificatesResult.ItemResult.builder()
+                .userId(userId)
+                .userName(userName)
+                .success(success)
+                .message(message)
+                .certificateUrl(certificateUrl)
+                .build();
+    }
+
+    private Study getStudy(Integer studyId) {
+        return studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+    }
+}

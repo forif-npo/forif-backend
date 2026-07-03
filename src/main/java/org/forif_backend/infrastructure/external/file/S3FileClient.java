@@ -156,6 +156,31 @@ public class S3FileClient implements FilePort {
     }
 
     @Override
+    public String uploadBytes(byte[] content, String filename, String directory, String contentType) {
+        String safeFilename = StringUtils.cleanPath(filename).replace("\\", "_").replace("/", "_");
+        String normalizedDirectory = normalizeDirectory(directory);
+        String objectKey = StringUtils.hasText(normalizedDirectory)
+                ? normalizedDirectory + "/" + safeFilename
+                : safeFilename;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
+
+            log.info("파일 업로드 성공: {}", objectKey);
+            return objectKey;
+        } catch (Exception e) {
+            log.error("S3 파일 업로드 중 오류 발생", e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
     public void createDirectory(String directory) {
         // S3는 실제 디렉터리 생성이 필요하지 않다. object key prefix만 사용한다.
     }

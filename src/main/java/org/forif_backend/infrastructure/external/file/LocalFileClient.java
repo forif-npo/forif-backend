@@ -86,6 +86,30 @@ public class LocalFileClient implements FilePort {
     }
 
     @Override
+    public String uploadBytes(byte[] content, String filename, String directory, String contentType) {
+        if (content == null || content.length == 0) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+
+        String safeFilename = StringUtils.cleanPath(filename).replace("\\", "_").replace("/", "_");
+        String normalizedDirectory = normalizeDirectory(directory);
+        String objectKey = StringUtils.hasText(normalizedDirectory)
+                ? normalizedDirectory + "/" + safeFilename
+                : safeFilename;
+        Path targetPath = resolvePath(objectKey);
+
+        try {
+            Files.createDirectories(targetPath.getParent());
+            Files.write(targetPath, content);
+            log.info("로컬 파일 저장 성공: {}", objectKey);
+            return objectKey;
+        } catch (IOException e) {
+            log.error("로컬 파일 저장 중 오류 발생: {}", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
     public void createDirectory(String directory) {
         Path directoryPath = resolveDirectoryPath(directory);
         try {

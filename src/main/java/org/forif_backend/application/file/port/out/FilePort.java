@@ -10,6 +10,12 @@ public interface FilePort {
     default String uploadFile(MultipartFile file, String directory) {
         return uploadFile(file);
     }
+
+    /**
+     * 서버에서 생성한 파일(수료증 이미지 등)을 저장하고 objectKey를 반환한다.
+     */
+    String uploadBytes(byte[] content, String filename, String directory, String contentType);
+
     default void createDirectory(String directory) {
     }
     void deleteFile(String objectKey);
