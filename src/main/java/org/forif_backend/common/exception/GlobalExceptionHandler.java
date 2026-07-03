@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -72,6 +73,16 @@ public class GlobalExceptionHandler {
                 .collect(Collectors.toList());
         ApiResponse<?> response = ApiResponse.error(errorCode, errors);
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
+    }
+
+    /**
+     * @PreAuthorize 등 인가 실패 처리 (500이 아닌 403으로 응답)
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<?>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("권한 부족: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.INSUFFICIENT_PERMISSION;
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
     }
 
     /**
