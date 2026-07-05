@@ -26,6 +26,9 @@ public record ManualCertificateRequest(
         String activityPeriod,
 
         @Schema(description = "발급일 (미입력 시 오늘 날짜)", example = "2026. 07. 07.")
-        String issueDate
+        String issueDate,
+
+        @Schema(description = "회장 이름 (미입력 시 현재 회장, 과거 재발행 시 당시 회장 지정 가능)", example = "권기태")
+        String presidentName
 ) {
 }

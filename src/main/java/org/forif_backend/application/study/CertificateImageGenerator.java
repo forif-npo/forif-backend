@@ -39,6 +39,9 @@ public class CertificateImageGenerator {
     private static final int POS_STUDENT_NAME_Y = 360;
     private static final int POS_STUDY_NAME_Y = 500;
     private static final int[] POS_DATE = {575, 640};
+    // "President, FORIF" 라벨 아래 회장 이름 자리 (레거시에서는 템플릿에 수기로 넣던 부분)
+    private static final int FONT_PRESIDENT = 26;
+    private static final int[] POS_PRESIDENT_NAME = {1008, 632};
 
     private final ResourceLoader resourceLoader;
     private final String templatePath;
@@ -63,18 +66,22 @@ public class CertificateImageGenerator {
      * @param studyName      스터디명
      * @param activityPeriod 활동 기간 (예: 2026.03.02.~2026.06.20.)
      * @param issueDate      발급일 (예: 2026. 07. 07.)
+     * @param presidentName  발급 시점의 회장 이름 (우하단 President, FORIF 아래 표기)
      */
     public byte[] generate(String studentName, String studentNumber, String departmentName,
-                           String studyName, String activityPeriod, String issueDate) {
+                           String studyName, String activityPeriod, String issueDate,
+                           String presidentName) {
         // 레거시 데이터에 섞인 소프트 하이픈(U+00AD) 등 보이지 않는 문자가 수료증에 찍히지 않도록 제거
         studentName = sanitize(studentName);
         departmentName = sanitize(departmentName);
         studyName = sanitize(studyName);
+        presidentName = sanitize(presidentName);
         try {
             BufferedImage image = loadTemplate();
             Font baseFont = loadBaseFont();
             Font smallFont = baseFont.deriveFont(Font.PLAIN, FONT_SMALL);
             Font largeFont = baseFont.deriveFont(Font.PLAIN, FONT_LARGE);
+            Font presidentFont = baseFont.deriveFont(Font.PLAIN, FONT_PRESIDENT);
 
             Graphics2D graphics = image.createGraphics();
             graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
@@ -87,6 +94,10 @@ public class CertificateImageGenerator {
             drawCentered(graphics, largeFont, studentName, POS_STUDENT_NAME_Y);
             drawCentered(graphics, largeFont, studyName, POS_STUDY_NAME_Y);
             drawTopLeft(graphics, smallFont, issueDate, POS_DATE[0], POS_DATE[1]);
+            if (!presidentName.isBlank()) {
+                drawTopLeft(graphics, presidentFont, presidentName,
+                        POS_PRESIDENT_NAME[0], POS_PRESIDENT_NAME[1]);
+            }
 
             graphics.dispose();
 

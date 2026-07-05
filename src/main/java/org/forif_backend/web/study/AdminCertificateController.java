@@ -66,7 +66,8 @@ public class AdminCertificateController {
                 request.department(),
                 request.studyName(),
                 request.activityPeriod(),
-                request.issueDate()
+                request.issueDate(),
+                request.presidentName()
         );
         return ResponseEntity.ok(ApiResponse.success(new ManualCertificateResponse(certificateUrl)));
     }

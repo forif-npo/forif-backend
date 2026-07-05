@@ -8,6 +8,8 @@ import org.forif_backend.application.study.dto.IssueCertificatesResult;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.hackathon.HackathonRepository;
+import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyAttendanceRepository;
 import org.forif_backend.domain.study.StudyRepository;
@@ -41,8 +43,19 @@ public class CertificateService {
     private final StudyUserRepository studyUserRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
     private final HackathonRepository hackathonRepository;
+    private final StaffAccountRepository staffAccountRepository;
     private final CertificateImageGenerator certificateImageGenerator;
     private final FilePort filePort;
+
+    /**
+     * 현재 회장 이름 조회 (tb_staff_account의 affiliation='회장' ADMIN 계정)
+     */
+    private String resolvePresidentName() {
+        return staffAccountRepository.findByAffiliation("회장").stream()
+                .findFirst()
+                .map(StaffAccount::getName)
+                .orElse("");
+    }
 
     /**
      * 발급 대상 조회: 스터디 멘티 전원의 출석 횟수, 해커톤 참여, 자격 여부, 발급 상태
@@ -91,13 +104,19 @@ public class CertificateService {
      * 자격 검증과 DB 기록 없이 이미지 생성·저장 후 URL만 반환한다.
      */
     public String issueManualCertificate(String userName, String studentNumber, String department,
-                                         String studyName, String activityPeriod, String issueDate) {
+                                         String studyName, String activityPeriod, String issueDate,
+                                         String presidentName) {
         String resolvedIssueDate = issueDate == null || issueDate.isBlank()
                 ? LocalDate.now().format(ISSUE_DATE_FORMAT)
                 : issueDate;
+        // 과거 학기 재발행 시 당시 회장 이름을 직접 지정할 수 있고, 미지정 시 현재 회장
+        String resolvedPresidentName = presidentName == null || presidentName.isBlank()
+                ? resolvePresidentName()
+                : presidentName;
 
         byte[] image = certificateImageGenerator.generate(
-                userName, studentNumber, department, studyName, activityPeriod, resolvedIssueDate);
+                userName, studentNumber, department, studyName, activityPeriod,
+                resolvedIssueDate, resolvedPresidentName);
 
         // 파일명에 타임스탬프를 붙여 동일 인물 재발급 시 기존 파일을 덮어쓰지 않는다
         String filename = "%s-%d.png".formatted(studentNumber, System.currentTimeMillis());
@@ -120,6 +139,7 @@ public class CertificateService {
                 study.getActYear(), study.getActSemester()));
 
         String issueDate = LocalDate.now().format(ISSUE_DATE_FORMAT);
+        String presidentName = resolvePresidentName();
         String directory = "certificates/%d-%d/%d".formatted(
                 study.getActYear(), study.getActSemester(), study.getId());
 
@@ -151,7 +171,8 @@ public class CertificateService {
                     mentee.getUser().getDepartment(),
                     study.getStudyName(),
                     activityPeriod,
-                    issueDate
+                    issueDate,
+                    presidentName
             );
 
             String objectKey = filePort.uploadBytes(image, userId + ".png", directory, "image/png");
