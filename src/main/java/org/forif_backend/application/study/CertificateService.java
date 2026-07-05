@@ -86,6 +86,26 @@ public class CertificateService {
     }
 
     /**
+     * 수동 발급: 특수 케이스(자료 누락, 외부 과정, 과거 학기 재발행 등)를 위해
+     * 모든 표기 정보를 직접 입력받아 수료증을 생성한다.
+     * 자격 검증과 DB 기록 없이 이미지 생성·저장 후 URL만 반환한다.
+     */
+    public String issueManualCertificate(String userName, String studentNumber, String department,
+                                         String studyName, String activityPeriod, String issueDate) {
+        String resolvedIssueDate = issueDate == null || issueDate.isBlank()
+                ? LocalDate.now().format(ISSUE_DATE_FORMAT)
+                : issueDate;
+
+        byte[] image = certificateImageGenerator.generate(
+                userName, studentNumber, department, studyName, activityPeriod, resolvedIssueDate);
+
+        // 파일명에 타임스탬프를 붙여 동일 인물 재발급 시 기존 파일을 덮어쓰지 않는다
+        String filename = "%s-%d.png".formatted(studentNumber, System.currentTimeMillis());
+        String objectKey = filePort.uploadBytes(image, filename, "certificates/manual", "image/png");
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+    }
+
+    /**
      * 수료증 발급: 자격을 충족한 유저만 이미지 생성 → 파일 저장 → 발급 상태/URL 갱신.
      * 자격 미달 유저는 스킵되고 결과에 사유가 담긴다. 이미 발급된 유저는 재발급(덮어쓰기)된다.
      */

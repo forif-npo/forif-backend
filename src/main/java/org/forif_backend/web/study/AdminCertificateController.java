@@ -12,6 +12,8 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.study.dto.CertificateTargetsResponse;
 import org.forif_backend.web.study.dto.IssueCertificatesRequest;
 import org.forif_backend.web.study.dto.IssueCertificatesResponse;
+import org.forif_backend.web.study.dto.ManualCertificateRequest;
+import org.forif_backend.web.study.dto.ManualCertificateResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,5 +51,23 @@ public class AdminCertificateController {
         IssueCertificatesResult result = certificateService.issueCertificates(
                 studyId, request.userIds(), request.activityPeriod());
         return ResponseEntity.ok(ApiResponse.success(IssueCertificatesResponse.from(result)));
+    }
+
+    @Operation(summary = "수료증 수동 발급 (어드민 전용)",
+            description = "특수 케이스를 위해 이름, 학번, 학과, 스터디명, 활동 기간을 직접 입력해 수료증을 생성합니다. 자격 검증과 DB 기록 없이 이미지 URL만 반환합니다.")
+    @PostMapping("/api/v1/admin/certificates/manual")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ManualCertificateResponse>> issueManualCertificate(
+            @Valid @RequestBody ManualCertificateRequest request
+    ) {
+        String certificateUrl = certificateService.issueManualCertificate(
+                request.userName(),
+                request.studentNumber(),
+                request.department(),
+                request.studyName(),
+                request.activityPeriod(),
+                request.issueDate()
+        );
+        return ResponseEntity.ok(ApiResponse.success(new ManualCertificateResponse(certificateUrl)));
     }
 }
