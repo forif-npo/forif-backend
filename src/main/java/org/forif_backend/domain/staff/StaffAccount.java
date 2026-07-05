@@ -38,6 +38,9 @@ public class StaffAccount extends BaseTimeEntity {
     @Column(length = 100, nullable = false)
     private String affiliation; // 멘토일 경우 스터디명, 어드민일 경우 팀명 (예: 기획팀, 인공지능 스터디)
 
+    @Column(length = 300)
+    private String signatureObjectKey; // 수료증 합성용 서명 이미지 (파일 저장소 object key)
+
     private StaffAccount(User user, String password, String name, StaffRole role, String affiliation) {
         this.user = user;
         this.password = password;
@@ -68,6 +71,10 @@ public class StaffAccount extends BaseTimeEntity {
 
     public void updateAffiliation(String affiliation) {
         this.affiliation = affiliation;
+    }
+
+    public void updateSignature(String signatureObjectKey) {
+        this.signatureObjectKey = signatureObjectKey;
     }
 
     /**

@@ -42,6 +42,10 @@ public class CertificateImageGenerator {
     // "President, FORIF" 라벨 아래 회장 이름 자리 (레거시에서는 템플릿에 수기로 넣던 부분)
     private static final int FONT_PRESIDENT = 26;
     private static final int[] POS_PRESIDENT_NAME = {1008, 632};
+    // 회장 이름 오른쪽 서명 합성 영역 {x, y, 최대폭, 최대높이} — 비율 유지 축소 후 세로 중앙 정렬
+    private static final int[] SIGNATURE_BOX = {1095, 615, 115, 52};
+    // 이 값 이상으로 밝은 픽셀(흰 종이 배경 등)은 투명 처리해 이름/라벨을 가리지 않게 한다
+    private static final int WHITE_TRANSPARENCY_THRESHOLD = 235;
 
     private final ResourceLoader resourceLoader;
     private final String templatePath;
@@ -67,10 +71,11 @@ public class CertificateImageGenerator {
      * @param activityPeriod 활동 기간 (예: 2026.03.02.~2026.06.20.)
      * @param issueDate      발급일 (예: 2026. 07. 07.)
      * @param presidentName  발급 시점의 회장 이름 (우하단 President, FORIF 아래 표기)
+     * @param signatureImage 회장 서명 이미지 (null이면 서명 없이 생성)
      */
     public byte[] generate(String studentName, String studentNumber, String departmentName,
                            String studyName, String activityPeriod, String issueDate,
-                           String presidentName) {
+                           String presidentName, byte[] signatureImage) {
         // 레거시 데이터에 섞인 소프트 하이픈(U+00AD) 등 보이지 않는 문자가 수료증에 찍히지 않도록 제거
         studentName = sanitize(studentName);
         departmentName = sanitize(departmentName);
@@ -98,6 +103,9 @@ public class CertificateImageGenerator {
                 drawTopLeft(graphics, presidentFont, presidentName,
                         POS_PRESIDENT_NAME[0], POS_PRESIDENT_NAME[1]);
             }
+            if (signatureImage != null && signatureImage.length > 0) {
+                drawSignature(graphics, signatureImage);
+            }
 
             graphics.dispose();
 
@@ -121,6 +129,47 @@ public class CertificateImageGenerator {
         graphics.setFont(font);
         FontMetrics metrics = graphics.getFontMetrics(font);
         graphics.drawString(text, x, y + metrics.getAscent());
+    }
+
+    private void drawSignature(Graphics2D graphics, byte[] signatureImage) throws IOException {
+        BufferedImage signature = ImageIO.read(new java.io.ByteArrayInputStream(signatureImage));
+        if (signature == null) {
+            throw new IOException("서명 이미지를 읽을 수 없습니다.");
+        }
+        signature = withWhiteBackgroundRemoved(signature);
+        double scale = Math.min(
+                (double) SIGNATURE_BOX[2] / signature.getWidth(),
+                (double) SIGNATURE_BOX[3] / signature.getHeight());
+        int width = Math.max(1, (int) (signature.getWidth() * scale));
+        int height = Math.max(1, (int) (signature.getHeight() * scale));
+        int x = SIGNATURE_BOX[0];
+        int y = SIGNATURE_BOX[1] + (SIGNATURE_BOX[3] - height) / 2;
+
+        graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        graphics.drawImage(signature, x, y, width, height, null);
+    }
+
+    /**
+     * 흰 종이에 스캔한 서명도 쓸 수 있도록 밝은 배경 픽셀을 투명 처리한다.
+     * (투명 배경 PNG는 그대로 유지된다)
+     */
+    private BufferedImage withWhiteBackgroundRemoved(BufferedImage source) {
+        BufferedImage result = new BufferedImage(
+                source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < source.getHeight(); y++) {
+            for (int x = 0; x < source.getWidth(); x++) {
+                int argb = source.getRGB(x, y);
+                int red = (argb >> 16) & 0xFF;
+                int green = (argb >> 8) & 0xFF;
+                int blue = argb & 0xFF;
+                boolean nearWhite = red >= WHITE_TRANSPARENCY_THRESHOLD
+                        && green >= WHITE_TRANSPARENCY_THRESHOLD
+                        && blue >= WHITE_TRANSPARENCY_THRESHOLD;
+                result.setRGB(x, y, nearWhite ? 0x00000000 : argb);
+            }
+        }
+        return result;
     }
 
     private void drawCentered(Graphics2D graphics, Font font, String text, int y) {

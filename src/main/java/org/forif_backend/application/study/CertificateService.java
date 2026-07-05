@@ -10,6 +10,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.hackathon.HackathonRepository;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyAttendanceRepository;
 import org.forif_backend.domain.study.StudyRepository;
@@ -17,6 +18,7 @@ import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -48,13 +50,56 @@ public class CertificateService {
     private final FilePort filePort;
 
     /**
-     * 현재 회장 이름 조회 (tb_staff_account의 affiliation='회장' ADMIN 계정)
+     * 현재 회장 계정 조회 (tb_staff_account의 affiliation='회장' ADMIN 계정)
      */
-    private String resolvePresidentName() {
-        return staffAccountRepository.findByAffiliation("회장").stream()
-                .findFirst()
-                .map(StaffAccount::getName)
-                .orElse("");
+    private java.util.Optional<StaffAccount> findCurrentPresident() {
+        return staffAccountRepository.findByAffiliation("회장").stream().findFirst();
+    }
+
+    /**
+     * 현재 회장의 서명 이미지를 로드한다. 회장 계정이 없거나 서명 미등록이면 발급 불가.
+     */
+    private byte[] requirePresidentSignature(StaffAccount president) {
+        if (president == null || president.getSignatureObjectKey() == null
+                || president.getSignatureObjectKey().isBlank()) {
+            throw new ForifException(ErrorCode.CERTIFICATE_SIGNATURE_NOT_FOUND);
+        }
+        return filePort.downloadBytes(president.getSignatureObjectKey());
+    }
+
+    /**
+     * 서명 등록: 로그인한 운영진 본인의 계정에 서명 이미지를 저장한다.
+     */
+    @Transactional
+    public String uploadSignature(Long userId, MultipartFile file) {
+        StaffAccount account = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        String contentType = file != null ? file.getContentType() : null;
+        if (file == null || file.isEmpty() || contentType == null || !contentType.startsWith("image/")) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+
+        String objectKey = filePort.uploadFile(file, "signatures");
+        account.updateSignature(objectKey);
+        staffAccountRepository.save(account);
+
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+    }
+
+    /**
+     * 로그인한 운영진의 등록된 서명 URL 조회 (없으면 null)
+     */
+    @Transactional(readOnly = true)
+    public String getSignatureUrl(Long userId) {
+        StaffAccount account = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        String objectKey = account.getSignatureObjectKey();
+        if (objectKey == null || objectKey.isBlank()) {
+            return null;
+        }
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
     }
 
     /**
@@ -109,14 +154,23 @@ public class CertificateService {
         String resolvedIssueDate = issueDate == null || issueDate.isBlank()
                 ? LocalDate.now().format(ISSUE_DATE_FORMAT)
                 : issueDate;
-        // 과거 학기 재발행 시 당시 회장 이름을 직접 지정할 수 있고, 미지정 시 현재 회장
-        String resolvedPresidentName = presidentName == null || presidentName.isBlank()
-                ? resolvePresidentName()
-                : presidentName;
+
+        // 과거 학기 재발행 시 당시 회장 이름을 직접 지정할 수 있고(서명 없이 생성),
+        // 미지정 시 현재 회장 이름 + 등록된 서명으로 생성한다
+        String resolvedPresidentName;
+        byte[] signature;
+        if (presidentName == null || presidentName.isBlank()) {
+            StaffAccount president = findCurrentPresident().orElse(null);
+            signature = requirePresidentSignature(president);
+            resolvedPresidentName = president.getName();
+        } else {
+            resolvedPresidentName = presidentName;
+            signature = null;
+        }
 
         byte[] image = certificateImageGenerator.generate(
                 userName, studentNumber, department, studyName, activityPeriod,
-                resolvedIssueDate, resolvedPresidentName);
+                resolvedIssueDate, resolvedPresidentName, signature);
 
         // 파일명에 타임스탬프를 붙여 동일 인물 재발급 시 기존 파일을 덮어쓰지 않는다
         String filename = "%s-%d.png".formatted(studentNumber, System.currentTimeMillis());
@@ -139,7 +193,9 @@ public class CertificateService {
                 study.getActYear(), study.getActSemester()));
 
         String issueDate = LocalDate.now().format(ISSUE_DATE_FORMAT);
-        String presidentName = resolvePresidentName();
+        StaffAccount president = findCurrentPresident().orElse(null);
+        byte[] signature = requirePresidentSignature(president);
+        String presidentName = president.getName();
         String directory = "certificates/%d-%d/%d".formatted(
                 study.getActYear(), study.getActSemester(), study.getId());
 
@@ -172,7 +228,8 @@ public class CertificateService {
                     study.getStudyName(),
                     activityPeriod,
                     issueDate,
-                    presidentName
+                    presidentName,
+                    signature
             );
 
             String objectKey = filePort.uploadBytes(image, userId + ".png", directory, "image/png");

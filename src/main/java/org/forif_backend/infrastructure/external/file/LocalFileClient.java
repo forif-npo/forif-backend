@@ -110,6 +110,20 @@ public class LocalFileClient implements FilePort {
     }
 
     @Override
+    public byte[] downloadBytes(String objectKey) {
+        Path targetPath = resolvePath(objectKey);
+        if (!Files.exists(targetPath)) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        try {
+            return Files.readAllBytes(targetPath);
+        } catch (IOException e) {
+            log.error("로컬 파일 읽기 중 오류 발생: {}", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
     public void createDirectory(String directory) {
         Path directoryPath = resolveDirectoryPath(directory);
         try {

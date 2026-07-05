@@ -16,6 +16,11 @@ public interface FilePort {
      */
     String uploadBytes(byte[] content, String filename, String directory, String contentType);
 
+    /**
+     * 저장된 파일을 바이트로 읽어온다 (수료증 서명 합성 등 서버 내 처리용).
+     */
+    byte[] downloadBytes(String objectKey);
+
     default void createDirectory(String directory) {
     }
     void deleteFile(String objectKey);

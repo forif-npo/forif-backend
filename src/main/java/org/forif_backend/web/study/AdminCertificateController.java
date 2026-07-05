@@ -14,13 +14,17 @@ import org.forif_backend.web.study.dto.IssueCertificatesRequest;
 import org.forif_backend.web.study.dto.IssueCertificatesResponse;
 import org.forif_backend.web.study.dto.ManualCertificateRequest;
 import org.forif_backend.web.study.dto.ManualCertificateResponse;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "수료증 발급 (어드민)", description = "운영진의 스터디 수료증 발급 API")
 @RestController
@@ -70,5 +74,35 @@ public class AdminCertificateController {
                 request.presidentName()
         );
         return ResponseEntity.ok(ApiResponse.success(new ManualCertificateResponse(certificateUrl)));
+    }
+
+    @Operation(summary = "내 서명 조회 (어드민 전용)",
+            description = "로그인한 운영진 본인이 등록한 수료증 서명 이미지 URL을 조회합니다. 미등록 시 null.")
+    @GetMapping("/api/v1/admin/certificates/signature")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SignatureResponse>> getSignature(
+            @AuthenticationPrincipal Long userId
+    ) {
+        String signatureUrl = certificateService.getSignatureUrl(userId);
+        return ResponseEntity.ok(ApiResponse.success(new SignatureResponse(signatureUrl)));
+    }
+
+    @Operation(summary = "내 서명 등록 (어드민 전용)",
+            description = "로그인한 운영진 본인의 수료증 서명 이미지를 등록합니다. 투명 배경 PNG 권장. 현재 회장의 서명이 수료증에 합성됩니다.")
+    @PostMapping(value = "/api/v1/admin/certificates/signature", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<SignatureResponse>> uploadSignature(
+            @AuthenticationPrincipal Long userId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        String signatureUrl = certificateService.uploadSignature(userId, file);
+        return ResponseEntity.ok(ApiResponse.success(new SignatureResponse(signatureUrl)));
+    }
+
+    @io.swagger.v3.oas.annotations.media.Schema(description = "서명 조회/등록 응답")
+    public record SignatureResponse(
+            @io.swagger.v3.oas.annotations.media.Schema(description = "서명 이미지 URL (미등록 시 null)")
+            String signatureUrl
+    ) {
     }
 }

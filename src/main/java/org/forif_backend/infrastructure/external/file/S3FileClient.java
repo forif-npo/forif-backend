@@ -181,6 +181,20 @@ public class S3FileClient implements FilePort {
     }
 
     @Override
+    public byte[] downloadBytes(String objectKey) {
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+            return s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
+        } catch (Exception e) {
+            log.error("S3 파일 읽기 중 오류 발생 (ObjectKey: {})", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
     public void createDirectory(String directory) {
         // S3는 실제 디렉터리 생성이 필요하지 않다. object key prefix만 사용한다.
     }
