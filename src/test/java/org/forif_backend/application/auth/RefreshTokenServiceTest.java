@@ -7,10 +7,8 @@ import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.auth.RefreshTokenStore;
-import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
-import org.forif_backend.domain.user.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,7 +18,6 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -61,11 +58,11 @@ class RefreshTokenServiceTest {
     }
 
     @Test
-    @DisplayName("MENTOR 세션 refresh는 현재 DB role이 MENTOR일 때만 MENTOR로 재발급된다")
+    @DisplayName("MENTOR 세션 refresh는 해당 유저의 MENTOR 계정이 존재할 때만 MENTOR로 재발급된다")
     void mentorRefreshTokenKeepsMentorRole() {
         String refreshToken = jwtProvider.generateRefreshToken("1", "MENTOR");
         refreshTokenService.saveRefreshToken("1", "MENTOR", refreshToken);
-        when(staffAccountRepository.findByUserId(1L)).thenReturn(Optional.of(staffAccount(StaffRole.MENTOR)));
+        when(staffAccountRepository.existsByUserIdAndRole(1L, StaffRole.MENTOR)).thenReturn(true);
 
         RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(refreshToken);
 
@@ -73,11 +70,11 @@ class RefreshTokenServiceTest {
     }
 
     @Test
-    @DisplayName("MENTOR 세션은 사용자가 ADMIN으로 승격돼도 ADMIN으로 refresh되지 않고 실패한다")
-    void mentorRefreshTokenFailsAfterRolePromotedToAdmin() {
+    @DisplayName("MENTOR 계정이 삭제된 세션은 refresh되지 않는다 (ADMIN 계정만 남아 있어도 실패)")
+    void mentorRefreshTokenFailsWhenMentorAccountRemoved() {
         String refreshToken = jwtProvider.generateRefreshToken("1", "MENTOR");
         refreshTokenService.saveRefreshToken("1", "MENTOR", refreshToken);
-        when(staffAccountRepository.findByUserId(1L)).thenReturn(Optional.of(staffAccount(StaffRole.ADMIN)));
+        when(staffAccountRepository.existsByUserIdAndRole(1L, StaffRole.MENTOR)).thenReturn(false);
 
         assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken(refreshToken))
                 .isInstanceOfSatisfying(ForifException.class,
@@ -117,11 +114,6 @@ class RefreshTokenServiceTest {
                 .compact();
 
         assertThat(jwtProvider.isAccessToken(legacyRoleToken)).isFalse();
-    }
-
-    private StaffAccount staffAccount(StaffRole role) {
-        User user = User.createUser(1L, "tester", "tester@hanyang.ac.kr", "01000000000", "컴퓨터소프트웨어학부");
-        return StaffAccount.createStaffAccount(user, "password", "tester", role, "운영진");
     }
 
     private static class InMemoryRefreshTokenStore implements RefreshTokenStore {
