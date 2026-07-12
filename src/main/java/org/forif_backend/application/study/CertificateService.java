@@ -183,7 +183,8 @@ public class CertificateService {
      * 자격 미달 유저는 스킵되고 결과에 사유가 담긴다. 이미 발급된 유저는 재발급(덮어쓰기)된다.
      */
     @Transactional
-    public IssueCertificatesResult issueCertificates(Integer studyId, List<Long> userIds, String activityPeriod) {
+    public IssueCertificatesResult issueCertificates(Integer studyId, List<Long> userIds, String activityPeriod,
+                                                     boolean ignoreEligibility) {
         Study study = getStudy(studyId);
 
         Map<Long, StudyUser> menteeMap = studyUserRepository.findAllByStudyId(studyId).stream()
@@ -211,14 +212,17 @@ public class CertificateService {
 
             String userName = mentee.getUser().getUserName();
             long attendanceCount = presentCounts.getOrDefault(userId, 0L);
-            if (attendanceCount < REQUIRED_ATTENDANCE) {
-                results.add(itemResult(userId, userName, false,
-                        "출석 횟수 미달 (%d/%d회)".formatted(attendanceCount, REQUIRED_ATTENDANCE), null));
-                continue;
-            }
-            if (!hackathonUserIds.contains(userId)) {
-                results.add(itemResult(userId, userName, false, "해당 학기 해커톤 미참여", null));
-                continue;
+            // 자격 미달자는 기본적으로 스킵하되, 운영진이 경고를 확인하고 강제 발급을 선택한 경우 허용
+            if (!ignoreEligibility) {
+                if (attendanceCount < REQUIRED_ATTENDANCE) {
+                    results.add(itemResult(userId, userName, false,
+                            "출석 횟수 미달 (%d/%d회)".formatted(attendanceCount, REQUIRED_ATTENDANCE), null));
+                    continue;
+                }
+                if (!hackathonUserIds.contains(userId)) {
+                    results.add(itemResult(userId, userName, false, "해당 학기 해커톤 미참여", null));
+                    continue;
+                }
             }
 
             byte[] image = certificateImageGenerator.generate(

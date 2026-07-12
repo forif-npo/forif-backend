@@ -14,6 +14,9 @@ public record IssueCertificatesRequest(
 
         @Schema(description = "수료증에 표기할 활동 기간", example = "2026.03.02.~2026.06.20.")
         @NotBlank
-        String activityPeriod
+        String activityPeriod,
+
+        @Schema(description = "자격(출석/해커톤) 미달자도 발급할지 여부. 운영진이 경고 확인 후 강제 발급할 때 사용", example = "false")
+        Boolean ignoreEligibility
 ) {
 }

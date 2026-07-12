@@ -53,7 +53,8 @@ public class AdminCertificateController {
             @Valid @RequestBody IssueCertificatesRequest request
     ) {
         IssueCertificatesResult result = certificateService.issueCertificates(
-                studyId, request.userIds(), request.activityPeriod());
+                studyId, request.userIds(), request.activityPeriod(),
+                Boolean.TRUE.equals(request.ignoreEligibility()));
         return ResponseEntity.ok(ApiResponse.success(IssueCertificatesResponse.from(result)));
     }
 
