@@ -88,6 +88,7 @@ public class UserDtoMapper {
                 .location(info.location())
                 .difficulty(info.difficulty())
                 .imgUrl(info.imgUrl())
+                .certificateIssued(info.certificateIssued())
                 .build();
     }
 

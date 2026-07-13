@@ -22,6 +22,9 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
             """)
     List<StudyUser> findAllByStudyId(@Param("studyId") Integer studyId);
 
+    @Query("SELECT su FROM StudyUser su WHERE su.user.id = :userId")
+    List<StudyUser> findAllByUserId(@Param("userId") Long userId);
+
     void deleteByStudyId(Integer studyId);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);

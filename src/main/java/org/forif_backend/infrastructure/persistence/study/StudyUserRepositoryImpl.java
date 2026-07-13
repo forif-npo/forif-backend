@@ -25,6 +25,11 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     }
 
     @Override
+    public List<StudyUser> findAllByUserId(Long userId) {
+        return studyUserJpaRepository.findAllByUserId(userId);
+    }
+
+    @Override
     public void save(StudyUser studyUser) {
         studyUserJpaRepository.save(studyUser);
     }

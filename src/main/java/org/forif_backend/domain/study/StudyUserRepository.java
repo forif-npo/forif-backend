@@ -8,6 +8,8 @@ public interface StudyUserRepository {
 
     List<StudyUser> findAllByStudyId(Integer studyId);
 
+    List<StudyUser> findAllByUserId(Long userId);
+
     void save(StudyUser studyUser);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);
