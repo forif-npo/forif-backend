@@ -6,12 +6,24 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUserId> {
 
     @Query("SELECT su FROM StudyUser su WHERE su.user.id = :userId AND su.study.id = :studyId")
     Optional<StudyUser> findByUserIdAndStudyId(@Param("userId") Long userId, @Param("studyId") Integer studyId);
+
+    @Query("""
+            SELECT su FROM StudyUser su
+            JOIN FETCH su.user u
+            WHERE su.study.id = :studyId
+            ORDER BY u.userName ASC
+            """)
+    List<StudyUser> findAllByStudyId(@Param("studyId") Integer studyId);
+
+    @Query("SELECT su FROM StudyUser su WHERE su.user.id = :userId")
+    List<StudyUser> findAllByUserId(@Param("userId") Long userId);
 
     void deleteByStudyId(Integer studyId);
 

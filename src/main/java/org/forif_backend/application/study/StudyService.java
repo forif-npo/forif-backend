@@ -12,6 +12,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -34,6 +35,7 @@ public class StudyService {
     private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
 
     private final StudyRepository studyRepository;
+    private final StudyUserRepository studyUserRepository;
     private final UserRepository userRepository;
     private final FilePort filePort;
     private final StaffAccountService staffAccountService;
@@ -84,6 +86,14 @@ public class StudyService {
         // 1. userId로 스터디 목록 조회 (이미 연도, 학기 내림차순으로 정렬됨)
         List<Study> studies = studyRepository.findStudiesByUserId(userId);
 
+        // 스터디별 수료증 발급 여부 (마이페이지 다운로드 버튼 활성화 판단용)
+        Map<Integer, Boolean> certificateIssuedMap = studyUserRepository.findAllByUserId(userId).stream()
+                .collect(Collectors.toMap(
+                        su -> su.getStudy().getId(),
+                        su -> su.getCertificateStatus() != null && su.getCertificateStatus() == 1,
+                        (a, b) -> a || b
+                ));
+
         // 2. 현재 학기 정보
         int currentYear = DateUtils.getCurrentYear();
         int currentSemester = DateUtils.getCurrentSemester();
@@ -104,7 +114,8 @@ public class StudyService {
                                             .semester(semester)
                                             .semesterLabel(year + "-" + semester)
                                             .isCurrent(year == currentYear && semester == currentSemester)
-                                            .study(StudyInfo.from(firstStudy))  // 첫 번째 스터디만 (한 학기에 1개)
+                                            .study(StudyInfo.from(firstStudy,
+                                                    certificateIssuedMap.getOrDefault(firstStudy.getId(), false)))  // 첫 번째 스터디만 (한 학기에 1개)
                                             .build();
                                 }
                         )
@@ -414,7 +425,7 @@ public class StudyService {
      * 멘토 계정이 없으면 기본 비밀번호로 자동 생성
      */
     private void createMentorAccountIfAbsent(User mentor, String studyName) {
-        if (staffAccountRepository.existsById(mentor.getId())) {
+        if (staffAccountRepository.existsByUserIdAndRole(mentor.getId(), StaffRole.MENTOR)) {
             return;
         }
 

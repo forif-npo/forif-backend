@@ -31,7 +31,8 @@ public record UserStudiesResponse(
             Integer weekDay,
             String location,
             Integer difficulty,
-            String imgUrl
+            String imgUrl,
+            boolean certificateIssued
     ) {
     }
 }

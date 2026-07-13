@@ -36,7 +36,7 @@ public class HackathonSubmission extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(length = 500, nullable = false)
+    @Column(length = 500)
     private String githubUrl;
 
     @Column(length = 500)

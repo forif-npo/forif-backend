@@ -62,6 +62,12 @@ public class DefaultMockitoTest {
                     MultipartFile file = invocation.getArgument(0);
                     return "mock-uuid-" + file.getOriginalFilename();
                 });
+        when(filePort.uploadFile(any(MultipartFile.class), anyString()))
+                .thenAnswer((Answer<String>) invocation -> {
+                    MultipartFile file = invocation.getArgument(0);
+                    String directory = invocation.getArgument(1);
+                    return directory + "/mock-uuid-" + file.getOriginalFilename();
+                });
         when(filePort.generatePresignedViewUrl(anyString()))
                 .thenAnswer((Answer<FileInfo>) invocation -> {
                     String objectKey = invocation.getArgument(0);

@@ -8,7 +8,7 @@ public record SubmissionRequest(
         @NotBlank String projectName,
         @NotBlank String summary,
         String description,
-        @NotBlank String githubUrl,
+        String githubUrl,
         String deployUrl,
         String imageUrl,
         List<String> techStacks

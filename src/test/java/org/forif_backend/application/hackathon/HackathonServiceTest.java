@@ -20,6 +20,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class HackathonServiceTest extends DefaultMockitoTest {
@@ -107,6 +109,70 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 1L,
                 new CreateTeamRequest("팀 B", "주제", "소개", 4)
         )).hasMessage(ErrorCode.HACKATHON_ALREADY_TEAM_MEMBER.getMessage());
+    }
+
+    @Test
+    @DisplayName("해커톤 진행 중에도 팀장은 팀 정보를 수정할 수 있다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void updateTeamDuringInProgress() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(
+                hackathonId,
+                1L,
+                new CreateTeamRequest("팀 A", "기존 주제", "기존 소개", 4)
+        );
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+
+        TeamResponse updated = hackathonService.updateTeam(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                new UpdateTeamRequest("팀 B", "새 주제", "새 소개", 5)
+        );
+
+        assertThat(updated.name()).isEqualTo("팀 B");
+        assertThat(updated.topic()).isEqualTo("새 주제");
+        assertThat(updated.description()).isEqualTo("새 소개");
+        assertThat(updated.maxMembers()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("심사 단계에서는 팀 정보를 수정할 수 없다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void updateTeamDuringJudgingFails() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(
+                hackathonId,
+                1L,
+                new CreateTeamRequest("팀 A", null, null, 4)
+        );
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.JUDGING);
+
+        assertThatThrownBy(() -> hackathonService.updateTeam(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                new UpdateTeamRequest("팀 B", null, null, 4)
+        )).hasMessage(ErrorCode.HACKATHON_INVALID_STATUS.getMessage());
+    }
+
+    @Test
+    @DisplayName("해커톤 생성 시 회차별 업로드 디렉터리를 준비한다")
+    void createHackathonPreparesUploadDirectory() {
+        createDefaultHackathon();
+
+        verify(filePort).createDirectory("hackathons/2025-2");
     }
 
     @Test
@@ -220,7 +286,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionKeepsExistingPresentationFile() {
-        when(filePort.uploadFile(any(MultipartFile.class))).thenReturn("presentation-v1.pdf");
+        when(filePort.uploadFile(any(MultipartFile.class), anyString()))
+                .thenReturn("hackathons/2025-2/presentation-v1.pdf");
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
@@ -233,7 +300,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "https://github.com/forif/example",
                 null,
                 null,
-                List.of("Spring Boot")
+                List.of("React")
         );
         MockMultipartFile presentation = new MockMultipartFile(
                 "presentation",
@@ -254,12 +321,12 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                         "https://github.com/forif/example-updated",
                         null,
                         null,
-                        List.of("Spring Boot")
+                        List.of("React")
                 ),
                 null
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v1.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/hackathons/2025-2/presentation-v1.pdf");
     }
 
     @Test
@@ -269,7 +336,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionReplacesPresentationFile() {
-        when(filePort.uploadFile(any(MultipartFile.class))).thenReturn("presentation-v1.pdf", "presentation-v2.pdf");
+        when(filePort.uploadFile(any(MultipartFile.class), anyString()))
+                .thenReturn("hackathons/2025-2/presentation-v1.pdf", "hackathons/2025-2/presentation-v2.pdf");
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
@@ -282,7 +350,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "https://github.com/forif/example",
                 null,
                 null,
-                List.of("Spring Boot")
+                List.of("React")
         );
         MockMultipartFile firstPresentation = new MockMultipartFile(
                 "presentation",
@@ -306,7 +374,120 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 secondPresentation
         );
 
-        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/presentation-v2.pdf");
+        assertThat(updated.presentationFile()).isEqualTo("http://mock-file-url.com/hackathons/2025-2/presentation-v2.pdf");
+    }
+
+    @Test
+    @DisplayName("허용 목록에 없는 해커톤 기술 태그는 저장할 수 없다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void createSubmissionRejectsInvalidTechStack() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+
+        SubmissionRequest request = new SubmissionRequest(
+                "프로젝트",
+                "요약",
+                "설명",
+                "https://github.com/forif/example",
+                null,
+                null,
+                List.of("Laravel")
+        );
+
+        assertThatThrownBy(() -> hackathonService.createSubmission(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                request,
+                null
+        )).hasMessage(ErrorCode.HACKATHON_INVALID_TECH_STACK.getMessage());
+    }
+
+    @Test
+    @DisplayName("해커톤 기술 스택은 최대 4개까지만 저장할 수 있다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void createSubmissionRejectsTooManyTechStacks() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+
+        SubmissionRequest request = new SubmissionRequest(
+                "프로젝트",
+                "요약",
+                "설명",
+                "https://github.com/forif/example",
+                null,
+                null,
+                List.of("React", "Next.js", "TypeScript", "PostgreSQL", "Supabase")
+        );
+
+        assertThatThrownBy(() -> hackathonService.createSubmission(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                request,
+                null
+        )).hasMessage(ErrorCode.HACKATHON_INVALID_TECH_STACK.getMessage());
+    }
+
+    @Test
+    @DisplayName("아카이브 제출작은 주요 수상 결과물 순서로 먼저 조회된다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (3, 'pw', '김동현', 'MENTOR', '백엔드', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (4, 'pw', '송준우', 'MENTOR', '기획', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (5, 'pw', '이서준', 'MENTOR', '디자인', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void getArchiveSubmissionsPrioritizesMajorAwards() {
+        Long hackathonId = createDefaultHackathon();
+        for (long userId = 1; userId <= 5; userId++) {
+            hackathonService.registerParticipant(hackathonId, userId);
+        }
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse normalTeam = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("일반 팀", null, null, 4));
+        TeamResponse excellenceTeam = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("우수상 팀", null, null, 4));
+        TeamResponse grandPrizeTeam = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("대상 팀", null, null, 4));
+        TeamResponse ideathonTeam = hackathonService.createTeam(hackathonId, 4L, new CreateTeamRequest("아이디어톤 팀", null, null, 4));
+        TeamResponse topExcellenceTeam = hackathonService.createTeam(hackathonId, 5L, new CreateTeamRequest("최우수상 팀", null, null, 4));
+
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+        createSubmission(hackathonId, normalTeam, 1L, "일반 프로젝트");
+        createSubmission(hackathonId, excellenceTeam, 2L, "우수상 프로젝트");
+        createSubmission(hackathonId, grandPrizeTeam, 3L, "대상 프로젝트");
+        createSubmission(hackathonId, ideathonTeam, 4L, "아이디어톤 프로젝트");
+        createSubmission(hackathonId, topExcellenceTeam, 5L, "최우수상 프로젝트");
+
+        hackathonService.createAward(hackathonId, new AwardRequest(excellenceTeam.hackathonTeamId(), "우수상", 3));
+        hackathonService.createAward(hackathonId, new AwardRequest(grandPrizeTeam.hackathonTeamId(), "대상", 1));
+        hackathonService.createAward(hackathonId, new AwardRequest(ideathonTeam.hackathonTeamId(), "아이디어톤 특별상", null));
+        hackathonService.createAward(hackathonId, new AwardRequest(topExcellenceTeam.hackathonTeamId(), "최우수상", 2));
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.JUDGING);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.ENDED);
+
+        List<String> projectNames = hackathonService.getArchiveSubmissions(hackathonId, null, null).stream()
+                .map(SubmissionResponse::projectName)
+                .toList();
+
+        assertThat(projectNames).containsExactly(
+                "대상 프로젝트",
+                "최우수상 프로젝트",
+                "우수상 프로젝트",
+                "아이디어톤 프로젝트",
+                "일반 프로젝트"
+        );
     }
 
     @Test
@@ -333,7 +514,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "https://github.com/forif/example",
                 null,
                 null,
-                List.of("Spring Boot")
+                List.of("React")
         );
         hackathonService.createSubmission(hackathonId, teamA.hackathonTeamId(), 2L, submissionRequest, null);
         hackathonService.createSubmission(hackathonId, teamB.hackathonTeamId(), 3L, submissionRequest, null);
@@ -358,6 +539,24 @@ public class HackathonServiceTest extends DefaultMockitoTest {
 
         assertThat(evaluation.totalScore()).isEqualByComparingTo(BigDecimal.valueOf(9));
         assertThat(evaluation.scores()).hasSize(2);
+    }
+
+    private SubmissionResponse createSubmission(Long hackathonId, TeamResponse team, Long userId, String projectName) {
+        return hackathonService.createSubmission(
+                hackathonId,
+                team.hackathonTeamId(),
+                userId,
+                new SubmissionRequest(
+                        projectName,
+                        "요약",
+                        "설명",
+                        "https://github.com/forif/example",
+                        null,
+                        null,
+                        List.of("React")
+                ),
+                null
+        );
     }
 
     private Long createDefaultHackathon() {

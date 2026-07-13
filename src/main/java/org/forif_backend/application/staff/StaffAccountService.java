@@ -39,14 +39,25 @@ public class StaffAccountService {
 
     /**
      * 스태프(멘토/운영진) 로그인
+     * 같은 유저가 MENTOR/ADMIN 계정을 모두 가질 수 있으므로, role이 지정되면 해당 역할 계정으로,
+     * 지정되지 않으면 비밀번호가 일치하는 계정(둘 다 일치 시 ADMIN 우선)으로 로그인한다.
      */
     public StaffSignInResult staffSignIn(StaffSignInCommand command) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserId(command.userId())
-                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+        List<StaffAccount> accounts = command.role() != null
+                ? staffAccountRepository.findByUserIdAndRole(command.userId(), command.role())
+                        .map(List::of).orElse(List.of())
+                : staffAccountRepository.findAllByUserId(command.userId()).stream()
+                        .sorted((a, b) -> Boolean.compare(b.getRole() == StaffRole.ADMIN, a.getRole() == StaffRole.ADMIN))
+                        .toList();
 
-        if (!passwordEncoder.matches(command.password(), staffAccount.getPassword())) {
-            throw new ForifException(ErrorCode.PASSWORD_MISMATCH);
+        if (accounts.isEmpty()) {
+            throw new ForifException(ErrorCode.STAFF_NOT_FOUND);
         }
+
+        StaffAccount staffAccount = accounts.stream()
+                .filter(account -> passwordEncoder.matches(command.password(), account.getPassword()))
+                .findFirst()
+                .orElseThrow(() -> new ForifException(ErrorCode.PASSWORD_MISMATCH));
 
         String affiliation = staffAccount.getAffiliation();
         String role = staffAccount.getRole().getValue();
@@ -70,7 +81,7 @@ public class StaffAccountService {
      */
     @Transactional
     public void createMentorAccount(CreateMentorCommand command) {
-        if (staffAccountRepository.existsById(command.userId())) {
+        if (staffAccountRepository.existsByUserIdAndRole(command.userId(), StaffRole.MENTOR)) {
             throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
         }
 
@@ -95,12 +106,8 @@ public class StaffAccountService {
      */
     @Transactional
     public void updateMentorAccount(Long userId, String name, String password, String affiliation) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.MENTOR)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        if (staffAccount.getRole() != StaffRole.MENTOR) {
-            throw new ForifException(ErrorCode.INVALID_INPUT);
-        }
 
         if (name != null) {
             staffAccount.getUser().updateUserName(name);
@@ -115,14 +122,10 @@ public class StaffAccountService {
      */
     @Transactional
     public void deleteMentorAccount(Long userId) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.MENTOR)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        if (staffAccount.getRole() != StaffRole.MENTOR) {
-            throw new ForifException(ErrorCode.INVALID_INPUT);
-        }
-
-        staffAccountRepository.deleteById(staffAccount.getUserId());
+        staffAccountRepository.delete(staffAccount);
     }
 
     /**
@@ -169,7 +172,11 @@ public class StaffAccountService {
      * 현재 로그인한 스태프 정보 조회
      */
     @Transactional(readOnly = true)
-    public StaffAccount getStaffInfo(Long userId) {
+    public StaffAccount getStaffInfo(Long userId, StaffRole role) {
+        if (role != null) {
+            return staffAccountRepository.findByUserIdAndRole(userId, role)
+                    .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+        }
         return staffAccountRepository.findByUserId(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
     }
@@ -180,7 +187,7 @@ public class StaffAccountService {
      * 회장단(회장/부회장) 권한 검증
      */
     private StaffAccount validatePresidentTeam(Long userId) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         String affiliation = staffAccount.getAffiliation();
@@ -195,7 +202,7 @@ public class StaffAccountService {
      * 회장 전용 권한 검증
      */
     private StaffAccount validatePresident(Long userId) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserId(userId)
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if (!"회장".equals(staffAccount.getAffiliation())) {
@@ -234,7 +241,7 @@ public class StaffAccountService {
     public StaffAccount createAdmin(Long requesterId, CreateAdminCommand command) {
         validatePresidentTeam(requesterId);
 
-        if (staffAccountRepository.existsById(command.userId())) {
+        if (staffAccountRepository.existsByUserIdAndRole(command.userId(), StaffRole.ADMIN)) {
             throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
         }
 
@@ -275,12 +282,8 @@ public class StaffAccountService {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
-        StaffAccount target = staffAccountRepository.findByUserId(targetUserId)
+        StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        if (target.getRole() != StaffRole.ADMIN) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
 
         if ("부회장".equals(target.getAffiliation()) && !"회장".equals(requester.getAffiliation())) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
@@ -320,9 +323,9 @@ public class StaffAccountService {
     @Transactional
     public void deleteAdmin(Long requesterId, Long targetUserId) {
         StaffAccount requester = validatePresidentTeam(requesterId);
-        findAndValidateTargetAdmin(requester, targetUserId);
+        StaffAccount target = findAndValidateTargetAdmin(requester, targetUserId);
 
-        staffAccountRepository.deleteById(targetUserId);
+        staffAccountRepository.delete(target);
     }
 
     /**
@@ -336,12 +339,8 @@ public class StaffAccountService {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
-        StaffAccount target = staffAccountRepository.findByUserId(targetUserId)
+        StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        if (target.getRole() != StaffRole.ADMIN) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
 
         if ("회장".equals(targetAffiliation)) {
             target.updateAffiliation("회장");

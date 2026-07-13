@@ -18,6 +18,15 @@ public interface HackathonParticipantJpaRepository extends JpaRepository<Hackath
     List<HackathonParticipant> findByHackathonId(Long hackathonId);
 
     @Query("""
+            SELECT DISTINCT p.user.id FROM HackathonParticipant p
+            WHERE p.status = org.forif_backend.domain.hackathon.ParticipantStatus.REGISTERED
+              AND p.hackathon.heldYear = :heldYear
+              AND p.hackathon.heldSemester = :heldSemester
+            """)
+    List<Long> findRegisteredUserIdsBySemester(@Param("heldYear") int heldYear,
+                                               @Param("heldSemester") int heldSemester);
+
+    @Query("""
             SELECT p FROM HackathonParticipant p
             WHERE p.hackathon.id = :hackathonId
               AND (:status IS NULL OR p.status = :status)

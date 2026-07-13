@@ -91,6 +91,7 @@ public class HackathonService {
                 request.endsAt()
         );
         HackathonEvent saved = hackathonRepository.saveEvent(event);
+        filePort.createDirectory(hackathonUploadDirectory(saved));
         return new HackathonIdResponse(saved.getId());
     }
 
@@ -352,7 +353,7 @@ public class HackathonService {
     @Transactional
     public TeamResponse updateTeam(Long hackathonId, Long teamId, Long userId, UpdateTeamRequest request) {
         HackathonEvent event = getEvent(hackathonId);
-        assertStatus(event, HackathonStatus.TEAM_BUILDING);
+        assertTeamEditableStatus(event);
         HackathonTeam team = getTeamOrThrow(hackathonId, teamId);
         assertTeamLeader(team, userId);
 
@@ -466,7 +467,7 @@ public class HackathonService {
         }
 
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation)
+                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
                 : null;
         HackathonSubmission submission = HackathonSubmission.create(
                 event,
@@ -497,7 +498,7 @@ public class HackathonService {
 
         String previousPresentationFile = submission.getPresentationFile();
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation)
+                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
                 : previousPresentationFile;
         submission.update(
                 request.projectName(),
@@ -695,9 +696,14 @@ public class HackathonService {
         assertStatus(event, HackathonStatus.ENDED);
         List<HackathonSubmission> submissions = hackathonRepository.findSubmissions(hackathonId);
         Map<Long, List<String>> techStacks = techStacksBySubmissionId(submissions);
+        Map<Long, Integer> awardPriorityByTeamId = archiveAwardPriorityByTeamId(hackathonId);
         return submissions.stream()
                 .filter(submission -> matchesSubmissionSearch(submission, search))
                 .filter(submission -> matchesTechStack(techStacks.getOrDefault(submission.getId(), List.of()), techStack))
+                .sorted(Comparator
+                        .comparingInt((HackathonSubmission submission) ->
+                                awardPriorityByTeamId.getOrDefault(submission.getTeam().getId(), Integer.MAX_VALUE))
+                        .thenComparing(HackathonSubmission::getId))
                 .map(submission -> toSubmissionResponse(submission, techStacks.getOrDefault(submission.getId(), List.of())))
                 .toList();
     }
@@ -858,9 +864,24 @@ public class HackathonService {
         if (techStacks == null || techStacks.isEmpty()) {
             return;
         }
+
+        List<String> normalizedTechStacks = techStacks.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(stack -> !stack.isBlank())
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toCollection(LinkedHashSet::new),
+                        ArrayList::new
+                ));
+
+        if (normalizedTechStacks.size() > HackathonTechStackPolicy.MAX_COUNT
+                || normalizedTechStacks.stream().anyMatch(stack -> !HackathonTechStackPolicy.isAllowed(stack))) {
+            throw new ForifException(ErrorCode.HACKATHON_INVALID_TECH_STACK);
+        }
+
         List<HackathonSubmissionTechStack> entities = new ArrayList<>();
-        for (int i = 0; i < techStacks.size(); i++) {
-            entities.add(HackathonSubmissionTechStack.create(submission, techStacks.get(i), i + 1));
+        for (int i = 0; i < normalizedTechStacks.size(); i++) {
+            entities.add(HackathonSubmissionTechStack.create(submission, normalizedTechStacks.get(i), i + 1));
         }
         hackathonRepository.saveTechStacks(entities);
     }
@@ -1008,7 +1029,7 @@ public class HackathonService {
     }
 
     private boolean canRegister(HackathonEvent event, Long userId) {
-        return staffAccountRepository.existsById(userId)
+        return staffAccountRepository.existsByUserId(userId)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
                         userId, event.getHeldYear(), event.getHeldSemester()
                 )
@@ -1095,6 +1116,13 @@ public class HackathonService {
         }
     }
 
+    private void assertTeamEditableStatus(HackathonEvent event) {
+        if (event.getStatus() != HackathonStatus.TEAM_BUILDING
+                && event.getStatus() != HackathonStatus.IN_PROGRESS) {
+            throw new ForifException(ErrorCode.HACKATHON_INVALID_STATUS);
+        }
+    }
+
     private void assertNextStatus(HackathonStatus currentStatus, HackathonStatus nextStatus) {
         int current = STATUS_FLOW.indexOf(currentStatus);
         int next = STATUS_FLOW.indexOf(nextStatus);
@@ -1141,6 +1169,40 @@ public class HackathonService {
             return true;
         }
         return techStacks.stream().anyMatch(stack -> stack.equalsIgnoreCase(techStack));
+    }
+
+    private Map<Long, Integer> archiveAwardPriorityByTeamId(Long hackathonId) {
+        return hackathonRepository.findAwards(hackathonId).stream()
+                .collect(Collectors.toMap(
+                        award -> award.getTeam().getId(),
+                        award -> archiveAwardPriority(award.getAwardName()),
+                        Math::min
+                ));
+    }
+
+    private int archiveAwardPriority(String awardName) {
+        if (awardName == null || awardName.isBlank()) {
+            return Integer.MAX_VALUE;
+        }
+
+        String normalized = awardName.replaceAll("\\s+", "");
+        if (normalized.contains("대상")) {
+            return 0;
+        }
+        if (normalized.contains("최우수")) {
+            return 1;
+        }
+        if (normalized.contains("우수")) {
+            return 2;
+        }
+        if (normalized.contains("아이디어톤") && normalized.contains("특별상")) {
+            return 3;
+        }
+        return Integer.MAX_VALUE;
+    }
+
+    private String hackathonUploadDirectory(HackathonEvent event) {
+        return "hackathons/%d-%d".formatted(event.getHeldYear(), event.getHeldSemester());
     }
 
     private boolean containsIgnoreCase(String value, String search) {

@@ -23,6 +23,7 @@ public enum ErrorCode {
     PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR037-400", "1순위 스터디에 먼저 지원해야 합니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "FOR012-400", "거절 사유는 필수입니다."),
     APPLY_NOT_PENDING(HttpStatus.BAD_REQUEST, "FOR038-400", "대기중(PENDING) 상태의 신청서만 수정할 수 있습니다."),
+    CERTIFICATE_SIGNATURE_NOT_FOUND(HttpStatus.BAD_REQUEST, "FOR039-400", "현재 회장의 서명이 등록되지 않았습니다. 인증서 발급 페이지에서 서명을 먼저 등록해주세요."),
     REAPPLY_ONLY_FOR_REJECTED(HttpStatus.BAD_REQUEST, "FOR013-400", "재요청은 거절된 신청서에만 가능합니다."),
     INVALID_FILE_ATTACHMENT(HttpStatus.BAD_REQUEST, "FOR014-400", "파일 첨부가 잘못됐습니다."),
     INVALID_EMAIL_DOMAIN(HttpStatus.BAD_REQUEST, "FOR015-400", "한양대 이메일(@hanyang.ac.kr)만 사용 가능합니다."),
@@ -44,6 +45,7 @@ public enum ErrorCode {
     HACKATHON_EVALUATION_CRITERIA_REQUIRED(HttpStatus.BAD_REQUEST, "FOR063-400", "평가 기준이 필요합니다."),
     HACKATHON_EVALUATION_CRITERION_HAS_SCORES(HttpStatus.BAD_REQUEST, "FOR075-400", "이미 평가에 사용된 기준은 삭제할 수 없습니다."),
     HACKATHON_REGISTRATION_CLOSED(HttpStatus.BAD_REQUEST, "FOR078-400", "해커톤 참가 모집 기간이 아닙니다."),
+    HACKATHON_INVALID_TECH_STACK(HttpStatus.BAD_REQUEST, "FOR079-400", "허용되지 않는 해커톤 기술 태그입니다."),
 
     // 401 Unauthorized
     MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "FOR017-401", "토큰이 없습니다."),

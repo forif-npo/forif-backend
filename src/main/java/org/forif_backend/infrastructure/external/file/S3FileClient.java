@@ -8,6 +8,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -49,7 +50,7 @@ public class S3FileClient implements FilePort {
     @Override
     public FileInfo generatePresignedUploadUrl(MultipartFile file) {
         // S3에 저장될 파일명 생성
-        String objectKey = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        String objectKey = createObjectKey(file, null);
         String contentType = file.getContentType();
 
         try {
@@ -125,7 +126,12 @@ public class S3FileClient implements FilePort {
      */
     @Override
     public String uploadFile(MultipartFile file) {
-        String objectKey = UUID.randomUUID() + "-" + file.getOriginalFilename();
+        return uploadFile(file, null);
+    }
+
+    @Override
+    public String uploadFile(MultipartFile file, String directory) {
+        String objectKey = createObjectKey(file, directory);
         String contentType = file.getContentType();
 
         try {
@@ -149,6 +155,50 @@ public class S3FileClient implements FilePort {
         }
     }
 
+    @Override
+    public String uploadBytes(byte[] content, String filename, String directory, String contentType) {
+        String safeFilename = StringUtils.cleanPath(filename).replace("\\", "_").replace("/", "_");
+        String normalizedDirectory = normalizeDirectory(directory);
+        String objectKey = StringUtils.hasText(normalizedDirectory)
+                ? normalizedDirectory + "/" + safeFilename
+                : safeFilename;
+
+        try {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .contentType(contentType)
+                    .build();
+
+            s3Client.putObject(putObjectRequest, RequestBody.fromBytes(content));
+
+            log.info("파일 업로드 성공: {}", objectKey);
+            return objectKey;
+        } catch (Exception e) {
+            log.error("S3 파일 업로드 중 오류 발생", e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
+    public byte[] downloadBytes(String objectKey) {
+        try {
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+            return s3Client.getObjectAsBytes(getObjectRequest).asByteArray();
+        } catch (Exception e) {
+            log.error("S3 파일 읽기 중 오류 발생 (ObjectKey: {})", objectKey, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @Override
+    public void createDirectory(String directory) {
+        // S3는 실제 디렉터리 생성이 필요하지 않다. object key prefix만 사용한다.
+    }
+
     /**
      * S3에서 파일을 삭제합니다.
      *
@@ -170,5 +220,35 @@ public class S3FileClient implements FilePort {
             log.error("S3 파일 삭제 중 오류 발생 (ObjectKey: {})", objectKey, e);
             throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    private String createObjectKey(MultipartFile file, String directory) {
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = StringUtils.hasText(originalFilename)
+                ? StringUtils.cleanPath(originalFilename).replace("\\", "_").replace("/", "_")
+                : "file";
+        String filename = UUID.randomUUID() + "-" + safeFilename;
+        String normalizedDirectory = normalizeDirectory(directory);
+        return StringUtils.hasText(normalizedDirectory)
+                ? normalizedDirectory + "/" + filename
+                : filename;
+    }
+
+    private String normalizeDirectory(String directory) {
+        if (!StringUtils.hasText(directory)) {
+            return "";
+        }
+
+        String normalized = StringUtils.cleanPath(directory).replace("\\", "/");
+        while (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (normalized.contains("..")) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        return normalized;
     }
 }

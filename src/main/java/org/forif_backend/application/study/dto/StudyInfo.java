@@ -20,12 +20,17 @@ public record StudyInfo(
         Integer weekDay,
         String location,
         Integer difficulty,
-        String imgUrl
+        String imgUrl,
+        boolean certificateIssued
 ) {
     /**
      * Study 엔티티를 StudyInfo DTO로 변환
      */
     public static StudyInfo from(Study study) {
+        return from(study, false);
+    }
+
+    public static StudyInfo from(Study study, boolean certificateIssued) {
         // tags 리스트를 태그 이름 리스트로 변환
         List<String> tagNames = study.getTags() != null
                 ? study.getTags().stream()
@@ -46,6 +51,7 @@ public record StudyInfo(
                 .location(study.getLocation())
                 .difficulty(study.getDifficulty() != null ? study.getDifficulty().getLevel() : null)
                 .imgUrl(study.getImgUrl())
+                .certificateIssued(certificateIssued)
                 .build();
     }
 }

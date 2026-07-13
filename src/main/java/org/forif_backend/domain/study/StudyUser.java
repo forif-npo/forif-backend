@@ -34,4 +34,12 @@ public class StudyUser {
         studyUser.user = user;
         return studyUser;
     }
+
+    /**
+     * 수료증 발급 처리 (0: 미발급, 1: 발급)
+     */
+    public void issueCertificate(String certificateUrl) {
+        this.certificateStatus = 1;
+        this.certificateUrl = certificateUrl;
+    }
 }

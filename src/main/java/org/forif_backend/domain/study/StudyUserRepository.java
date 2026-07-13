@@ -1,9 +1,14 @@
 package org.forif_backend.domain.study;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StudyUserRepository {
     Optional<StudyUser> findByUserIdAndStudyId(Long userId, Integer studyId);
+
+    List<StudyUser> findAllByStudyId(Integer studyId);
+
+    List<StudyUser> findAllByUserId(Long userId);
 
     void save(StudyUser studyUser);
 
