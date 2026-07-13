@@ -155,16 +155,19 @@ public class CertificateService {
                 ? LocalDate.now().format(ISSUE_DATE_FORMAT)
                 : issueDate;
 
-        // 과거 학기 재발행 시 당시 회장 이름을 직접 지정할 수 있고(서명 없이 생성),
-        // 미지정 시 현재 회장 이름 + 등록된 서명으로 생성한다
+        // 회장 이름 미지정이거나 현재 회장과 같은 이름이면 현재 회장 서명을 합성하고,
+        // 다른 이름(과거 학기 재발행)인 경우에만 서명 없이 생성한다
+        StaffAccount president = findCurrentPresident().orElse(null);
+        String currentPresidentName = president != null ? president.getName() : null;
+        String requestedName = presidentName != null ? presidentName.trim() : "";
+
         String resolvedPresidentName;
         byte[] signature;
-        if (presidentName == null || presidentName.isBlank()) {
-            StaffAccount president = findCurrentPresident().orElse(null);
+        if (requestedName.isEmpty() || requestedName.equals(currentPresidentName)) {
             signature = requirePresidentSignature(president);
-            resolvedPresidentName = president.getName();
+            resolvedPresidentName = currentPresidentName;
         } else {
-            resolvedPresidentName = presidentName;
+            resolvedPresidentName = requestedName;
             signature = null;
         }
 
