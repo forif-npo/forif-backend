@@ -137,6 +137,7 @@ public class StudyController {
      * @return 멘토가 개설한 스터디 리스트
      */
     @Operation(summary = "내가 개설한 스터디 조회 (멘토 전용)", description = "로그인한 멘토가 개설한 스터디 목록을 조회합니다.")
+    @PreAuthorize("hasRole('MENTOR')")
     @GetMapping("/api/v1/studies/me/created")
     public ResponseEntity<ApiResponse<List<StudyResponse>>> getMyCreatedStudies(@AuthenticationPrincipal Long userId)
     {

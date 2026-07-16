@@ -121,7 +121,8 @@ public class Study extends BaseTimeEntity {
      * @return 멘토 여부
      */
     public boolean isMentor(Long userId) {
-        boolean isPrimary = this.primaryMentor.getId().equals(userId);
+        // 레거시 스터디는 멘토가 이름 문자열로만 남아 있고 유저 FK가 없을 수 있다
+        boolean isPrimary = this.primaryMentor != null && this.primaryMentor.getId().equals(userId);
         boolean isSecondary = this.secondaryMentor != null && this.secondaryMentor.getId().equals(userId);
 
         return isPrimary || isSecondary;
