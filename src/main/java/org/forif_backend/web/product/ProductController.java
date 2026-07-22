@@ -1,0 +1,63 @@
+package org.forif_backend.web.product;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.forif_backend.application.product.ProductService;
+import org.forif_backend.application.product.dto.ProductInfo;
+import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.web.product.dto.CreateProductApplicationRequest;
+import org.forif_backend.web.product.dto.ProductApplicationResponse;
+import org.forif_backend.web.product.dto.ProductDetailResponse;
+import org.forif_backend.web.product.dto.ProductResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Tag(name = "프로덕트", description = "부원 프로덕트 쇼케이스 및 등록 신청 API")
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/products")
+public class ProductController {
+
+    private final ProductService productService;
+
+    @Operation(summary = "프로덕트 목록 조회", description = "게시된(승인된) 프로덕트 목록을 조회합니다. 인증 없이 접근 가능합니다.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts() {
+        List<ProductInfo> products = productService.getPublishedProducts();
+        return ResponseEntity.ok(ApiResponse.success(ProductResponse.fromList(products)));
+    }
+
+    @Operation(summary = "내 프로덕트 신청 현황", description = "로그인한 부원의 프로덕트 등록 신청 목록과 검토 결과를 조회합니다.")
+    @GetMapping("/applications/me")
+    public ResponseEntity<ApiResponse<List<ProductApplicationResponse>>> getMyApplications(
+            @AuthenticationPrincipal Long userId
+    ) {
+        List<ProductInfo> applications = productService.getMyApplications(userId);
+        return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.fromList(applications)));
+    }
+
+    @Operation(summary = "프로덕트 등록 신청", description = "부원이 직접 만든 서비스의 등록을 신청합니다. 운영진 승인 후 목록에 게시됩니다.")
+    @PostMapping("/applications")
+    public ResponseEntity<ApiResponse<ProductApplicationResponse>> applyProduct(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody CreateProductApplicationRequest request
+    ) {
+        ProductInfo info = productService.applyProduct(userId, request.toCommand());
+        return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
+    }
+
+    @Operation(summary = "프로덕트 상세 조회", description = "게시된 프로덕트의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
+    @GetMapping("/{slug}")
+    public ResponseEntity<ApiResponse<ProductDetailResponse>> getProduct(
+            @Parameter(description = "프로덕트 슬러그(서브도메인)") @PathVariable String slug
+    ) {
+        ProductInfo product = productService.getPublishedProduct(slug);
+        return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product)));
+    }
+}

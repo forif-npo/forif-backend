@@ -95,6 +95,13 @@ public enum ErrorCode {
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
     HACKATHON_ACTIVE_EVENT_EXISTS(HttpStatus.CONFLICT, "FOR076-409", "진행 중인 해커톤이 있어 새 해커톤을 생성할 수 없습니다."),
 
+    // Product (프로덕트 쇼케이스)
+    PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 프로덕트를 찾을 수 없습니다."),
+    PRODUCT_SLUG_INVALID(HttpStatus.BAD_REQUEST, "FOR111-400", "서브도메인은 영소문자·숫자·하이픈 3~20자여야 합니다."),
+    PRODUCT_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR112-409", "이미 사용 중인 서브도메인입니다."),
+    PRODUCT_NOT_PENDING(HttpStatus.BAD_REQUEST, "FOR113-400", "검토 대기 상태의 신청만 처리할 수 있습니다."),
+    PRODUCT_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "FOR114-400", "게시된 프로덕트의 상태만 변경할 수 있습니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
