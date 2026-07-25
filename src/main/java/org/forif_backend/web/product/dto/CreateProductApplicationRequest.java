@@ -2,6 +2,7 @@ package org.forif_backend.web.product.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -29,6 +30,7 @@ public class CreateProductApplicationRequest {
     private String oneLiner;
 
     @NotBlank
+    @Length(max = 2000, message = "상세 소개는 2000자 이내로 작성해주세요.")
     private String description;
 
     @NotNull
@@ -40,8 +42,10 @@ public class CreateProductApplicationRequest {
     @Length(max = 300)
     private String githubUrl;
 
+    @Size(max = 10)
     private List<String> techStack;
 
+    @Size(max = 10)
     private List<String> tags;
 
     public CreateProductApplicationCommand toCommand() {

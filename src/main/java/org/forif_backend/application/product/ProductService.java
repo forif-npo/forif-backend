@@ -11,6 +11,7 @@ import org.forif_backend.domain.product.ProductRepository;
 import org.forif_backend.domain.product.ProductStatus;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +48,9 @@ public class ProductService {
         return ProductInfo.from(product);
     }
 
+    /** 유저당 동시에 검토 대기 상태로 둘 수 있는 신청 수 */
+    private static final int MAX_PENDING_PER_USER = 3;
+
     /** 프로덕트 등록 신청 (부원) */
     @Transactional
     public ProductInfo applyProduct(Long userId, CreateProductApplicationCommand command) {
@@ -55,6 +59,7 @@ public class ProductService {
 
         String slug = command.slug() == null ? "" : command.slug().trim().toLowerCase();
         validateSlug(slug);
+        validatePendingLimit(userId);
 
         Product product = Product.createPending(
                 slug,
@@ -62,16 +67,21 @@ public class ProductService {
                 command.oneLiner().trim(),
                 command.description().trim(),
                 command.sourceType(),
-                joinCsv(command.tags()),
-                joinCsv(command.techStack()),
-                blankToNull(command.serviceUrl()),
-                blankToNull(command.githubUrl()),
+                joinCsv(command.tags(), 200),
+                joinCsv(command.techStack(), 300),
+                requireHttpUrl(command.serviceUrl()),
+                requireHttpUrl(command.githubUrl()),
                 LocalDate.now().getYear(),
                 applicant
         );
         product.addMember(ProductMember.create(product, applicant.getUserName(), "신청자"));
 
-        return ProductInfo.from(productRepository.save(product));
+        try {
+            return ProductInfo.from(productRepository.save(product));
+        } catch (DataIntegrityViolationException e) {
+            // slug 중복 검사와 저장 사이의 경합 — UNIQUE 제약이 최종 방어선
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
+        }
     }
 
     /** 내 신청 현황 (부원) */
@@ -125,16 +135,38 @@ public class ProductService {
         }
     }
 
-    private String joinCsv(List<String> values) {
+    private void validatePendingLimit(Long userId) {
+        long pendingCount = productRepository.findAllByApplicantId(userId).stream()
+                .filter(p -> p.getStatus() == ProductStatus.PENDING)
+                .count();
+        if (pendingCount >= MAX_PENDING_PER_USER) {
+            throw new ForifException(ErrorCode.PRODUCT_PENDING_LIMIT);
+        }
+    }
+
+    private String joinCsv(List<String> values, int maxLength) {
         if (values == null) return null;
         List<String> cleaned = values.stream()
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .toList();
-        return cleaned.isEmpty() ? null : String.join(",", cleaned);
+        if (cleaned.isEmpty()) return null;
+
+        String joined = String.join(",", cleaned);
+        if (joined.length() > maxLength) {
+            throw new ForifException(ErrorCode.PRODUCT_INPUT_TOO_LONG);
+        }
+        return joined;
     }
 
-    private String blankToNull(String value) {
-        return (value == null || value.isBlank()) ? null : value.trim();
+    /** 링크로 렌더링되는 값이므로 http(s) 스킴만 허용한다 (javascript: 등 주입 방지) */
+    private String requireHttpUrl(String value) {
+        if (value == null || value.isBlank()) return null;
+        String trimmed = value.trim();
+        String lower = trimmed.toLowerCase();
+        if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+            throw new ForifException(ErrorCode.PRODUCT_URL_INVALID);
+        }
+        return trimmed;
     }
 }
