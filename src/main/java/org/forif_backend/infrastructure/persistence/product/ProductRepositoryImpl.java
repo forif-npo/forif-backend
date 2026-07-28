@@ -3,6 +3,7 @@ package org.forif_backend.infrastructure.persistence.product;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.product.Product;
 import org.forif_backend.domain.product.ProductRepository;
+import org.forif_backend.domain.product.ProductStatus;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -35,6 +36,11 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public long countByApplicantIdAndStatus(Long userId, ProductStatus status) {
+        return productJpaRepository.countByApplicantIdAndStatus(userId, status);
+    }
+
+    @Override
     public List<Product> findAllPublished() {
         return productJpaRepository.findAllPublished();
     }
@@ -46,7 +52,7 @@ public class ProductRepositoryImpl implements ProductRepository {
 
     @Override
     public List<Product> findAll() {
-        return productJpaRepository.findAllByOrderByIdDesc();
+        return productJpaRepository.findAllForAdmin();
     }
 
     @Override
