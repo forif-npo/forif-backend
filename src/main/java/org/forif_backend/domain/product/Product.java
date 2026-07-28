@@ -132,4 +132,29 @@ public class Product extends BaseTimeEntity {
     public void updateSourceLabel(String sourceLabel) {
         this.sourceLabel = sourceLabel;
     }
+
+    public void updateThumbnail(String thumbnailObjectKey) {
+        this.thumbnailObjectKey = thumbnailObjectKey;
+    }
+
+    /**
+     * 운영진의 프로덕트 정보 수정. null인 인자는 변경하지 않는다.
+     * slug(서브도메인)와 상태는 별도 경로로만 변경할 수 있다.
+     */
+    public void updateInfo(String name, String oneLiner, String description, String sourceLabel,
+                           String tags, String techStack, String serviceUrl, String githubUrl) {
+        if (name != null) this.name = name;
+        if (oneLiner != null) this.oneLiner = oneLiner;
+        if (description != null) this.description = description;
+        // 선택 항목은 빈 문자열을 "값 비우기"로 해석한다
+        if (sourceLabel != null) this.sourceLabel = emptyToNull(sourceLabel);
+        if (tags != null) this.tags = emptyToNull(tags);
+        if (techStack != null) this.techStack = emptyToNull(techStack);
+        if (serviceUrl != null) this.serviceUrl = emptyToNull(serviceUrl);
+        if (githubUrl != null) this.githubUrl = emptyToNull(githubUrl);
+    }
+
+    private static String emptyToNull(String value) {
+        return value.isBlank() ? null : value;
+    }
 }

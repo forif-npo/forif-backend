@@ -18,6 +18,7 @@ public record ProductInfo(
         String status,
         String sourceType,
         String sourceLabel,
+        String thumbnailUrl,
         List<String> tags,
         List<String> techStack,
         String serviceUrl,
@@ -39,7 +40,12 @@ public record ProductInfo(
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     public static ProductInfo from(Product product) {
+        return from(product, null);
+    }
+
+    public static ProductInfo from(Product product, String thumbnailUrl) {
         return ProductInfo.builder()
+                .thumbnailUrl(thumbnailUrl)
                 .productId(product.getId())
                 .slug(product.getSlug())
                 .name(product.getName())

@@ -1,4 +1,9 @@
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 20MB
+
   jackson:
     property-naming-strategy: SNAKE_CASE
     time-zone: Asia/Seoul

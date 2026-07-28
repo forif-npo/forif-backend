@@ -26,7 +26,7 @@ public record ProductResponse(
                 .sourceType(info.sourceType())
                 .sourceLabel(info.sourceLabel())
                 .tags(info.tags())
-                .thumbnailUrl(null) // 썸네일 업로드는 후속 작업
+                .thumbnailUrl(info.thumbnailUrl())
                 .actYear(info.actYear())
                 .build();
     }
