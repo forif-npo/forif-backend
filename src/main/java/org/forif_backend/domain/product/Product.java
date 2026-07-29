@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 부원이 만든 프로덕트(서비스).
+ * 부원이 만든 서비스.
  * 등록 신청(PENDING/REJECTED)과 승인 후 게시(LIVE/DEV/PAUSED/RETIRED)를 하나의 엔티티로 관리한다.
  */
 @Entity
@@ -138,7 +138,7 @@ public class Product extends BaseTimeEntity {
     }
 
     /**
-     * 운영진의 프로덕트 정보 수정. null인 인자는 변경하지 않는다.
+     * 운영진의 서비스 정보 수정. null인 인자는 변경하지 않는다.
      * slug(서브도메인)와 상태는 별도 경로로만 변경할 수 있다.
      */
     public void updateInfo(String name, String oneLiner, String description, String sourceLabel,

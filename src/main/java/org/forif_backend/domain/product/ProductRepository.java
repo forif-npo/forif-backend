@@ -13,10 +13,10 @@ public interface ProductRepository {
 
     boolean existsBySlug(String slug);
 
-    /** 신청자의 특정 상태 프로덕트 수 (검토 대기 제한 검사용) */
+    /** 신청자의 특정 상태 서비스 수 (검토 대기 제한 검사용) */
     long countByApplicantIdAndStatus(Long userId, ProductStatus status);
 
-    /** 게시된(승인 이후) 프로덕트 목록 — 최신 연도순 */
+    /** 게시된(승인 이후) 서비스 목록 — 최신 연도순 */
     List<Product> findAllPublished();
 
     /** 신청자 기준 전체 신청/게시 목록 — 최신 신청순 */

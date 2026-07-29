@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "프로덕트", description = "부원 프로덕트 쇼케이스 및 등록 신청 API")
+@Tag(name = "서비스", description = "부원 서비스 쇼케이스 및 등록 신청 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/products")
@@ -26,14 +26,14 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @Operation(summary = "프로덕트 목록 조회", description = "게시된(승인된) 프로덕트 목록을 조회합니다. 인증 없이 접근 가능합니다.")
+    @Operation(summary = "서비스 목록 조회", description = "게시된(승인된) 서비스 목록을 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts() {
         List<ProductInfo> products = productService.getPublishedProducts();
         return ResponseEntity.ok(ApiResponse.success(ProductResponse.fromList(products)));
     }
 
-    @Operation(summary = "내 프로덕트 신청 현황", description = "로그인한 부원의 프로덕트 등록 신청 목록과 검토 결과를 조회합니다.")
+    @Operation(summary = "내 서비스 신청 현황", description = "로그인한 부원의 서비스 등록 신청 목록과 검토 결과를 조회합니다.")
     @GetMapping("/applications/me")
     public ResponseEntity<ApiResponse<List<ProductApplicationResponse>>> getMyApplications(
             @AuthenticationPrincipal Long userId
@@ -42,7 +42,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.fromList(applications)));
     }
 
-    @Operation(summary = "프로덕트 등록 신청", description = "부원이 직접 만든 서비스의 등록을 신청합니다. 운영진 승인 후 목록에 게시됩니다.")
+    @Operation(summary = "서비스 등록 신청", description = "부원이 직접 만든 서비스의 등록을 신청합니다. 운영진 승인 후 목록에 게시됩니다.")
     @PostMapping("/applications")
     public ResponseEntity<ApiResponse<ProductApplicationResponse>> applyProduct(
             @AuthenticationPrincipal Long userId,
@@ -52,10 +52,10 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
     }
 
-    @Operation(summary = "프로덕트 상세 조회", description = "게시된 프로덕트의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
+    @Operation(summary = "서비스 상세 조회", description = "게시된 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProduct(
-            @Parameter(description = "프로덕트 슬러그(서브도메인)") @PathVariable String slug
+            @Parameter(description = "서비스 슬러그(서브도메인)") @PathVariable String slug
     ) {
         ProductInfo product = productService.getPublishedProduct(slug);
         return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product)));
