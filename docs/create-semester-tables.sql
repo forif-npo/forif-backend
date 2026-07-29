@@ -1,5 +1,9 @@
 -- 활동 학기 관리 테이블 (FOR-108)
--- local/dev는 ddl-auto: update로 자동 생성되므로 release 배포 전에만 수동 실행한다.
+--
+-- 로컬(local 프로파일)만 ddl-auto: update라 자동 생성된다.
+-- dev 서버와 운영 서버는 release 프로파일 = ddl-auto: validate 이므로
+-- JAR을 교체하기 "전에" 이 스크립트를 먼저 돌려야 한다.
+-- 순서를 바꾸면 검증 실패로 기동에 실패하고 컨테이너가 재시작을 반복한다.
 
 CREATE TABLE IF NOT EXISTS tb_active_semester (
     active_semester_id INT         NOT NULL,
