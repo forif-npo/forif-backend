@@ -97,7 +97,7 @@ public enum ErrorCode {
 
     // Product (서비스 쇼케이스)
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 서비스를 찾을 수 없습니다."),
-    PRODUCT_SLUG_INVALID(HttpStatus.BAD_REQUEST, "FOR111-400", "서브도메인은 영소문자·숫자·하이픈 3~20자여야 합니다."),
+    PRODUCT_SLUG_INVALID(HttpStatus.BAD_REQUEST, "FOR111-400", "서브도메인은 영문 소문자·숫자·하이픈 3~20자여야 하며, 하이픈으로 시작하거나 끝날 수 없습니다. www, api, admin 등 예약어는 사용할 수 없습니다."),
     PRODUCT_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR112-409", "이미 사용 중인 서브도메인입니다."),
     PRODUCT_NOT_PENDING(HttpStatus.BAD_REQUEST, "FOR113-400", "검토 대기 상태의 신청만 처리할 수 있습니다."),
     PRODUCT_STATUS_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "FOR114-400", "게시된 서비스의 상태만 변경할 수 있습니다."),

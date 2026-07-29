@@ -100,7 +100,7 @@ public class AdminProductController {
         return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }
 
-    @Operation(summary = "서비스 삭제", description = "서비스(신청 포함)를 삭제합니다.")
+    @Operation(summary = "서비스 삭제", description = "서비스를 삭제합니다. 검토 대기·반려 상태의 등록 신청도 같은 방식으로 지울 수 있으며, 삭제하면 되돌릴 수 없습니다.")
     @DeleteMapping("/{productId}")
     public ResponseEntity<ApiResponse<Void>> deleteProduct(
             @Parameter(description = "서비스 ID") @PathVariable Integer productId

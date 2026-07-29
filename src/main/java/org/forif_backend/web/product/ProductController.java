@@ -33,7 +33,7 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductResponse.fromList(products)));
     }
 
-    @Operation(summary = "내 서비스 신청 현황", description = "로그인한 부원의 서비스 등록 신청 목록과 검토 결과를 조회합니다.")
+    @Operation(summary = "내 서비스 등록 신청 현황", description = "로그인한 부원의 서비스 등록 신청 목록과 검토 결과를 조회합니다.")
     @GetMapping("/applications/me")
     public ResponseEntity<ApiResponse<List<ProductApplicationResponse>>> getMyApplications(
             @AuthenticationPrincipal Long userId
