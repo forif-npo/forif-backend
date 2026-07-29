@@ -178,9 +178,7 @@ public class ProductService {
     }
 
     private void validatePendingLimit(Long userId) {
-        long pendingCount = productRepository.findAllByApplicantId(userId).stream()
-                .filter(p -> p.getStatus() == ProductStatus.PENDING)
-                .count();
+        long pendingCount = productRepository.countByApplicantIdAndStatus(userId, ProductStatus.PENDING);
         if (pendingCount >= MAX_PENDING_PER_USER) {
             throw new ForifException(ErrorCode.PRODUCT_PENDING_LIMIT);
         }
