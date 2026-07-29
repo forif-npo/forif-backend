@@ -194,6 +194,14 @@ public class StaffAccountService {
     }
 
     /**
+     * 회장 권한 검증 — 다른 도메인에서도 사용한다.
+     * 회장직 인수인계가 걸린 작업(학기 전환 등)은 부회장이 할 수 없다.
+     */
+    public void requirePresident(Long userId) {
+        validatePresident(userId);
+    }
+
+    /**
      * 회장단(회장/부회장) 권한 검증
      */
     private StaffAccount validatePresidentTeam(Long userId) {

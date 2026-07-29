@@ -24,7 +24,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "학기 관리 (회장단)", description = "동아리 활동 학기 전환 API")
+@Tag(name = "학기 관리 (회장)", description = "동아리 활동 학기 전환 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/semesters")
@@ -43,14 +43,14 @@ public class AdminSemesterController {
             @Parameter(description = "대상 연도") @RequestParam int actYear,
             @Parameter(description = "대상 학기 (1 또는 2)") @RequestParam int actSemester
     ) {
-        staffAccountService.requirePresidentTeam(userId);
+        staffAccountService.requirePresident(userId);
         SemesterChangePreview preview = semesterService.preview(actYear, actSemester);
         return ResponseEntity.ok(ApiResponse.success(SemesterChangePreviewResponse.from(preview)));
     }
 
     @Operation(summary = "활동 학기 변경",
             description = """
-                    동아리의 현재 활동 학기를 변경합니다. 회장단만 사용할 수 있습니다.
+                    동아리의 현재 활동 학기를 변경합니다. 회장직 인수인계가 함께 일어나므로 회장만 사용할 수 있습니다.
 
                     변경 후 새로 생성되는 스터디 개설 신청·수강 신청이 이 학기로 기록되고,
                     목록·마이페이지의 현재 학기 판정이 바뀝니다. 이미 저장된 데이터는 영향받지 않습니다.
@@ -63,7 +63,7 @@ public class AdminSemesterController {
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody ChangeSemesterRequest request
     ) {
-        staffAccountService.requirePresidentTeam(userId);
+        staffAccountService.requirePresident(userId);
         SemesterInfo changed = semesterTransitionService.transition(
                 request.getActYear(), request.getActSemester(),
                 request.getNextPresidentUserId(), userId);
