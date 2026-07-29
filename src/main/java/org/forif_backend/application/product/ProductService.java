@@ -40,14 +40,14 @@ public class ProductService {
     private final UserRepository userRepository;
     private final FilePort filePort;
 
-    /** 게시된 프로덕트 목록 (공개) */
+    /** 게시된 서비스 목록 (공개) */
     public List<ProductInfo> getPublishedProducts() {
         return productRepository.findAllPublished().stream()
                 .map(this::toInfo)
                 .toList();
     }
 
-    /** 게시된 프로덕트 상세 (공개) */
+    /** 게시된 서비스 상세 (공개) */
     public ProductInfo getPublishedProduct(String slug) {
         Product product = productRepository.findBySlug(slug)
                 .filter(p -> p.getStatus().isPublished())
@@ -58,7 +58,7 @@ public class ProductService {
     /** 유저당 동시에 검토 대기 상태로 둘 수 있는 신청 수 */
     private static final int MAX_PENDING_PER_USER = 3;
 
-    /** 프로덕트 등록 신청 (부원) */
+    /** 서비스 등록 신청 (부원) */
     @Transactional
     public ProductInfo applyProduct(Long userId, CreateProductApplicationCommand command) {
         User applicant = userRepository.findUserById(userId)
@@ -121,7 +121,7 @@ public class ProductService {
         getProductById(productId).changeStatus(status);
     }
 
-    /** 프로덕트 정보 수정 (운영진) — null 필드는 변경하지 않는다 */
+    /** 서비스 정보 수정 (운영진) — null 필드는 변경하지 않는다 */
     @Transactional
     public ProductInfo updateProduct(Integer productId, UpdateProductCommand command) {
         Product product = getProductById(productId);

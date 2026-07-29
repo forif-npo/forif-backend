@@ -1,7 +1,7 @@
 package org.forif_backend.domain.product;
 
 /**
- * 프로덕트 상태.
+ * 서비스 상태.
  * PENDING/REJECTED 는 등록 신청 단계, 나머지는 승인 후 게시 상태를 나타낸다.
  */
 public enum ProductStatus {

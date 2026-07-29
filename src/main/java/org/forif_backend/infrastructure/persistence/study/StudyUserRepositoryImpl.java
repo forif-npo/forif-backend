@@ -40,6 +40,16 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     }
 
     @Override
+    public long countBySemester(int year, int semester) {
+        return studyUserJpaRepository.countBySemester(year, semester);
+    }
+
+    @Override
+    public long countIssuedCertificatesBySemester(int year, int semester) {
+        return studyUserJpaRepository.countIssuedCertificatesBySemester(year, semester);
+    }
+
+    @Override
     public boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester) {
         return studyUserJpaRepository.existsByUserIdAndStudyYearSemester(userId, year, semester);
     }

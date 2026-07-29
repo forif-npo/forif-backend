@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
 
 /**
- * 프로덕트 팀원.
+ * 서비스 팀원.
  * 졸업생 등 비가입자도 있을 수 있어 유저 FK 대신 이름을 직접 보관한다.
  */
 @Entity

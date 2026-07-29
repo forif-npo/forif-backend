@@ -9,6 +9,8 @@ import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -30,6 +32,7 @@ import java.util.List;
 @Slf4j
 public class StaffAccountService {
 
+    private final SemesterService semesterService;
     private final StaffAccountRepository staffAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -184,6 +187,21 @@ public class StaffAccountService {
     // ==================== 회장단 운영진 관리 ====================
 
     /**
+     * 회장단(회장/부회장) 권한 검증 — 다른 도메인에서도 사용한다.
+     */
+    public void requirePresidentTeam(Long userId) {
+        validatePresidentTeam(userId);
+    }
+
+    /**
+     * 회장 권한 검증 — 다른 도메인에서도 사용한다.
+     * 회장직 인수인계가 걸린 작업(학기 전환 등)은 부회장이 할 수 없다.
+     */
+    public void requirePresident(Long userId) {
+        validatePresident(userId);
+    }
+
+    /**
      * 회장단(회장/부회장) 권한 검증
      */
     private StaffAccount validatePresidentTeam(Long userId) {
@@ -261,8 +279,9 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
-        int currentYear = DateUtils.getCurrentYear();
-        int currentSemester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int currentYear = active.actYear();
+        int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
             ForifTeam forifTeam = ForifTeam.create(user, currentYear, currentSemester, command.affiliation());
             forifTeamRepository.save(forifTeam);
@@ -329,13 +348,39 @@ public class StaffAccountService {
     }
 
     /**
+     * 학기 전환 시 차기 회장 인수인계.
+     * 대상은 ADMIN 계정을 가진 기존 운영진이어야 하며, 현 회장 본인이면(연임) 아무것도 바꾸지 않는다.
+     */
+    @Transactional
+    public void handOverPresidency(Long currentPresidentUserId, Long nextPresidentUserId) {
+        StaffAccount president = validatePresident(currentPresidentUserId);
+
+        if (president.getUserId().equals(nextPresidentUserId)) {
+            return; // 연임
+        }
+
+        StaffAccount next = staffAccountRepository.findByUserIdAndRole(nextPresidentUserId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        next.updateAffiliation("회장");
+        president.updateAffiliation("운영진");
+    }
+
+    /** 회장 후보 = ADMIN 계정을 가진 운영진 */
+    @Transactional(readOnly = true)
+    public boolean isAdminAccount(Long userId) {
+        return staffAccountRepository.existsByUserIdAndRole(userId, StaffRole.ADMIN);
+    }
+
+    /**
      * 회장/부회장 위임
      */
     @Transactional
     public void delegate(Long requesterId, Long targetUserId, String targetAffiliation) {
         StaffAccount president = validatePresident(requesterId);
 
-        if (president.getUserId().equals(targetUserId)) {
+        // 회장 연임(자기 자신 지정)은 허용한다. 부회장 자리에 본인을 넣는 것은 막는다.
+        if (president.getUserId().equals(targetUserId) && !"회장".equals(targetAffiliation)) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
