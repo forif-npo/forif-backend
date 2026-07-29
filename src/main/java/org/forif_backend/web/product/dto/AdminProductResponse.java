@@ -15,6 +15,7 @@ public record AdminProductResponse(
         String status,
         String sourceType,
         String sourceLabel,
+        String thumbnailUrl,
         List<String> tags,
         List<String> techStack,
         String serviceUrl,
@@ -35,6 +36,7 @@ public record AdminProductResponse(
                 .status(info.status())
                 .sourceType(info.sourceType())
                 .sourceLabel(info.sourceLabel())
+                .thumbnailUrl(info.thumbnailUrl())
                 .tags(info.tags())
                 .techStack(info.techStack())
                 .serviceUrl(info.serviceUrl())

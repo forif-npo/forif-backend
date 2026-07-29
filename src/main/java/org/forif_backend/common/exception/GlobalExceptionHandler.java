@@ -86,6 +86,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 업로드 용량 초과는 컨트롤러 진입 전에 발생하므로 별도로 400으로 응답한다.
+     */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<?>> handleMaxUploadSizeExceeded(
+            org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        log.warn("업로드 용량 초과: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.INVALID_FILE_ATTACHMENT;
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
+    }
+
+    /**
      * 처리하지 못한 나머지 모든 예외를 처리하는 최종 핸들러
      */
     @ExceptionHandler(Exception.class)

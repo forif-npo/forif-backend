@@ -2,7 +2,9 @@ package org.forif_backend.application.product;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.product.dto.CreateProductApplicationCommand;
+import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.product.dto.ProductInfo;
+import org.forif_backend.application.product.dto.UpdateProductCommand;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.product.Product;
@@ -14,6 +16,7 @@ import org.forif_backend.domain.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -30,13 +33,17 @@ public class ProductService {
             "www", "dev", "api", "admin", "mail", "apply", "applications", "products", "forif"
     );
 
+    private static final String THUMBNAIL_DIRECTORY = "products/thumbnails";
+    private static final long MAX_THUMBNAIL_SIZE = 5 * 1024 * 1024; // 5MB
+
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final FilePort filePort;
 
     /** 게시된 프로덕트 목록 (공개) */
     public List<ProductInfo> getPublishedProducts() {
         return productRepository.findAllPublished().stream()
-                .map(ProductInfo::from)
+                .map(this::toInfo)
                 .toList();
     }
 
@@ -45,7 +52,7 @@ public class ProductService {
         Product product = productRepository.findBySlug(slug)
                 .filter(p -> p.getStatus().isPublished())
                 .orElseThrow(() -> new ForifException(ErrorCode.PRODUCT_NOT_FOUND));
-        return ProductInfo.from(product);
+        return toInfo(product);
     }
 
     /** 유저당 동시에 검토 대기 상태로 둘 수 있는 신청 수 */
@@ -77,7 +84,7 @@ public class ProductService {
         product.addMember(ProductMember.create(product, applicant.getUserName(), "신청자"));
 
         try {
-            return ProductInfo.from(productRepository.save(product));
+            return toInfo(productRepository.save(product));
         } catch (DataIntegrityViolationException e) {
             // slug 중복 검사와 저장 사이의 경합 — UNIQUE 제약이 최종 방어선
             throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
@@ -87,7 +94,7 @@ public class ProductService {
     /** 내 신청 현황 (부원) */
     public List<ProductInfo> getMyApplications(Long userId) {
         return productRepository.findAllByApplicantId(userId).stream()
-                .map(ProductInfo::from)
+                .map(this::toInfo)
                 .toList();
     }
 
@@ -95,7 +102,7 @@ public class ProductService {
 
     public List<ProductInfo> getAllProducts() {
         return productRepository.findAll().stream()
-                .map(ProductInfo::from)
+                .map(this::toInfo)
                 .toList();
     }
 
@@ -112,6 +119,41 @@ public class ProductService {
     @Transactional
     public void changeProductStatus(Integer productId, ProductStatus status) {
         getProductById(productId).changeStatus(status);
+    }
+
+    /** 프로덕트 정보 수정 (운영진) — null 필드는 변경하지 않는다 */
+    @Transactional
+    public ProductInfo updateProduct(Integer productId, UpdateProductCommand command) {
+        Product product = getProductById(productId);
+        product.updateInfo(
+                blankToNull(command.name()),
+                blankToNull(command.oneLiner()),
+                blankToNull(command.description()),
+                command.sourceLabel() == null ? null : command.sourceLabel().trim(),
+                command.tags() == null ? null : joinCsvOrEmpty(command.tags(), 200),
+                command.techStack() == null ? null : joinCsvOrEmpty(command.techStack(), 300),
+                command.serviceUrl() == null ? null : requireHttpUrlOrEmpty(command.serviceUrl()),
+                command.githubUrl() == null ? null : requireHttpUrlOrEmpty(command.githubUrl())
+        );
+        return toInfo(product);
+    }
+
+    /** 썸네일 이미지 등록·교체 (운영진) */
+    @Transactional
+    public String updateThumbnail(Integer productId, MultipartFile file) {
+        Product product = getProductById(productId);
+        validateImageFile(file);
+
+        String objectKey = filePort.uploadFile(file, THUMBNAIL_DIRECTORY);
+        product.updateThumbnail(objectKey);
+
+        return toFileViewUrl(objectKey);
+    }
+
+    /** 썸네일 제거 (운영진) */
+    @Transactional
+    public void deleteThumbnail(Integer productId) {
+        getProductById(productId).updateThumbnail(null);
     }
 
     @Transactional
@@ -155,6 +197,48 @@ public class ProductService {
             throw new ForifException(ErrorCode.PRODUCT_INPUT_TOO_LONG);
         }
         return joined;
+    }
+
+    private ProductInfo toInfo(Product product) {
+        return ProductInfo.from(product, toFileViewUrl(product.getThumbnailObjectKey()));
+    }
+
+    /** 저장된 objectKey를 클라이언트가 볼 수 있는 조회 URL로 변환한다 */
+    private String toFileViewUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return null;
+        }
+        if (objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+            return objectKey;
+        }
+        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+    }
+
+    private void validateImageFile(MultipartFile file) {
+        if (file == null || file.isEmpty() || file.getSize() > MAX_THUMBNAIL_SIZE) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+    }
+
+    /** 수정 요청에서 빈 리스트는 "값 비우기"를 뜻하므로 빈 문자열로 남긴다 */
+    private String joinCsvOrEmpty(List<String> values, int maxLength) {
+        String joined = joinCsv(values, maxLength);
+        return joined == null ? "" : joined;
+    }
+
+    private String requireHttpUrlOrEmpty(String value) {
+        if (value.isBlank()) {
+            return "";
+        }
+        return requireHttpUrl(value);
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value.trim();
     }
 
     /** 링크로 렌더링되는 값이므로 http(s) 스킴만 허용한다 (javascript: 등 주입 방지) */

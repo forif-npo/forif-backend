@@ -36,7 +36,7 @@ public record ProductDetailResponse(
                 .sourceType(info.sourceType())
                 .sourceLabel(info.sourceLabel())
                 .tags(info.tags())
-                .thumbnailUrl(null)
+                .thumbnailUrl(info.thumbnailUrl())
                 .actYear(info.actYear())
                 .serviceUrl(info.serviceUrl())
                 .githubUrl(info.githubUrl())
