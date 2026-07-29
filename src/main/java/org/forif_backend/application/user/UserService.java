@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.dto.response.CursorPageResponse;
@@ -31,6 +33,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class UserService {
 
+    private final SemesterService semesterService;
     private final UserRepository userRepository;
     private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
@@ -299,8 +302,9 @@ public class UserService {
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search) {
         long totalElements = userRepository.countUsers(search);
-        int currentYear = DateUtils.getCurrentYear();
-        int currentSemester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int currentYear = active.actYear();
+        int currentSemester = active.actSemester();
 
         if (page != null) {
             List<User> users = userRepository.searchUsersWithOffset(page, size, search);

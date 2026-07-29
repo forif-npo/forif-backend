@@ -9,6 +9,8 @@ import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -30,6 +32,7 @@ import java.util.List;
 @Slf4j
 public class StaffAccountService {
 
+    private final SemesterService semesterService;
     private final StaffAccountRepository staffAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtProvider jwtProvider;
@@ -184,6 +187,13 @@ public class StaffAccountService {
     // ==================== 회장단 운영진 관리 ====================
 
     /**
+     * 회장단(회장/부회장) 권한 검증 — 다른 도메인에서도 사용한다.
+     */
+    public void requirePresidentTeam(Long userId) {
+        validatePresidentTeam(userId);
+    }
+
+    /**
      * 회장단(회장/부회장) 권한 검증
      */
     private StaffAccount validatePresidentTeam(Long userId) {
@@ -261,8 +271,9 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
-        int currentYear = DateUtils.getCurrentYear();
-        int currentSemester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int currentYear = active.actYear();
+        int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
             ForifTeam forifTeam = ForifTeam.create(user, currentYear, currentSemester, command.affiliation());
             forifTeamRepository.save(forifTeam);

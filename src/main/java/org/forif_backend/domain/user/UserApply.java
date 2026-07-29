@@ -5,7 +5,6 @@ import lombok.*;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
-import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 
 @Entity
@@ -97,11 +96,12 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryIntro = applyReason;
     }
 
-    public static UserApply applyStudy(User applier, Study primaryStudy, String applyReason) {
+    public static UserApply applyStudy(User applier, Study primaryStudy, String applyReason,
+                                       int applyYear, int applySemester) {
         return new UserApply(
                 applier,
-                DateUtils.getCurrentYear(),
-                DateUtils.getCurrentSemester(),
+                applyYear,
+                applySemester,
                 primaryStudy.getId(),
                 applyReason,
                 primaryStudy.getStudyName()

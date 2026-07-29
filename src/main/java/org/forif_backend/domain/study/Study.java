@@ -13,7 +13,6 @@ import lombok.Setter;
 import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
-import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 
@@ -133,12 +132,12 @@ public class Study extends BaseTimeEntity {
      * @param mentor 멘토 유저
      * @return 스터디 객체
      */
-    public static Study createPendingStudy(User mentor) {
+    public static Study createPendingStudy(User mentor, int actYear, int actSemester) {
         Study study = new Study();
         study.primaryMentor = mentor;
         study.primaryMentorName = mentor.getUserName();
-        study.actYear = DateUtils.getCurrentYear();
-        study.actSemester = DateUtils.getCurrentSemester();
+        study.actYear = actYear;
+        study.actSemester = actSemester;
 
         return study;
     }

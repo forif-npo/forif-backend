@@ -7,6 +7,8 @@ import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -34,6 +36,7 @@ public class StudyService {
     //       랜덤 생성 후 이메일 발송하는 방식으로 변경 필요.
     private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
 
+    private final SemesterService semesterService;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final UserRepository userRepository;
@@ -95,8 +98,9 @@ public class StudyService {
                 ));
 
         // 2. 현재 학기 정보
-        int currentYear = DateUtils.getCurrentYear();
-        int currentSemester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int currentYear = active.actYear();
+        int currentSemester = active.actSemester();
 
         // 3. SemesterStudiesInfo 리스트 생성 (한 학기에 스터디 1개만)
         List<SemesterStudiesInfo> semesters = studies.stream()
@@ -261,7 +265,8 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
         // 생성 시점에 필요한 최소한의 정보만 주입
-        Study study = Study.createPendingStudy(mentor);
+        SemesterInfo semester = semesterService.getActive();
+        Study study = Study.createPendingStudy(mentor, semester.actYear(), semester.actSemester());
 
         List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
         User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());

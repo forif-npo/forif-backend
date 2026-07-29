@@ -3,6 +3,8 @@ package org.forif_backend.application.user;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.type.SortDirection;
@@ -33,6 +35,7 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class UserApplyService {
+    private final SemesterService semesterService;
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
@@ -50,14 +53,15 @@ public class UserApplyService {
         Study study = studyRepository.findStudyById(request.studyId())
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        int year = DateUtils.getCurrentYear();
-        int semester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int year = active.actYear();
+        int semester = active.actSemester();
 
         if (request.priority() == 1) {
             if (userRepository.existUserApply(year, semester, user)) {
                 throw new ForifException(ErrorCode.ALREADY_APPLIED_PRIMARY);
             }
-            UserApply userApply = UserApply.applyStudy(user, study, request.applyReason());
+            UserApply userApply = UserApply.applyStudy(user, study, request.applyReason(), year, semester);
             userRepository.createUserApply(userApply);
         } else if (request.priority() == 2) {
             UserApply existingApply = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user)
@@ -192,8 +196,9 @@ public class UserApplyService {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
-        int year = DateUtils.getCurrentYear();
-        int semester = DateUtils.getCurrentSemester();
+        SemesterInfo active = semesterService.getActive();
+        int year = active.actYear();
+        int semester = active.actSemester();
 
         Optional<UserApply> applyOpt = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user);
 

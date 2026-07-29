@@ -105,6 +105,9 @@ public enum ErrorCode {
     PRODUCT_PENDING_LIMIT(HttpStatus.BAD_REQUEST, "FOR116-400", "검토 대기 중인 신청이 너무 많습니다. 검토 완료 후 다시 신청해주세요."),
     PRODUCT_INPUT_TOO_LONG(HttpStatus.BAD_REQUEST, "FOR117-400", "태그 또는 기술 스택이 너무 깁니다."),
 
+    // Semester (활동 학기)
+    SEMESTER_INVALID(HttpStatus.BAD_REQUEST, "FOR120-400", "유효하지 않은 학기입니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
