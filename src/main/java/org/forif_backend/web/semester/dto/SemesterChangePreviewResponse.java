@@ -6,18 +6,22 @@ public record SemesterChangePreviewResponse(
         SemesterResponse current,
         SemesterResponse target,
         int targetTeamMemberCount,
-        int currentTeamMemberCount,
-        boolean needsTeamCopy,
-        boolean targetHackathonExists
+        boolean needsTeamSetup,
+        boolean targetHackathonExists,
+        long currentMemberCount,
+        long currentCertificateIssuedCount,
+        boolean hasPendingCertificates
 ) {
     public static SemesterChangePreviewResponse from(SemesterChangePreview preview) {
         return new SemesterChangePreviewResponse(
                 SemesterResponse.from(preview.current()),
                 SemesterResponse.from(preview.target()),
                 preview.targetTeamMemberCount(),
-                preview.currentTeamMemberCount(),
-                preview.needsTeamCopy(),
-                preview.targetHackathonExists()
+                preview.needsTeamSetup(),
+                preview.targetHackathonExists(),
+                preview.currentMemberCount(),
+                preview.currentCertificateIssuedCount(),
+                preview.hasPendingCertificates()
         );
     }
 }

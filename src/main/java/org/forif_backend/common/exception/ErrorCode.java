@@ -107,6 +107,8 @@ public enum ErrorCode {
 
     // Semester (활동 학기)
     SEMESTER_INVALID(HttpStatus.BAD_REQUEST, "FOR120-400", "유효하지 않은 학기입니다."),
+    FORIF_TEAM_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR121-409", "이미 해당 학기 운영진 명단에 있습니다."),
+    SEMESTER_NEXT_PRESIDENT_REQUIRED(HttpStatus.BAD_REQUEST, "FOR122-400", "차기 회장은 운영진 계정을 가진 사람 중에서 지정해야 합니다."),
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),

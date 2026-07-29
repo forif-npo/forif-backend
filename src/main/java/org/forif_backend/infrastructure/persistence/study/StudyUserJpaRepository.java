@@ -25,6 +25,19 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
     @Query("SELECT su FROM StudyUser su WHERE su.user.id = :userId")
     List<StudyUser> findAllByUserId(@Param("userId") Long userId);
 
+    @Query("""
+            SELECT COUNT(su) FROM StudyUser su
+            WHERE su.study.actYear = :year AND su.study.actSemester = :semester
+            """)
+    long countBySemester(@Param("year") int year, @Param("semester") int semester);
+
+    @Query("""
+            SELECT COUNT(su) FROM StudyUser su
+            WHERE su.study.actYear = :year AND su.study.actSemester = :semester
+              AND su.certificateStatus = 1
+            """)
+    long countIssuedCertificatesBySemester(@Param("year") int year, @Param("semester") int semester);
+
     void deleteByStudyId(Integer studyId);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);

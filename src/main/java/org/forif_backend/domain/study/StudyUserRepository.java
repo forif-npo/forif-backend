@@ -15,4 +15,10 @@ public interface StudyUserRepository {
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);
 
     boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester);
+
+    /** 해당 학기 수강생 수 (수료증 발급 현황 안내용) */
+    long countBySemester(int year, int semester);
+
+    /** 해당 학기 수료증 발급 완료 수 */
+    long countIssuedCertificatesBySemester(int year, int semester);
 }

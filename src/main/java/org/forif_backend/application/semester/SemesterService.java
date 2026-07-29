@@ -11,7 +11,7 @@ import org.forif_backend.domain.semester.SemesterChangeLog;
 import org.forif_backend.domain.semester.SemesterRepository;
 import org.forif_backend.application.semester.dto.SemesterChangePreview;
 import org.forif_backend.domain.hackathon.HackathonRepository;
-import org.forif_backend.domain.team.ForifTeam;
+import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +37,7 @@ public class SemesterService {
     private final SemesterRepository semesterRepository;
     private final ForifTeamRepository forifTeamRepository;
     private final HackathonRepository hackathonRepository;
+    private final StudyUserRepository studyUserRepository;
 
     /**
      * 현재 활동 학기.
@@ -115,49 +116,10 @@ public class SemesterService {
                 current,
                 SemesterInfo.of(targetYear, targetSemester),
                 forifTeamRepository.findByYearAndSemester(targetYear, targetSemester).size(),
-                forifTeamRepository.findByYearAndSemester(current.actYear(), current.actSemester()).size(),
-                !hackathonRepository.findEvents(targetYear, targetSemester, null).isEmpty()
+                !hackathonRepository.findEvents(targetYear, targetSemester, null).isEmpty(),
+                studyUserRepository.countBySemester(current.actYear(), current.actSemester()),
+                studyUserRepository.countIssuedCertificatesBySemester(current.actYear(), current.actSemester())
         );
-    }
-
-    /**
-     * 학기 전환 + 부수 작업.
-     * copyTeamMembers가 true면 현재 학기 운영진 명단을 대상 학기로 복제한다
-     * (복제하지 않으면 운영진 소개 페이지가 빈다).
-     */
-    @Transactional
-    public SemesterInfo changeActiveWithRollover(int actYear, int actSemester,
-                                                 boolean copyTeamMembers, Long changedBy) {
-        SemesterInfo previous = getActive();
-        SemesterInfo changed = changeActive(actYear, actSemester, changedBy);
-
-        if (copyTeamMembers && !previous.equals(changed)) {
-            copyTeamMembers(previous, changed);
-        }
-        return changed;
-    }
-
-    /** 이전 학기 운영진 명단을 새 학기로 복제 (이미 있는 사람은 건너뜀) */
-    private void copyTeamMembers(SemesterInfo from, SemesterInfo to) {
-        List<ForifTeam> sources = forifTeamRepository.findByYearAndSemester(from.actYear(), from.actSemester());
-        int copied = 0;
-
-        for (ForifTeam source : sources) {
-            Long userId = source.getUser() != null ? source.getUser().getId() : null;
-            if (userId == null) continue;
-            if (forifTeamRepository.existsByActYearAndActSemesterAndUserId(
-                    to.actYear(), to.actSemester(), userId)) {
-                continue;
-            }
-
-            ForifTeam copy = ForifTeam.create(source.getUser(), to.actYear(), to.actSemester(),
-                    source.getClubDepartment());
-            copy.update(source.getUserTitle(), source.getClubDepartment(), source.getIntroTag(),
-                    source.getSelfIntro(), source.getProfImgUrl(), source.getGraduateYear());
-            forifTeamRepository.save(copy);
-            copied++;
-        }
-        log.info("운영진 명단 복제: {} → {} ({}명)", from.label(), to.label(), copied);
     }
 
     private void validate(int actYear, int actSemester) {

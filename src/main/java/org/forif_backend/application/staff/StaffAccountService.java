@@ -340,13 +340,39 @@ public class StaffAccountService {
     }
 
     /**
+     * 학기 전환 시 차기 회장 인수인계.
+     * 대상은 ADMIN 계정을 가진 기존 운영진이어야 하며, 현 회장 본인이면(연임) 아무것도 바꾸지 않는다.
+     */
+    @Transactional
+    public void handOverPresidency(Long currentPresidentUserId, Long nextPresidentUserId) {
+        StaffAccount president = validatePresident(currentPresidentUserId);
+
+        if (president.getUserId().equals(nextPresidentUserId)) {
+            return; // 연임
+        }
+
+        StaffAccount next = staffAccountRepository.findByUserIdAndRole(nextPresidentUserId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        next.updateAffiliation("회장");
+        president.updateAffiliation("운영진");
+    }
+
+    /** 회장 후보 = ADMIN 계정을 가진 운영진 */
+    @Transactional(readOnly = true)
+    public boolean isAdminAccount(Long userId) {
+        return staffAccountRepository.existsByUserIdAndRole(userId, StaffRole.ADMIN);
+    }
+
+    /**
      * 회장/부회장 위임
      */
     @Transactional
     public void delegate(Long requesterId, Long targetUserId, String targetAffiliation) {
         StaffAccount president = validatePresident(requesterId);
 
-        if (president.getUserId().equals(targetUserId)) {
+        // 회장 연임(자기 자신 지정)은 허용한다. 부회장 자리에 본인을 넣는 것은 막는다.
+        if (president.getUserId().equals(targetUserId) && !"회장".equals(targetAffiliation)) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
