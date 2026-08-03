@@ -44,7 +44,7 @@ public class UserController {
 
     /**
      * 부원 회원가입
-     * 프론트엔드에서 Google OAuth로 획득한 이메일을 함께 전송
+     * 프론트엔드에서 전달한 Google OAuth Access Token으로 이메일을 검증합니다.
      */
     @Operation(summary = "부원 회원가입", description = "Google OAuth 이메일 인증 후 신규 부원을 등록합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
     @PostMapping("/signup")
@@ -52,16 +52,19 @@ public class UserController {
             @RequestBody UserSignUpRequest request,
             HttpServletResponse httpResponse
     ) {
-        // 1. Web DTO → Application Command 변환
-        UserSignUpCommand command = UserDtoMapper.toCommand(request);
+        // 1. Google에서 이메일 가져오기
+        String email = userService.getEmailFromGoogleToken(request.accessToken());
 
-        // 2. Service 호출
+        // 2. Web DTO → Application Command 변환
+        UserSignUpCommand command = UserDtoMapper.toCommand(request, email);
+
+        // 3. Service 호출
         UserSignUpResult result = userService.userSignUp(command);
 
-        // 3. Refresh Token을 HttpOnly 쿠키로 설정
+        // 4. Refresh Token을 HttpOnly 쿠키로 설정
         CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
 
-        // 4. Application Result → Web DTO 변환 (refreshToken 제외)
+        // 5. Application Result → Web DTO 변환 (refreshToken 제외)
         UserSignUpResponse response = UserDtoMapper.toResponse(result);
 
         return ResponseEntity.ok(ApiResponse.success(response));
@@ -70,7 +73,7 @@ public class UserController {
     /**
      * 부원 로그인
      */
-    @Operation(summary = "부원 로그인", description = "Google OAuth Access Token으로 로그인합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
+    @Operation(summary = "부원 로그인", description = "Google OAuth Access Token으로 가입 상태를 확인하고, 가입된 부원에게 Refresh Token을 HttpOnly 쿠키로 발급합니다.")
     @PostMapping("/signin")
     public ResponseEntity<ApiResponse<UserSignInResponse>> userSignIn(
             @RequestBody UserSignInRequest request,

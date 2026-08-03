@@ -44,7 +44,7 @@ class UserControllerTest {
         UserSignUpRequest request = new UserSignUpRequest(
                 20241234L,
                 "테스트유저",
-                "test@hanyang.ac.kr",
+                "mock-google-access-token",
                 "010-1234-5678",
                 "컴퓨터공학과"
         );
@@ -71,7 +71,7 @@ class UserControllerTest {
         UserSignUpRequest firstRequest = new UserSignUpRequest(
                 20241234L,
                 "테스트유저1",
-                "duplicate@hanyang.ac.kr",
+                "mock-duplicate-google-access-token",
                 "010-1234-5678",
                 "컴퓨터공학과"
         );
@@ -84,7 +84,7 @@ class UserControllerTest {
         UserSignUpRequest duplicateRequest = new UserSignUpRequest(
                 20245678L,
                 "테스트유저2",
-                "duplicate@hanyang.ac.kr",
+                "mock-duplicate-google-access-token",
                 "010-9876-5432",
                 "전자공학과"
         );
@@ -100,13 +100,13 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("로그인 성공 테스트 (Google OAuth 없이 이메일로)")
+    @DisplayName("로그인 성공 테스트 (Google OAuth 모킹 필요)")
     void userSignInSuccess() throws Exception {
         // given - 먼저 회원가입
         UserSignUpRequest signUpRequest = new UserSignUpRequest(
                 20241234L,
                 "로그인테스트",
-                "signin@hanyang.ac.kr",
+                "mock-signin-google-access-token",
                 "010-1234-5678",
                 "컴퓨터공학과"
         );
@@ -130,7 +130,7 @@ class UserControllerTest {
         UserSignUpRequest signUpRequest = new UserSignUpRequest(
                 20241234L,
                 "리프레시테스트",
-                "refresh@hanyang.ac.kr",
+                "mock-refresh-google-access-token",
                 "010-1234-5678",
                 "컴퓨터공학과"
         );
@@ -169,7 +169,7 @@ class UserControllerTest {
         UserSignUpRequest signUpRequest = new UserSignUpRequest(
                 20241234L,
                 "로그아웃테스트",
-                "logout@hanyang.ac.kr",
+                "mock-logout-google-access-token",
                 "010-1234-5678",
                 "컴퓨터공학과"
         );
