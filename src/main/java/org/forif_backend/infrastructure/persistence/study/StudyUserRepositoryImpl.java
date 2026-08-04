@@ -3,6 +3,7 @@ package org.forif_backend.infrastructure.persistence.study;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserRepository;
+import org.forif_backend.domain.user.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -27,6 +28,11 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     @Override
     public List<StudyUser> findAllByUserId(Long userId) {
         return studyUserJpaRepository.findAllByUserId(userId);
+    }
+
+    @Override
+    public List<User> findUsersByYearSemester(int year, int semester, String search) {
+        return studyUserJpaRepository.findUsersByYearSemester(year, semester, search);
     }
 
     @Override

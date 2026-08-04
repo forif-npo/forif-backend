@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -36,6 +37,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserApplyService {
     private final SemesterService semesterService;
+    private final DuesService duesService;
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
@@ -151,6 +153,7 @@ public class UserApplyService {
 
             StudyUser studyUser = StudyUser.create(study, apply.getApplier());
             studyUserRepository.save(studyUser);
+            duesService.ensureMemberCheck(study, apply.getApplier());
         }
     }
 
