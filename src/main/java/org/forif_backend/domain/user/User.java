@@ -46,4 +46,13 @@ public class User extends BaseTimeEntity {
     public void updateUserName(String userName) {
         this.userName = userName;
     }
+
+    public void updateProfile(String department, String imgUrl) {
+        if (department != null) this.department = department;
+        if (imgUrl != null) this.imgUrl = imgUrl;
+    }
+
+    public void updatePhoneNum(String phoneNum) {
+        this.phoneNum = phoneNum;
+    }
 }

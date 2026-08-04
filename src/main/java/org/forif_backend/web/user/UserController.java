@@ -3,6 +3,7 @@ package org.forif_backend.web.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,11 +23,13 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
 import org.forif_backend.common.util.CookieUtils;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @Tag(name = "부원", description = "부원 인증 및 마이페이지 API")
 @RestController
@@ -233,6 +236,37 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @Operation(summary = "내 설정 조회", description = "설정 화면에 표시할 프로필·연락처 정보를 조회합니다.")
+    @GetMapping("/me/profile")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> getUserProfile(
+            @AuthenticationPrincipal Long userId
+    ) {
+        User user = userService.getUserInfo(userId);
+        return ResponseEntity.ok(ApiResponse.success(toUserProfileResponse(user)));
+    }
+
+    @Operation(summary = "기본 정보 수정", description = "학과를 수정하고, 선택적으로 프로필 이미지를 등록·교체합니다. 이름과 학번은 수정할 수 없습니다.")
+    @PatchMapping(value = "/me/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateUserProfile(
+            @AuthenticationPrincipal Long userId,
+            @RequestPart("request") @Valid UpdateUserProfileRequest request,
+            @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
+    ) {
+        User user = userService.updateUserProfile(
+                userId, request.department(), profileImage);
+        return ResponseEntity.ok(ApiResponse.success(toUserProfileResponse(user)));
+    }
+
+    @Operation(summary = "휴대폰 번호 수정", description = "로그인한 부원의 휴대폰 번호를 수정합니다. 이메일은 Google 계정 식별자이므로 수정할 수 없습니다.")
+    @PatchMapping("/me/phone-number")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> updateUserPhoneNum(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody UpdateUserPhoneNumRequest request
+    ) {
+        User user = userService.updateUserPhoneNum(userId, request.phoneNum());
+        return ResponseEntity.ok(ApiResponse.success(toUserProfileResponse(user)));
+    }
+
     /**
      * 학번/유저 ID로 사용자 정보 조회
      */
@@ -244,5 +278,9 @@ public class UserController {
         User user = userService.getUserInfo(targetUserId);
         UserInfoResponse response = UserDtoMapper.toResponse(user);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    private UserProfileResponse toUserProfileResponse(User user) {
+        return UserProfileResponse.from(user, userService.getProfileImageUrl(user.getImgUrl()));
     }
 }

@@ -4,6 +4,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
+import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.application.semester.SemesterService;
@@ -20,18 +21,31 @@ import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.*;
 import org.forif_backend.web.user.dto.MemberResponse;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
+
+    private static final String PROFILE_IMAGE_DIRECTORY = "users/profiles";
+    private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
+    private static final Set<String> PROFILE_IMAGE_CONTENT_TYPES = Set.of(
+            MediaType.IMAGE_JPEG_VALUE,
+            MediaType.IMAGE_PNG_VALUE,
+            "image/jpg"
+    );
 
     private final SemesterService semesterService;
     private final UserRepository userRepository;
@@ -42,6 +56,7 @@ public class UserService {
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
+    private final FilePort filePort;
 
     /**
      * 부원 회원가입
@@ -294,6 +309,73 @@ public class UserService {
     public User getUserInfo(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Transactional
+    public User updateUserProfile(Long userId, String department, MultipartFile profileImage) {
+        User user = getUserInfo(userId);
+
+        String profileImageObjectKey = null;
+        if (profileImage != null && !profileImage.isEmpty()) {
+            validateProfileImage(profileImage);
+            profileImageObjectKey = filePort.uploadFile(profileImage, PROFILE_IMAGE_DIRECTORY);
+            registerProfileImageCleanup(user.getImgUrl(), profileImageObjectKey);
+        }
+
+        user.updateProfile(department, profileImageObjectKey);
+        return user;
+    }
+
+    @Transactional
+    public User updateUserPhoneNum(Long userId, String phoneNum) {
+        User user = getUserInfo(userId);
+        user.updatePhoneNum(phoneNum);
+        return user;
+    }
+
+    public String getProfileImageUrl(String imgUrl) {
+        if (imgUrl == null || imgUrl.isBlank() || imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) {
+            return imgUrl;
+        }
+        return filePort.generatePresignedViewUrl(imgUrl).presignedUrl();
+    }
+
+    private void validateProfileImage(MultipartFile file) {
+        if (file.getSize() > MAX_PROFILE_IMAGE_SIZE
+                || !PROFILE_IMAGE_CONTENT_TYPES.contains(file.getContentType())) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+    }
+
+    private void registerProfileImageCleanup(String previousObjectKey, String uploadedObjectKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteProfileImageQuietly(uploadedObjectKey);
+            throw new IllegalStateException("프로필 이미지 변경 트랜잭션이 활성화되지 않았습니다.");
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    deleteProfileImageQuietly(previousObjectKey);
+                } else {
+                    deleteProfileImageQuietly(uploadedObjectKey);
+                }
+            }
+        });
+    }
+
+    private void deleteProfileImageQuietly(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()
+                || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+            return;
+        }
+
+        try {
+            filePort.deleteFile(objectKey);
+        } catch (Exception e) {
+            log.warn("프로필 이미지 삭제 실패: {}", objectKey, e);
+        }
     }
 
     /**
