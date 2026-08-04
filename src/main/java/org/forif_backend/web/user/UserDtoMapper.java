@@ -15,11 +15,11 @@ public class UserDtoMapper {
     /**
      * Web DTO → Application Command
      */
-    public static UserSignUpCommand toCommand(UserSignUpRequest request) {
+    public static UserSignUpCommand toCommand(UserSignUpRequest request, String email) {
         return new UserSignUpCommand(
             request.studentId(),
             request.userName(),
-            request.email(),
+            email,
             request.phoneNum(),
             request.department()
         );
