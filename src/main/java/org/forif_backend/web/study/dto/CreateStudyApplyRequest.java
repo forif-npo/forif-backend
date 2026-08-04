@@ -43,7 +43,6 @@ public class CreateStudyApplyRequest {
     @NotNull
     private String studyLocation;           // 진행 장소
 
-    @NotBlank
     private String studyLocationDetail;     // 강의실(호)
 
     @NotNull
@@ -78,6 +77,13 @@ public class CreateStudyApplyRequest {
     private List<Reference> references;     // 참고자료
 
     private Long secondaryMentorId;         // 부멘토 유저 ID
+
+    @AssertTrue(message = "온라인 또는 장소 미정이 아닌 경우 강의실(호)을 입력해야 합니다.")
+    public boolean isStudyLocationDetailValid() {
+        return Boolean.TRUE.equals(isOnline)
+                || "장소 미정".equals(studyLocation)
+                || (studyLocationDetail != null && !studyLocationDetail.isBlank());
+    }
 
     @Getter
     @Setter
