@@ -73,14 +73,12 @@ public class DuesService {
     }
 
     @Transactional
-    public List<DuesMember> updateCurrentSemesterDuesBatch(List<UpdateDuesMemberCommand> commands) {
+    public void updateCurrentSemesterDuesBatch(List<UpdateDuesMemberCommand> commands) {
         SemesterInfo semester = semesterService.getActive();
-        return commands.stream()
-                .map(command -> updateCurrentSemesterDues(command, semester))
-                .toList();
+        commands.forEach(command -> updateCurrentSemesterDues(command, semester));
     }
 
-    private DuesMember updateCurrentSemesterDues(
+    private void updateCurrentSemesterDues(
             UpdateDuesMemberCommand command,
             SemesterInfo semester
     ) {
@@ -101,8 +99,6 @@ public class DuesService {
                 .orElseGet(() -> MemberSemesterCheck.create(user, semester.actYear(), semester.actSemester()));
         memberCheck.update(command.duesPaid(), command.googleFormSubmitted());
         memberSemesterCheckRepository.save(memberCheck);
-
-        return toDuesMember(user, semester, memberCheck);
     }
 
     @Transactional
@@ -133,15 +129,6 @@ public class DuesService {
         return users.stream()
                 .map(user -> toDuesMember(user, studyNames.get(user.getId()), memberChecks.get(user.getId())))
                 .toList();
-    }
-
-    private DuesMember toDuesMember(User user, SemesterInfo semester, MemberSemesterCheck memberCheck) {
-        String studyName = studyRepository.findCurrentStudyNamesByUserIds(
-                List.of(user.getId()),
-                semester.actYear(),
-                semester.actSemester()
-        ).get(user.getId());
-        return toDuesMember(user, studyName, memberCheck);
     }
 
     private DuesMember toDuesMember(User user, String studyName, MemberSemesterCheck memberCheck) {

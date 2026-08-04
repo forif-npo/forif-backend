@@ -59,13 +59,13 @@ class DuesServiceTest {
         completedUser = User.createUser(2L, "나다라마바사", "second@hanyang.ac.kr", "01033334444", "전자공학부");
 
         when(semesterService.getActive()).thenReturn(CURRENT_SEMESTER);
-        when(studyRepository.findCurrentStudyNamesByUserIds(anyList(), anyInt(), anyInt()))
-                .thenReturn(Map.of(1L, "웹 스터디", 2L, "백엔드 스터디"));
     }
 
     @Test
     @DisplayName("상태가 없는 현재 학기 부원은 미납·미제출로 조회하고 확인 필요 순서로 정렬한다")
     void getsCurrentSemesterDuesWithDefaultUncheckedStatus() {
+        when(studyRepository.findCurrentStudyNamesByUserIds(anyList(), anyInt(), anyInt()))
+                .thenReturn(Map.of(1L, "웹 스터디", 2L, "백엔드 스터디"));
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
         completedCheck.update(true, true);
 
@@ -94,15 +94,13 @@ class DuesServiceTest {
         when(memberSemesterCheckRepository.save(any(MemberSemesterCheck.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = duesService.updateCurrentSemesterDuesBatch(List.of(
+        duesService.updateCurrentSemesterDuesBatch(List.of(
                 new UpdateDuesMemberCommand(1L, true, false)
-        )).get(0);
+        ));
 
         ArgumentCaptor<MemberSemesterCheck> captor = ArgumentCaptor.forClass(MemberSemesterCheck.class);
         verify(memberSemesterCheckRepository).save(captor.capture());
         assertThat(captor.getValue().isDuesPaid()).isTrue();
         assertThat(captor.getValue().isGoogleFormSubmitted()).isFalse();
-        assertThat(result.duesPaid()).isTrue();
-        assertThat(result.googleFormSubmitted()).isFalse();
     }
 }

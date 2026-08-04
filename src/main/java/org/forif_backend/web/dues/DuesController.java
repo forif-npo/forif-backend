@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.dues.DuesService;
-import org.forif_backend.application.dues.dto.DuesMember;
 import org.forif_backend.application.dues.dto.DuesPageResult;
 import org.forif_backend.application.dues.dto.DuesSort;
 import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
@@ -41,10 +40,10 @@ public class DuesController {
     @Operation(summary = "현재 학기 회비·구글폼 상태 일괄 저장 (어드민 전용)")
     @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<java.util.List<DuesMember>>> updateCurrentSemesterDuesBatch(
+    public ResponseEntity<ApiResponse<Void>> updateCurrentSemesterDuesBatch(
             @RequestBody @Valid BatchUpdateDuesRequest request
     ) {
-        java.util.List<DuesMember> response = duesService.updateCurrentSemesterDuesBatch(
+        duesService.updateCurrentSemesterDuesBatch(
                 request.updates().stream()
                         .map(item -> new UpdateDuesMemberCommand(
                                 item.userId(),
@@ -53,6 +52,6 @@ public class DuesController {
                         ))
                         .toList()
         );
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok(ApiResponse.successWithMsg("회비 관리 상태를 저장했습니다."));
     }
 }
