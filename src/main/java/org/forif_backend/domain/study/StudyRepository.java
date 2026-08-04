@@ -95,6 +95,9 @@ public interface StudyRepository {
      */
     boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester);
 
+    /** 해당 학기에 멘토로 등록된 유저 ID를 한 번에 추린다 */
+    java.util.Set<Long> findMentorUserIdsByUserIds(java.util.List<Long> userIds, int year, int semester);
+
     /**
      * 스터디 삭제
      */

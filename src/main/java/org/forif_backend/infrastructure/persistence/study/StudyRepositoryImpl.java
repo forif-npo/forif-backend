@@ -146,6 +146,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public java.util.Set<Long> findMentorUserIdsByUserIds(java.util.List<Long> userIds, int year, int semester) {
+        return studyQueryRepository.findMentorUserIdsByUserIds(userIds, year, semester);
+    }
+
+    @Override
     public void deleteStudyById(Integer studyId) {
         studyJpaRepository.deleteById(studyId);
     }

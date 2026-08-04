@@ -34,7 +34,6 @@ public class StudyService {
 
     // TODO: 하드코딩된 기본 비밀번호 개선 필요. 멘토가 직접 초기 비밀번호를 설정하거나,
     //       랜덤 생성 후 이메일 발송하는 방식으로 변경 필요.
-    private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
 
     private final SemesterService semesterService;
     private final StudyRepository studyRepository;
@@ -418,28 +417,8 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         study.approve();
-
-        // 멘토 계정 자동 생성
-        createMentorAccountIfAbsent(study.getPrimaryMentor(), study.getStudyName());
-        if (study.getSecondaryMentor() != null) {
-            createMentorAccountIfAbsent(study.getSecondaryMentor(), study.getStudyName());
-        }
-    }
-
-    /**
-     * 멘토 계정이 없으면 기본 비밀번호로 자동 생성
-     */
-    private void createMentorAccountIfAbsent(User mentor, String studyName) {
-        if (staffAccountRepository.existsByUserIdAndRole(mentor.getId(), StaffRole.MENTOR)) {
-            return;
-        }
-
-        CreateMentorCommand command = new CreateMentorCommand(
-                mentor.getId(),
-                DEFAULT_MENTOR_PASSWORD,
-                studyName
-        );
-        staffAccountService.createMentorAccount(command);
+        // 멘토 계정을 따로 만들지 않는다. 멘토 권한은 tb_study의 멘토 관계에서
+        // 요청 시점에 유도되므로, 승인된 순간부터 부원 로그인으로 관리할 수 있다.
     }
 
     /**

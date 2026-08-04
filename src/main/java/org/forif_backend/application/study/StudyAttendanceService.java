@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 public class StudyAttendanceService {
 
     private final StudyRepository studyRepository;
+    private final StudyMentorAccess studyMentorAccess;
     private final StudyUserRepository studyUserRepository;
     private final StudyAttendanceRepository studyAttendanceRepository;
 
@@ -75,7 +76,7 @@ public class StudyAttendanceService {
      */
     @Transactional
     public void updateAttendance(Long mentorId, Integer studyId, List<AttendanceCommand> commands) {
-        Study study = getStudyIfMentor(mentorId, studyId);
+        Study study = getStudyIfActiveMentor(mentorId, studyId);
 
         Map<Long, StudyUser> menteeMap = studyUserRepository.findAllByStudyId(studyId).stream()
                 .collect(Collectors.toMap(su -> su.getUser().getId(), su -> su));
@@ -113,14 +114,21 @@ public class StudyAttendanceService {
         }
     }
 
+    /** 조회용. 지난 학기 출석부도 본인이 멘토였으면 볼 수 있다. */
     private Study getStudyIfMentor(Long userId, Integer studyId) {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
-        }
+        studyMentorAccess.requireMentor(study, userId);
+        return study;
+    }
 
+    /** 변경용. 활동 학기 스터디만 출석을 기록할 수 있다. */
+    private Study getStudyIfActiveMentor(Long userId, Integer studyId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         return study;
     }
 }

@@ -33,10 +33,10 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     HackathonRepository hackathonRepository;
 
     @Test
-    @DisplayName("staff_account 사용자는 해커톤에 참가 등록할 수 있고 중복 등록은 실패한다")
+    @DisplayName("운영진(ADMIN) 계정 사용자는 해커톤에 참가 등록할 수 있고 중복 등록은 실패한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void registerParticipantByStaffAccount() {
         Long hackathonId = createDefaultHackathon();
@@ -89,7 +89,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("팀 생성자는 리더로 자동 등록되고 한 해커톤에서 두 팀에 들어갈 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void createTeamRegistersLeader() {
         Long hackathonId = createDefaultHackathon();
@@ -115,7 +115,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("해커톤 진행 중에도 팀장은 팀 정보를 수정할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateTeamDuringInProgress() {
         Long hackathonId = createDefaultHackathon();
@@ -145,7 +145,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("심사 단계에서는 팀 정보를 수정할 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateTeamDuringJudgingFails() {
         Long hackathonId = createDefaultHackathon();
@@ -241,8 +241,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("팀 목록은 해커톤 참가 등록자만 조회할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void teamReadRequiresParticipant() {
         Long hackathonId = createDefaultHackathon();
@@ -259,8 +259,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("팀 해산 시 대기 중인 가입 신청을 취소하고 팀원 레코드를 제거한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void disbandTeamCancelsPendingJoinRequests() {
         Long hackathonId = createDefaultHackathon();
@@ -283,7 +283,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("제출 수정 시 발표자료를 새로 첨부하지 않으면 기존 파일 경로를 유지한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionKeepsExistingPresentationFile() {
         when(filePort.uploadFile(any(MultipartFile.class), anyString()))
@@ -333,7 +333,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("제출 수정 시 발표자료를 새로 첨부하면 새 파일 경로로 교체한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void updateSubmissionReplacesPresentationFile() {
         when(filePort.uploadFile(any(MultipartFile.class), anyString()))
@@ -381,7 +381,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("허용 목록에 없는 해커톤 기술 태그는 저장할 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void createSubmissionRejectsInvalidTechStack() {
         Long hackathonId = createDefaultHackathon();
@@ -413,7 +413,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("해커톤 기술 스택은 최대 4개까지만 저장할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void createSubmissionRejectsTooManyTechStacks() {
         Long hackathonId = createDefaultHackathon();
@@ -445,11 +445,11 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("아카이브 제출작은 주요 수상 결과물 순서로 먼저 조회된다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (3, 'pw', '김동현', 'MENTOR', '백엔드', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (4, 'pw', '송준우', 'MENTOR', '기획', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (5, 'pw', '이서준', 'MENTOR', '디자인', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (3, 'pw', '김동현', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (4, 'pw', '송준우', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (5, 'pw', '이서준', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
     void getArchiveSubmissionsPrioritizesMajorAwards() {
         Long hackathonId = createDefaultHackathon();
@@ -494,8 +494,12 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     @DisplayName("참가자는 본인 팀을 평가할 수 없고 다른 팀은 1~5점 객관식으로 평가한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'MENTOR', '웹', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
-            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (3, 'pw', '김동현', 'MENTOR', '백엔드', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+            // 운영진이 아니라 해당 학기 수강생으로 참가 자격을 얻는다.
+            // 운영진(ADMIN) 계정이 있으면 평가자 유형이 ADMIN이 되어
+            // 본인 팀 평가 금지 규칙을 검증할 수 없다.
+            "INSERT INTO tb_study (study_id, act_year, act_semester, study_name, primary_mentor_id, primary_mentor_name, study_status, created_at, updated_at) VALUES (2001, 2025, 2, '평가 테스트 스터디', 1, '표준성', 'APPROVED', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_study_user (study_id, user_id) VALUES (2001, 2)",
+            "INSERT INTO tb_study_user (study_id, user_id) VALUES (2001, 3)"
     })
     void participantEvaluationRules() {
         Long hackathonId = createDefaultHackathon();

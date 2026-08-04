@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.study.StudyMentorAccess;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -36,6 +37,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserApplyService {
     private final SemesterService semesterService;
+    private final StudyMentorAccess studyMentorAccess;
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
@@ -115,7 +117,7 @@ public class UserApplyService {
      */
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        Study study = getStudyIfMentor(userId, studyId);
+        Study study = getStudyIfActiveMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
             UserApply apply = userRepository.findUserApplyById(applyId);
@@ -162,7 +164,7 @@ public class UserApplyService {
      */
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        getStudyIfMentor(userId, studyId);
+        getStudyIfActiveMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
             UserApply apply = userRepository.findUserApplyById(applyId);
@@ -263,7 +265,7 @@ public class UserApplyService {
      */
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
-        Study study = getStudyIfMentor(userId, studyId);
+        Study study = getStudyIfActiveMentor(userId, studyId);
         UserApply userApply = userRepository.findUserApplyById(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
@@ -279,14 +281,21 @@ public class UserApplyService {
         userApply.updateStatus(study.getId(), request.status());
     }
 
+    /** 조회용. 지난 학기 스터디도 본인이 멘토였으면 볼 수 있다. */
     private Study getStudyIfMentor(Long userId, Integer studyId) {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
-        }
+        studyMentorAccess.requireMentor(study, userId);
+        return study;
+    }
 
+    /** 변경용. 활동 학기 스터디만 건드릴 수 있다. */
+    private Study getStudyIfActiveMentor(Long userId, Integer studyId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         return study;
     }
 
