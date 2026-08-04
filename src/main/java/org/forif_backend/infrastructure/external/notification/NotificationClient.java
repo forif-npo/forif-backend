@@ -4,6 +4,7 @@ import com.solapi.sdk.SolapiClient;
 import com.solapi.sdk.message.dto.request.kakao.KakaoAlimtalkSendableTemplateListRequest;
 import com.solapi.sdk.message.dto.response.kakao.KakaoAlimtalkTemplateResponse;
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
+import com.solapi.sdk.message.model.FailedMessage;
 import com.solapi.sdk.message.model.Message;
 import com.solapi.sdk.message.model.kakao.KakaoOption;
 import com.solapi.sdk.message.service.DefaultMessageService;
@@ -11,6 +12,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.notification.dto.SendAlimTalkCommand;
+import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
 import org.forif_backend.application.notification.dto.TemplateInfo;
 import org.forif_backend.application.notification.port.out.NotificationSendPort;
@@ -88,22 +90,37 @@ public class NotificationClient implements NotificationSendPort {
                 // 일괄 발송
                 messageService.send(messages);
 
-                log.info("Bulk message sent successfully to {} receivers", command.receivers().size());
-                List<String> results = command.receivers().stream()
-                        .map(r -> "Success - Receiver: " + r)
+                log.info("Bulk message sent successfully - templateId: {}, receivers: {}",
+                        command.templateCode(), command.receivers().size());
+                List<SendAlimTalkMessageResult> results = command.receivers().stream()
+                        .map(r -> new SendAlimTalkMessageResult(r, true, null, null))
                         .collect(Collectors.toList());
 
-                return new SendAlimTalkResult(results);
+                return new SendAlimTalkResult(command.templateCode(), results);
 
             } catch (SolapiMessageNotReceivedException exception) {
-                log.error("Failed to send bulk message", exception);
+                log.error("Failed to send bulk message - templateId: {}", command.templateCode(), exception);
 
-                // 실패 처리
-                List<String> results = command.receivers().stream()
-                        .map(r -> "Failed - Receiver: " + r)
+                Map<String, FailedMessage> failedMessages = exception.getFailedMessageList().stream()
+                        .collect(Collectors.toMap(FailedMessage::getTo, failedMessage -> failedMessage, (first, second) -> first));
+
+                List<SendAlimTalkMessageResult> results = command.receivers().stream()
+                        .map(receiver -> {
+                            FailedMessage failedMessage = failedMessages.get(receiver);
+                            if (failedMessage == null) {
+                                return new SendAlimTalkMessageResult(receiver, true, null, null);
+                            }
+
+                            return new SendAlimTalkMessageResult(
+                                    receiver,
+                                    false,
+                                    failedMessage.getStatusCode(),
+                                    failedMessage.getStatusMessage()
+                            );
+                        })
                         .collect(Collectors.toList());
 
-                return new SendAlimTalkResult(results);
+                return new SendAlimTalkResult(command.templateCode(), results);
 
             } catch (Exception exception) {
                 log.error("Unexpected error while sending bulk message", exception);
@@ -114,25 +131,10 @@ public class NotificationClient implements NotificationSendPort {
 
     @NotNull
     private static HashMap<String, String> getVariables(SendAlimTalkCommand command, String name) {
-        HashMap<String, String> variables = new HashMap<>();
+        HashMap<String, String> variables = command.variables() == null
+                ? new HashMap<>()
+                : new HashMap<>(command.variables());
         variables.put("#{이름}", name);  // 수신자별 이름
-
-        // 공통 변수 추가
-        if (command.studyName() != null) {
-            variables.put("#{스터디명}", command.studyName());
-        }
-        if (command.responseSchedule() != null) {
-            variables.put("#{응답일정}", command.responseSchedule());
-        }
-        if (command.dateTime() != null) {
-            variables.put("#{일시}", command.dateTime());
-        }
-        if (command.location() != null) {
-            variables.put("#{장소}", command.location());
-        }
-        if (command.url() != null) {
-            variables.put("#{url}", command.url());
-        }
         return variables;
     }
 
