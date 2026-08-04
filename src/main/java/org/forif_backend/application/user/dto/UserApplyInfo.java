@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 public record UserApplyInfo(
         Long applyId,
         String applierName,
+        String department,
         String studyName,
         String studyComment,
         LocalDateTime applyDate,
@@ -22,6 +23,7 @@ public record UserApplyInfo(
                 .applyId(userApply.getId())
                 .applyDate(userApply.getCreatedAt())
                 .applierName(userApply.getApplier().getUserName())
+                .department(userApply.getApplier().getDepartment())
                 .studyName(study.getStudyName())
                 .studyComment(study.getId() == userApply.getPrimaryStudy() ? userApply.getPrimaryIntro() : userApply.getSecondaryIntro())
                 .studyStatus(study.getId() == userApply.getPrimaryStudy() ? userApply.getPrimaryStatus().getStatusName() : userApply.getSecondaryStatus().getStatusName())

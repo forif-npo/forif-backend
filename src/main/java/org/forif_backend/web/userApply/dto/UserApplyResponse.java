@@ -15,6 +15,9 @@ public record UserApplyResponse(
         @Schema(description = "신청자 이름", example = "홍길동")
         String applierName,
 
+        @Schema(description = "신청자 학과", example = "정보시스템학과")
+        String department,
+
         @Schema(description = "신청한 스터디 이름", example = "Spring Boot 스터디")
         String studyName,
 
@@ -34,6 +37,7 @@ public record UserApplyResponse(
         return UserApplyResponse.builder()
                 .applyId(userApplyInfo.applyId())
                 .applierName(userApplyInfo.applierName())
+                .department(userApplyInfo.department())
                 .applyDate(userApplyInfo.applyDate())
                 .studyName(userApplyInfo.studyName())
                 .studyComment(userApplyInfo.studyComment())
