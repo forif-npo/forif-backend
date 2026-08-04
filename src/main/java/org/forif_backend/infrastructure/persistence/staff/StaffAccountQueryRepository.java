@@ -1,6 +1,7 @@
 package org.forif_backend.infrastructure.persistence.staff;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.forif_backend.domain.staff.QStaffAccount;
@@ -91,16 +92,11 @@ public class StaffAccountQueryRepository {
 
     public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
         return queryFactory
-                .selectFrom(staffAccount).distinct()
+                .selectFrom(staffAccount)
                 .join(staffAccount.user).fetchJoin()
-                .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.user.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
-                )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
-                        study.actYear.eq(year),
-                        study.actSemester.eq(semester),
+                        mentorsStudyInSemester(year, semester),
                         cursorLt(cursor),
                         searchKeyword(search)
                 )
@@ -111,16 +107,11 @@ public class StaffAccountQueryRepository {
 
     public long countMentorsByYearSemester(int year, int semester, String search) {
         Long count = queryFactory
-                .select(staffAccount.countDistinct())
+                .select(staffAccount.count())
                 .from(staffAccount)
-                .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.user.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
-                )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
-                        study.actYear.eq(year),
-                        study.actSemester.eq(semester),
+                        mentorsStudyInSemester(year, semester),
                         searchKeyword(search)
                 )
                 .fetchOne();
@@ -157,16 +148,11 @@ public class StaffAccountQueryRepository {
 
     public List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
         return queryFactory
-                .selectFrom(staffAccount).distinct()
+                .selectFrom(staffAccount)
                 .join(staffAccount.user).fetchJoin()
-                .join(study).on(
-                        study.primaryMentor.id.eq(staffAccount.user.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
-                )
                 .where(
                         staffAccount.role.eq(StaffRole.MENTOR),
-                        study.actYear.eq(year),
-                        study.actSemester.eq(semester),
+                        mentorsStudyInSemester(year, semester),
                         searchKeyword(search)
                 )
                 .orderBy(staffAccount.user.id.desc())
@@ -203,6 +189,19 @@ public class StaffAccountQueryRepository {
             return null;
         }
         return staffAccount.user.id.lt(cursor.longValue());
+    }
+
+    private BooleanExpression mentorsStudyInSemester(int year, int semester) {
+        return JPAExpressions
+                .selectOne()
+                .from(study)
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        study.primaryMentor.id.eq(staffAccount.user.id)
+                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
+                )
+                .exists();
     }
 
     private BooleanExpression cursorLt(Long cursor) {
