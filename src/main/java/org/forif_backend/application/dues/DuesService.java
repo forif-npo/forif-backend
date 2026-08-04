@@ -73,8 +73,18 @@ public class DuesService {
     }
 
     @Transactional
-    public DuesMember updateCurrentSemesterDues(Long userId, UpdateDuesCommand command) {
+    public List<DuesMember> updateCurrentSemesterDuesBatch(List<UpdateDuesMemberCommand> commands) {
         SemesterInfo semester = semesterService.getActive();
+        return commands.stream()
+                .map(command -> updateCurrentSemesterDues(command, semester))
+                .toList();
+    }
+
+    private DuesMember updateCurrentSemesterDues(
+            UpdateDuesMemberCommand command,
+            SemesterInfo semester
+    ) {
+        Long userId = command.userId();
         if (!studyUserRepository.existsByUserIdAndStudyYearSemester(
                 userId,
                 semester.actYear(),

@@ -9,9 +9,9 @@ import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.dues.dto.DuesMember;
 import org.forif_backend.application.dues.dto.DuesPageResult;
 import org.forif_backend.application.dues.dto.DuesSort;
-import org.forif_backend.application.dues.dto.UpdateDuesCommand;
+import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
 import org.forif_backend.common.dto.response.ApiResponse;
-import org.forif_backend.web.dues.dto.UpdateDuesRequest;
+import org.forif_backend.web.dues.dto.BatchUpdateDuesRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -38,16 +38,20 @@ public class DuesController {
         ));
     }
 
-    @Operation(summary = "현재 학기 회비·구글폼 상태 수정 (어드민 전용)")
-    @PatchMapping("/{userId}")
+    @Operation(summary = "현재 학기 회비·구글폼 상태 일괄 저장 (어드민 전용)")
+    @PostMapping("/batch")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<DuesMember>> updateCurrentSemesterDues(
-            @PathVariable Long userId,
-            @RequestBody @Valid UpdateDuesRequest request
+    public ResponseEntity<ApiResponse<java.util.List<DuesMember>>> updateCurrentSemesterDuesBatch(
+            @RequestBody @Valid BatchUpdateDuesRequest request
     ) {
-        DuesMember response = duesService.updateCurrentSemesterDues(
-                userId,
-                new UpdateDuesCommand(request.duesPaid(), request.googleFormSubmitted())
+        java.util.List<DuesMember> response = duesService.updateCurrentSemesterDuesBatch(
+                request.updates().stream()
+                        .map(item -> new UpdateDuesMemberCommand(
+                                item.userId(),
+                                item.duesPaid(),
+                                item.googleFormSubmitted()
+                        ))
+                        .toList()
         );
         return ResponseEntity.ok(ApiResponse.success(response));
     }

@@ -2,7 +2,7 @@ package org.forif_backend.application.dues;
 
 import org.forif_backend.application.dues.dto.DuesPageResult;
 import org.forif_backend.application.dues.dto.DuesSort;
-import org.forif_backend.application.dues.dto.UpdateDuesCommand;
+import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.domain.dues.MemberSemesterCheck;
@@ -94,10 +94,9 @@ class DuesServiceTest {
         when(memberSemesterCheckRepository.save(any(MemberSemesterCheck.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = duesService.updateCurrentSemesterDues(
-                1L,
-                new UpdateDuesCommand(true, false)
-        );
+        var result = duesService.updateCurrentSemesterDuesBatch(List.of(
+                new UpdateDuesMemberCommand(1L, true, false)
+        )).get(0);
 
         ArgumentCaptor<MemberSemesterCheck> captor = ArgumentCaptor.forClass(MemberSemesterCheck.class);
         verify(memberSemesterCheckRepository).save(captor.capture());
