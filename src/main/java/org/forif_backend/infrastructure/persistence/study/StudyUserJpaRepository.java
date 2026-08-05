@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.study;
 
 import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserId;
+import org.forif_backend.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +25,22 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
 
     @Query("SELECT su FROM StudyUser su WHERE su.user.id = :userId")
     List<StudyUser> findAllByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT DISTINCT u FROM StudyUser su
+            JOIN su.user u
+            WHERE su.study.actYear = :year
+              AND su.study.actSemester = :semester
+              AND (
+                  :search IS NULL OR :search = ''
+                  OR LOWER(u.userName) LIKE LOWER(CONCAT('%', :search, '%'))
+                  OR LOWER(u.department) LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            ORDER BY u.userName ASC, u.id ASC
+            """)
+    List<User> findUsersByYearSemester(@Param("year") int year,
+                                       @Param("semester") int semester,
+                                       @Param("search") String search);
 
     @Query("""
             SELECT COUNT(su) FROM StudyUser su

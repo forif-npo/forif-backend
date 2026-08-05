@@ -7,10 +7,8 @@ import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
-import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
-import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
@@ -39,7 +37,6 @@ public class StudyService {
     private static final String DEFAULT_MENTOR_PASSWORD = "forif1234";
 
     private final SemesterService semesterService;
-    private final SemesterPhaseGuard semesterPhaseGuard;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final UserRepository userRepository;
@@ -264,8 +261,6 @@ public class StudyService {
     @Transactional
     public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
                                                  MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
-
         User mentor = userRepository.findUserById(mentorId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -419,8 +414,6 @@ public class StudyService {
      */
     @Transactional
     public void approveStudy(Integer studyId) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_REVIEW);
-
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
@@ -454,8 +447,6 @@ public class StudyService {
      */
     @Transactional
     public void rejectStudy(Integer studyId, String reason) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_REVIEW);
-
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 

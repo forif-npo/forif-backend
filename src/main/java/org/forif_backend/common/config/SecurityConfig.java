@@ -65,8 +65,6 @@ public class SecurityConfig {
                     "/api/v1/products/{slug}",
                     "/api/v1/semesters",
                     "/api/v1/semesters/current",
-                    "/api/v1/semester-schedules/current",
-                    "/api/v1/semester-schedules/{year}/{semester}",
                     "/api/v1/hackathons",
                     "/api/v1/hackathons/{hackathonId}",
                     "/api/v1/hackathons/{hackathonId}/submissions/**",
