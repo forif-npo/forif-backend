@@ -3,9 +3,11 @@ package org.forif_backend.application.user;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
+import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.type.SortDirection;
@@ -37,6 +39,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserApplyService {
     private final SemesterService semesterService;
+    private final SemesterPhaseGuard semesterPhaseGuard;
     private final DuesService duesService;
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
@@ -49,6 +52,8 @@ public class UserApplyService {
      */
     @Transactional
     public void applyStudy(Long userId, UserApplyRequest request) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
+
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -88,6 +93,8 @@ public class UserApplyService {
      */
     @Transactional
     public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
+
         UserApply apply = userRepository.findUserApplyById(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
@@ -117,6 +124,8 @@ public class UserApplyService {
      */
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+
         Study study = getStudyIfMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
@@ -165,6 +174,8 @@ public class UserApplyService {
      */
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+
         getStudyIfMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
@@ -266,6 +277,8 @@ public class UserApplyService {
      */
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+
         Study study = getStudyIfMentor(userId, studyId);
         UserApply userApply = userRepository.findUserApplyById(applyId);
 
