@@ -293,7 +293,7 @@ public class StaffAccountService {
     /**
      * 대상 운영진 조회 + 권한 검증 (공통)
      * - ADMIN role 확인
-     * - 부회장 대상은 회장만 관리 가능
+     * - 회장은 위임 절차 없이 삭제할 수 없고, 부회장 대상은 회장만 관리 가능
      * - 자기 자신은 관리 불가
      */
     private StaffAccount findAndValidateTargetAdmin(StaffAccount requester, Long targetUserId) {
@@ -303,6 +303,10 @@ public class StaffAccountService {
 
         StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        if ("회장".equals(target.getAffiliation())) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
 
         if ("부회장".equals(target.getAffiliation()) && !"회장".equals(requester.getAffiliation())) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
@@ -345,6 +349,7 @@ public class StaffAccountService {
         StaffAccount target = findAndValidateTargetAdmin(requester, targetUserId);
 
         staffAccountRepository.delete(target);
+        refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
     }
 
     /**

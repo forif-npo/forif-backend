@@ -307,4 +307,18 @@ public class StaffAccountController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(year, semester, cursor, page, size, search)));
     }
+
+    /**
+     * [운영진 전용] 현재 활동 학기 부원 삭제
+     */
+    @Operation(summary = "현재 학기 부원 삭제 (어드민 전용)",
+            description = "부원 계정과 과거 학기 이력은 보존하고, 현재 활동 학기의 수강 관계만 하드 삭제합니다.")
+    @DeleteMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteCurrentSemesterMember(
+            @Parameter(description = "현재 활동 학기에서 삭제할 부원의 유저 ID") @PathVariable Long userId
+    ) {
+        userService.deleteCurrentSemesterMember(userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

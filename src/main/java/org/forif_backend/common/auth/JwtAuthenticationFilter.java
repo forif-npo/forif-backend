@@ -27,6 +27,8 @@ import java.util.List;
 
 import org.forif_backend.application.auth.TokenBlacklistService;
 import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.domain.staff.StaffAccountRepository;
+import org.forif_backend.domain.staff.StaffRole;
 
 /**
  * JWT 토큰 기반 인증을 처리하는 Spring Security 필터
@@ -39,6 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final TokenBlacklistService tokenBlacklistService;
+    private final StaffAccountRepository staffAccountRepository;
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int BEARER_PREFIX_LENGTH = 7;
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
@@ -113,6 +116,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
+                // 운영진/멘토 계정이 삭제된 뒤에는 만료 전 access token도 더 이상 권한을 갖지 않는다.
+                if (!isActiveStaffAccount(token)) {
+                    log.warn("삭제된 스태프 계정의 토큰입니다. URI: {}", request.getRequestURI());
+                    request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
                 // 7. 토큰에서 사용자 ID 추출 및 인증 정보 설정
                 setAuthentication(token, request);
                 log.debug("JWT 인증 성공. ID: {}", jwtProvider.getUserIdFromToken(token));
@@ -152,6 +163,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        }
+
+        private boolean isActiveStaffAccount(String token) {
+            String role = jwtProvider.getRoleFromToken(token);
+            if ("USER".equals(role)) {
+                return true;
+            }
+
+            try {
+                Long userId = Long.parseLong(jwtProvider.getUserIdFromToken(token));
+                StaffRole staffRole = StaffRole.fromValue(role);
+                return staffAccountRepository.existsByUserIdAndRole(userId, staffRole);
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         private List<SimpleGrantedAuthority> resolveAuthorities(String role) {
