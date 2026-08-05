@@ -15,7 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "회비 관리", description = "현재 학기 부원의 회비·구글폼 제출 상태 관리 API")
+@Tag(name = "회비 관리", description = "현재 학기 부원·신청자의 회비·구글폼 제출 상태 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/dues")

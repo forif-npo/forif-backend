@@ -425,6 +425,71 @@ public class UserService {
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
+    /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getApplicants(int year, int semester, Long cursor, int size, String search) {
+        long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchApplicantsByYearSemester(year, semester, cursor, size, search);
+        boolean hasNext = users.size() > size;
+        List<User> content = hasNext ? users.subList(0, size) : users;
+        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
+    /** 문자 발송 수신자용 전체 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getNotificationMembers(Long cursor, int size, String search) {
+        SemesterInfo active = semesterService.getActive();
+        long totalElements = userRepository.countNotificationUsers(search);
+        List<User> users = userRepository.searchNotificationUsersWithCursor(cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, active.actYear(), active.actSemester());
+    }
+
+    /** 문자 발송 수신자용 학기 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getNotificationMembers(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countNotificationUsersByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchNotificationUsersByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
+    /** 회비 미납 상태인 현재 학기 합격자 조회. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingDues(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countAcceptedUsersMissingDuesByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchAcceptedUsersMissingDuesByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
+    /** 구글폼을 미제출한 현재 학기 합격자 조회. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingGoogleForm(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countAcceptedUsersMissingGoogleFormByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchAcceptedUsersMissingGoogleFormByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
+    private CursorPageResponse<MemberResponse> toCursorMemberPage(
+            List<User> users,
+            long totalElements,
+            int size,
+            int year,
+            int semester
+    ) {
+        boolean hasNext = users.size() > size;
+        List<User> content = hasNext ? users.subList(0, size) : users;
+        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
+        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
     private List<MemberResponse> buildMemberResponses(List<User> users, int year, int semester) {
         List<Long> userIds = users.stream().map(User::getId).toList();
 

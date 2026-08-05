@@ -44,4 +44,24 @@ public interface UserRepository {
     List<User> searchUsersByYearSemesterWithOffset(int year, int semester, int page, int size, String search);
 
     long countUsersByYearSemester(int year, int semester, String search);
+
+    List<User> searchNotificationUsersWithCursor(Long cursor, int size, String search);
+
+    long countNotificationUsers(String search);
+
+    List<User> searchNotificationUsersByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countNotificationUsersByYearSemester(int year, int semester, String search);
+
+    List<User> searchApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countApplicantsByYearSemester(int year, int semester, String search);
+
+    List<User> searchAcceptedUsersMissingDuesByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countAcceptedUsersMissingDuesByYearSemester(int year, int semester, String search);
+
+    List<User> searchAcceptedUsersMissingGoogleFormByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countAcceptedUsersMissingGoogleFormByYearSemester(int year, int semester, String search);
 }

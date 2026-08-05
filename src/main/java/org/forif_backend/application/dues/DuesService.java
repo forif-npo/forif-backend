@@ -10,15 +10,21 @@ import org.forif_backend.domain.dues.MemberSemesterCheck;
 import org.forif_backend.domain.dues.MemberSemesterCheckRepository;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyRepository;
+import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -33,6 +39,7 @@ public class DuesService {
     private final StudyUserRepository studyUserRepository;
     private final StudyRepository studyRepository;
     private final UserRepository userRepository;
+    private final UserApplyRepository userApplyRepository;
     private final MemberSemesterCheckRepository memberSemesterCheckRepository;
 
     public DuesPageResult getCurrentSemesterDues(
@@ -42,7 +49,7 @@ public class DuesService {
             DuesSort sort
     ) {
         SemesterInfo semester = semesterService.getActive();
-        List<User> users = studyUserRepository.findUsersByYearSemester(
+        List<User> users = findDuesTargets(
                 semester.actYear(),
                 semester.actSemester(),
                 search
@@ -83,11 +90,11 @@ public class DuesService {
             SemesterInfo semester
     ) {
         Long userId = command.userId();
-        if (!studyUserRepository.existsByUserIdAndStudyYearSemester(
-                userId,
-                semester.actYear(),
-                semester.actSemester()
-        )) {
+        boolean isMember = studyUserRepository.existsByUserIdAndStudyYearSemester(
+                userId, semester.actYear(), semester.actSemester());
+        boolean isApplicant = userApplyRepository.existsByApplierIdAndYearSemester(
+                userId, semester.actYear(), semester.actSemester());
+        if (!isMember && !isApplicant) {
             throw new ForifException(ErrorCode.USER_NOT_FOUND);
         }
 
@@ -99,6 +106,7 @@ public class DuesService {
                 .orElseGet(() -> MemberSemesterCheck.create(user, semester.actYear(), semester.actSemester()));
         memberCheck.update(command.duesPaid(), command.googleFormSubmitted());
         memberSemesterCheckRepository.save(memberCheck);
+        synchronizeStudyMembership(user, semester, memberCheck);
     }
 
     @Transactional
@@ -108,6 +116,65 @@ public class DuesService {
                 .orElseGet(() -> memberSemesterCheckRepository.save(
                         MemberSemesterCheck.create(user, study.getActYear(), study.getActSemester())
                 ));
+    }
+
+    /**
+     * 스터디 합격자 중 회비 납부와 구글폼 제출을 모두 확인한 경우에만 수강생으로 등록한다.
+     */
+    @Transactional
+    public void registerStudyUserIfEligible(Study study, User user) {
+        memberSemesterCheckRepository
+                .findByUserIdAndYearSemester(user.getId(), study.getActYear(), study.getActSemester())
+                .ifPresent(memberCheck -> registerStudyUserIfEligible(study, user, memberCheck));
+    }
+
+    private void registerStudyUserIfEligible(Study study, User user, MemberSemesterCheck memberCheck) {
+        if (!memberCheck.isDuesPaid() || !memberCheck.isGoogleFormSubmitted()) {
+            return;
+        }
+        studyUserRepository.findByUserIdAndStudyId(user.getId(), study.getId())
+                .orElseGet(() -> {
+                    StudyUser studyUser = StudyUser.create(study, user);
+                    studyUserRepository.save(studyUser);
+                    return studyUser;
+                });
+    }
+
+    private void synchronizeStudyMembership(
+            User user,
+            SemesterInfo semester,
+            MemberSemesterCheck memberCheck
+    ) {
+        userRepository.findUserApplyByYearAndSemesterAndUser(
+                        semester.actYear(), semester.actSemester(), user)
+                .flatMap(this::acceptedStudyId)
+                .flatMap(studyRepository::findStudyById)
+                .ifPresent(study -> {
+                    if (memberCheck.isDuesPaid() && memberCheck.isGoogleFormSubmitted()) {
+                        registerStudyUserIfEligible(study, user, memberCheck);
+                    } else {
+                        studyUserRepository.deleteByUserIdAndStudyId(user.getId(), study.getId());
+                    }
+                });
+    }
+
+    private Optional<Integer> acceptedStudyId(UserApply apply) {
+        if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+            return Optional.of(apply.getPrimaryStudy());
+        }
+        if (apply.getSecondaryStatus() == UserApplyStatus.ACCEPT) {
+            return Optional.ofNullable(apply.getSecondaryStudy());
+        }
+        return Optional.empty();
+    }
+
+    private List<User> findDuesTargets(int year, int semester, String search) {
+        Map<Long, User> usersById = new LinkedHashMap<>();
+        studyUserRepository.findUsersByYearSemester(year, semester, search)
+                .forEach(user -> usersById.put(user.getId(), user));
+        userApplyRepository.findApplicantsByYearSemester(year, semester, search)
+                .forEach(user -> usersById.putIfAbsent(user.getId(), user));
+        return List.copyOf(usersById.values());
     }
 
     private List<DuesMember> toDuesMembers(List<User> users, SemesterInfo semester) {
