@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,6 +40,7 @@ public class StudyService {
 
     private final SemesterService semesterService;
     private final SemesterPhaseGuard semesterPhaseGuard;
+    private final StudyRecruitStatusPolicy recruitStatusPolicy;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final UserRepository userRepository;
@@ -411,7 +413,6 @@ public class StudyService {
 
     /**
      * [어드민 전용] 스터디 개설 승인
-     * 승인 시 멘토(primary, secondary) 계정이 없으면 자동 생성
      */
     @Transactional
     public void approveStudy(Integer studyId) {
@@ -421,6 +422,10 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         study.approve();
+        // 스케줄러가 30초마다 맞춰주지만 그 사이 모집 상태가 NULL로 남아 화면에서 "마감"으로
+        // 보인다. 승인하자마자 옳은 값이 보이도록 여기서 먼저 채운다.
+        study.setRecruitStatus(recruitStatusPolicy.resolve(
+                study.getActYear(), study.getActSemester(), LocalDateTime.now()));
         // 멘토 계정을 따로 만들지 않는다. 멘토 권한은 tb_study의 멘토 관계에서
         // 요청 시점에 유도되므로, 승인된 순간부터 부원 로그인으로 관리할 수 있다.
     }

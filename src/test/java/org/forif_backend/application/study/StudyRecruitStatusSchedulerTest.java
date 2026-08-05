@@ -2,9 +2,6 @@ package org.forif_backend.application.study;
 
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
-import org.forif_backend.domain.semester.SemesterPhase;
-import org.forif_backend.domain.semester.SemesterSchedule;
-import org.forif_backend.domain.semester.SemesterScheduleRepository;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyRepository;
 import org.junit.jupiter.api.Test;
@@ -14,9 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -24,10 +19,10 @@ import static org.mockito.Mockito.when;
 class StudyRecruitStatusSchedulerTest {
 
     @Mock
-    private SemesterScheduleRepository semesterScheduleRepository;
+    private SemesterService semesterService;
 
     @Mock
-    private SemesterService semesterService;
+    private StudyRecruitStatusPolicy recruitStatusPolicy;
 
     @Mock
     private StudyRepository studyRepository;
@@ -35,38 +30,40 @@ class StudyRecruitStatusSchedulerTest {
     @InjectMocks
     private StudyRecruitStatusScheduler scheduler;
 
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 12, 0);
+
     @Test
-    void opensApprovedStudiesDuringMenteeRecruitment() {
-        LocalDateTime now = LocalDateTime.of(2026, 8, 5, 12, 0);
-        SemesterSchedule schedule = SemesterSchedule.create(
-                2026, 2, SemesterPhase.MENTEE_RECRUIT,
-                now.minusDays(1), now.plusDays(1), 1L);
+    void 모집_기간_안이면_활동_학기_스터디를_APPLICABLE로_동기화한다() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
-        when(semesterScheduleRepository.findByYearAndSemesterAndPhase(
-                2026, 2, SemesterPhase.MENTEE_RECRUIT)).thenReturn(Optional.of(schedule));
+        when(recruitStatusPolicy.resolve(2026, 2, NOW)).thenReturn(RecruitStatus.APPLICABLE);
 
-        scheduler.synchronizeRecruitStatuses(now);
+        scheduler.synchronizeRecruitStatuses(NOW);
 
-        verify(studyRepository).updateRecruitStatusForApprovedStudies(
-                2026, 2, RecruitStatus.APPLICABLE);
+        verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.APPLICABLE);
     }
 
     @Test
-    void closesApprovedStudiesOutsideMenteeRecruitment() {
-        LocalDateTime now = LocalDateTime.of(2026, 8, 5, 12, 0);
-        SemesterSchedule schedule = SemesterSchedule.create(
-                2026, 2, SemesterPhase.MENTEE_RECRUIT,
-                now.plusDays(1), now.plusDays(8), 1L);
+    void 모집_기간_밖이면_CLOSED로_동기화한다() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
-        when(semesterScheduleRepository.findByYearAndSemesterAndPhase(
-                2026, 2, SemesterPhase.MENTEE_RECRUIT)).thenReturn(Optional.of(schedule));
-        when(studyRepository.updateRecruitStatusForApprovedStudies(
-                any(Integer.class), any(Integer.class), any(RecruitStatus.class)))
-                .thenReturn(0);
+        when(recruitStatusPolicy.resolve(2026, 2, NOW)).thenReturn(RecruitStatus.CLOSED);
 
-        scheduler.synchronizeRecruitStatuses(now);
+        scheduler.synchronizeRecruitStatuses(NOW);
 
-        verify(studyRepository).updateRecruitStatusForApprovedStudies(
-                2026, 2, RecruitStatus.CLOSED);
+        verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.CLOSED);
+    }
+
+    /**
+     * 예전에는 일정이 없는 학기를 건너뛰어 모집 상태가 NULL로 남았고,
+     * 프론트가 NULL을 "마감"으로 그려서 실제 신청 가능 여부와 어긋났다.
+     * 이제는 정책이 돌려주는 값으로 반드시 동기화한다.
+     */
+    @Test
+    void 일정이_없는_학기도_건너뛰지_않는다() {
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(recruitStatusPolicy.resolve(2026, 2, NOW)).thenReturn(RecruitStatus.APPLICABLE);
+
+        scheduler.synchronizeRecruitStatuses(NOW);
+
+        verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.APPLICABLE);
     }
 }
