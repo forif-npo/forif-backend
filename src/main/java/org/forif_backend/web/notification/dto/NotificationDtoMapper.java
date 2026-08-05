@@ -1,6 +1,7 @@
 package org.forif_backend.web.notification.dto;
 
 import org.forif_backend.application.notification.dto.SendAlimTalkCommand;
+import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
 
 import java.util.List;
@@ -11,30 +12,34 @@ public class NotificationDtoMapper {
         return new SendAlimTalkCommand(
                 request.receivers(),
                 request.templateCode(),
-                request.studyName(),
-                request.responseSchedule(),
-                request.dateTime(),
-                request.location(),
-                request.url()
+                request.variables()
         );
     }
 
     public static SendAlimTalkResponse toResponse(SendAlimTalkResult result) {
-        List<String> results = result.results();
+        List<SendAlimTalkMessageResult> results = result.results();
 
         long successCount = results.stream()
-                .filter(r -> r.startsWith("Success"))
+                .filter(SendAlimTalkMessageResult::success)
                 .count();
 
         long failureCount = results.stream()
-                .filter(r -> r.startsWith("Failed"))
+                .filter(r -> !r.success())
                 .count();
 
         return new SendAlimTalkResponse(
+                result.templateId(),
                 results.size(),
                 (int) successCount,
                 (int) failureCount,
-                results
+                results.stream()
+                        .map(r -> new SendAlimTalkMessageResponse(
+                                r.receiver(),
+                                r.success(),
+                                r.errorCode(),
+                                r.errorMessage()
+                        ))
+                        .toList()
         );
     }
 }
