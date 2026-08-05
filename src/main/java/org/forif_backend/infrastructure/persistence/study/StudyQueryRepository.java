@@ -1,6 +1,8 @@
 package org.forif_backend.infrastructure.persistence.study;
 
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -115,6 +117,32 @@ public class StudyQueryRepository {
         }
 
         return studyTag.name.in(tagNames);
+    }
+
+    /** 해당 학기에 멘토(주·부)로 등록된 유저 ID를 한 번에 추린다 */
+    public Set<Long> findMentorUserIdsByUserIds(List<Long> userIds, int year, int semester) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Set.of();
+        }
+
+        List<Tuple> results = queryFactory
+                .select(study.primaryMentor.id, study.secondaryMentor.id)
+                .from(study)
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        study.primaryMentor.id.in(userIds).or(study.secondaryMentor.id.in(userIds))
+                )
+                .fetch();
+
+        Set<Long> mentorIds = new HashSet<>();
+        for (Tuple t : results) {
+            Long primary = t.get(study.primaryMentor.id);
+            Long secondary = t.get(study.secondaryMentor.id);
+            if (primary != null && userIds.contains(primary)) mentorIds.add(primary);
+            if (secondary != null && userIds.contains(secondary)) mentorIds.add(secondary);
+        }
+        return mentorIds;
     }
 
     public Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester) {

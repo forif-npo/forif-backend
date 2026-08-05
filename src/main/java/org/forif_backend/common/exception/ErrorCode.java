@@ -55,6 +55,7 @@ public enum ErrorCode {
     // 403 Forbidden
     INSUFFICIENT_PERMISSION(HttpStatus.FORBIDDEN, "FOR020-403", "권한이 없습니다."),
     NOT_STUDY_MENTOR(HttpStatus.FORBIDDEN, "FOR021-403", "해당 스터디의 멘토가 아닙니다."),
+    STUDY_NOT_IN_ACTIVE_SEMESTER(HttpStatus.FORBIDDEN, "FOR127-403", "지난 학기 스터디는 관리할 수 없습니다."),
     HACKATHON_PARTICIPATION_NOT_ALLOWED(HttpStatus.FORBIDDEN, "FOR064-403", "해커톤 참가 자격이 없습니다."),
     HACKATHON_TEAM_LEADER_REQUIRED(HttpStatus.FORBIDDEN, "FOR065-403", "해커톤 팀장 권한이 필요합니다."),
     HACKATHON_EVALUATION_NOT_ALLOWED(HttpStatus.FORBIDDEN, "FOR066-403", "해커톤 평가 권한이 없습니다."),

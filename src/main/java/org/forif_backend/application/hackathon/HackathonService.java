@@ -1029,7 +1029,10 @@ public class HackathonService {
     }
 
     private boolean canRegister(HackathonEvent event, Long userId) {
-        return staffAccountRepository.existsByUserId(userId)
+        // 운영진은 ADMIN 계정 보유로 판정한다. 회장이 매 학기 물러난 운영진 계정을
+        // 정리하므로 사실상 현재 학기 운영진과 같다. MENTOR 행까지 세면 역대 멘토가
+        // 전부 영구 자격을 갖게 된다.
+        return staffAccountRepository.existsByUserIdAndRole(userId, StaffRole.ADMIN)
                 || studyUserRepository.existsByUserIdAndStudyYearSemester(
                         userId, event.getHeldYear(), event.getHeldSemester()
                 )

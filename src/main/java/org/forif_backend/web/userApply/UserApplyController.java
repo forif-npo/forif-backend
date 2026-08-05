@@ -15,7 +15,6 @@ import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.web.userApply.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -53,7 +52,6 @@ public class UserApplyController {
     }
 
     @Operation(summary = "신청자 목록 조회 (멘토 전용)", description = "해당 스터디에 신청한 멘티 목록을 조회합니다. 상태 필터 및 날짜 정렬을 지원합니다.")
-    @PreAuthorize("hasRole('MENTOR')")
     @GetMapping("/{studyId}")
     public ResponseEntity<ApiResponse<PageResponse<UserApplyResponse>>> getUserApply(
                                                                              @AuthenticationPrincipal Long userId,
@@ -69,7 +67,6 @@ public class UserApplyController {
     }
 
     @Operation(summary = "신청서 상세 조회 (멘토 전용)", description = "특정 신청서의 지원 동기 등 상세 내용을 조회합니다.")
-    @PreAuthorize("hasRole('MENTOR')")
     @GetMapping("/{studyId}/{applyId}")
     public ResponseEntity<ApiResponse<UserApplyDetailResponse>> getUserApplyDetail(
                                                                                    @AuthenticationPrincipal Long userId,
@@ -81,7 +78,6 @@ public class UserApplyController {
     }
 
     @Operation(summary = "신청서 상태 변경 (멘토 전용)", description = "신청서의 상태를 PENDING(대기중) 또는 REJECT(탈락)으로 변경합니다. 합격 처리는 /accept 엔드포인트를 사용해주세요.")
-    @PreAuthorize("hasRole('MENTOR')")
     @PatchMapping("/{studyId}/{applyId}/status")
     public ResponseEntity<ApiResponse<Void>> updateApplyStatus(
                                                                 @AuthenticationPrincipal Long userId,
@@ -93,7 +89,6 @@ public class UserApplyController {
     }
 
     @Operation(summary = "합격 처리 (멘토 전용)", description = "신청서 ID 목록을 받아 일괄 합격 처리합니다. 이미 합격인 신청서는 스킵되고, 2순위 합격 상태에서 1순위 합격 시 2순위 StudyUser가 삭제됩니다.")
-    @PreAuthorize("hasRole('MENTOR')")
     @PostMapping("/{studyId}/accept")
     public ResponseEntity<ApiResponse<Void>> acceptApplications(
                                                                  @AuthenticationPrincipal Long userId,
@@ -104,7 +99,6 @@ public class UserApplyController {
     }
 
     @Operation(summary = "불합격 처리 (멘토 전용)", description = "신청서 ID 목록을 받아 일괄 불합격 처리합니다. 이미 불합격인 신청서는 스킵되고, 합격 상태였다면 StudyUser가 삭제됩니다.")
-    @PreAuthorize("hasRole('MENTOR')")
     @PostMapping("/{studyId}/reject")
     public ResponseEntity<ApiResponse<Void>> rejectApplications(
                                                                  @AuthenticationPrincipal Long userId,

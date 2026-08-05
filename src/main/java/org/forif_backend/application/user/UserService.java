@@ -430,6 +430,8 @@ public class UserService {
 
         Map<Long, String> studyNameMap = studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
         Map<Long, StaffRole> staffRoleMap = staffAccountRepository.findStaffRolesByUserIds(userIds);
+        // 멘토는 계정이 아니라 해당 학기 스터디의 멘토 관계로 판정한다
+        Set<Long> mentorUserIds = studyRepository.findMentorUserIdsByUserIds(userIds, year, semester);
 
         return users.stream()
                 .map(u -> MemberResponse.builder()
@@ -438,7 +440,7 @@ public class UserService {
                         .userName(u.getUserName())
                         .phoneNum(u.getPhoneNum())
                         .currentStudyName(studyNameMap.get(u.getId()))
-                        .isMentor(staffRoleMap.get(u.getId()) == StaffRole.MENTOR)
+                        .isMentor(mentorUserIds.contains(u.getId()))
                         .isAdmin(staffRoleMap.get(u.getId()) == StaffRole.ADMIN)
                         .build())
                 .toList();
