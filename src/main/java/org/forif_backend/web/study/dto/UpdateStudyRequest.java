@@ -27,7 +27,6 @@ public class UpdateStudyRequest {
     private String locationDetail;
     private Boolean isOnline;
 
-    private String recruitStatus;
     private Integer difficulty;
     private Integer capacity;
     private String selectionCriteria;

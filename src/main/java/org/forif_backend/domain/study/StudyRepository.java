@@ -54,6 +54,9 @@ public interface StudyRepository {
      */
     void saveAllStudyReference(List<StudyReference> references);
 
+    /** 승인된 스터디의 모집 상태를 학기 단위로 일괄 변경한다. */
+    int updateRecruitStatusForApprovedStudies(int actYear, int actSemester, RecruitStatus recruitStatus);
+
     /**
      * 멘토 ID로 스터디 신청 목록 조회
      */
