@@ -97,6 +97,12 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public int updateRecruitStatusForApprovedStudies(int actYear, int actSemester, RecruitStatus recruitStatus) {
+        return studyJpaRepository.updateRecruitStatusForApprovedStudies(
+                actYear, actSemester, recruitStatus, StudyStatus.APPROVED);
+    }
+
+    @Override
     public List<Study> findAllStudiesByMentorId(Long mentorId) {
         return studyQueryRepository.findAllStudiesByMentorId(mentorId);
     }

@@ -210,9 +210,6 @@ public class StudyService {
         if (request.getDifficulty() != null) {
             study.setDifficulty(StudyDifficulty.fromLevel(request.getDifficulty()));
         }
-        if (request.getRecruitStatus() != null) {
-            study.setRecruitStatus(RecruitStatus.fromValue(request.getRecruitStatus()));
-        }
 
         // 태그 교체
         if (request.getStudyTagIds() != null) {
