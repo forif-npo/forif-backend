@@ -1,14 +1,11 @@
 package org.forif_backend.application.notification.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public record SendAlimTalkCommand(
         List<String> receivers,
         String templateCode,
-        String studyName,
-        String responseSchedule,
-        String dateTime,
-        String location,
-        String url
+        Map<String, String> variables
 ) {
 }

@@ -111,6 +111,12 @@ public enum ErrorCode {
     FORIF_TEAM_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR121-409", "이미 해당 학기 운영진 명단에 있습니다."),
     SEMESTER_NEXT_PRESIDENT_REQUIRED(HttpStatus.BAD_REQUEST, "FOR122-400", "차기 회장은 운영진 계정을 가진 사람 중에서 지정해야 합니다."),
 
+    // Semester schedule (모집 단계 기간)
+    SEMESTER_PHASE_NOT_STARTED(HttpStatus.BAD_REQUEST, "FOR123-400", "아직 시작되지 않은 기간입니다."),
+    SEMESTER_PHASE_CLOSED(HttpStatus.BAD_REQUEST, "FOR124-400", "이미 종료된 기간입니다."),
+    SEMESTER_SCHEDULE_INVALID_RANGE(HttpStatus.BAD_REQUEST, "FOR125-400", "종료 시각은 시작 시각보다 뒤여야 합니다."),
+    SEMESTER_SCHEDULE_ORDER_INVALID(HttpStatus.BAD_REQUEST, "FOR126-400", "모집 기간과 심사 기간은 겹칠 수 없습니다. 앞 단계가 끝난 뒤에 다음 단계가 시작되어야 합니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
