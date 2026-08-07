@@ -15,7 +15,6 @@ import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
-import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
@@ -161,10 +160,8 @@ public class UserApplyService {
             }
 
             apply.updateStatus(studyId, UserApplyStatus.ACCEPT);
-
-            StudyUser studyUser = StudyUser.create(study, apply.getApplier());
-            studyUserRepository.save(studyUser);
             duesService.ensureMemberCheck(study, apply.getApplier());
+            duesService.registerStudyUserIfEligible(study, apply.getApplier());
         }
     }
 

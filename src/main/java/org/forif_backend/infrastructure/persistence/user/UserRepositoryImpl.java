@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import static org.forif_backend.domain.study.QStudy.study;
 import static org.forif_backend.domain.study.QStudyUser.studyUser;
+import static org.forif_backend.domain.dues.QMemberSemesterCheck.memberSemesterCheck;
 import static org.forif_backend.domain.user.QUser.user;
 import static org.forif_backend.domain.user.QUserApply.userApply;
 
@@ -226,6 +227,194 @@ public class UserRepositoryImpl implements UserRepository {
         return count != null ? count : 0L;
     }
 
+    @Override
+    public List<User> searchNotificationUsersWithCursor(Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user)
+                .where(
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countNotificationUsers(String search) {
+        Long count = queryFactory
+                .select(user.count())
+                .from(user)
+                .where(
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchNotificationUsersByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(studyUser).on(studyUser.user.id.eq(user.id))
+                .join(study).on(studyUser.study.id.eq(study.id))
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countNotificationUsersByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(studyUser).on(studyUser.user.id.eq(user.id))
+                .join(study).on(studyUser.study.id.eq(study.id))
+                .where(
+                        study.actYear.eq(year),
+                        study.actSemester.eq(semester),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countApplicantsByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchAcceptedUsersMissingDuesByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchAcceptedUsersWithIncompleteCheck(
+                year, semester, cursor, size, search,
+                memberSemesterCheck.id.isNull().or(memberSemesterCheck.duesPaid.isFalse())
+        );
+    }
+
+    @Override
+    public long countAcceptedUsersMissingDuesByYearSemester(int year, int semester, String search) {
+        return countAcceptedUsersWithIncompleteCheck(
+                year, semester, search,
+                memberSemesterCheck.id.isNull().or(memberSemesterCheck.duesPaid.isFalse())
+        );
+    }
+
+    @Override
+    public List<User> searchAcceptedUsersMissingGoogleFormByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchAcceptedUsersWithIncompleteCheck(
+                year, semester, cursor, size, search,
+                memberSemesterCheck.id.isNull().or(memberSemesterCheck.googleFormSubmitted.isFalse())
+        );
+    }
+
+    @Override
+    public long countAcceptedUsersMissingGoogleFormByYearSemester(int year, int semester, String search) {
+        return countAcceptedUsersWithIncompleteCheck(
+                year, semester, search,
+                memberSemesterCheck.id.isNull().or(memberSemesterCheck.googleFormSubmitted.isFalse())
+        );
+    }
+
+    private List<User> searchAcceptedUsersWithIncompleteCheck(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search,
+            BooleanExpression incompleteCheck
+    ) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .leftJoin(memberSemesterCheck).on(
+                        memberSemesterCheck.user.id.eq(user.id),
+                        memberSemesterCheck.actYear.eq(year),
+                        memberSemesterCheck.actSemester.eq(semester)
+                )
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasAcceptedStudyApplication(),
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search),
+                        incompleteCheck
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    private long countAcceptedUsersWithIncompleteCheck(
+            int year,
+            int semester,
+            String search,
+            BooleanExpression incompleteCheck
+    ) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .leftJoin(memberSemesterCheck).on(
+                        memberSemesterCheck.user.id.eq(user.id),
+                        memberSemesterCheck.actYear.eq(year),
+                        memberSemesterCheck.actSemester.eq(semester)
+                )
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasAcceptedStudyApplication(),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search),
+                        incompleteCheck
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
     private BooleanExpression userCursorLt(Long cursor) {
         return cursor != null ? user.id.lt(cursor) : null;
     }
@@ -236,5 +425,22 @@ public class UserRepositoryImpl implements UserRepository {
         }
         return user.userName.containsIgnoreCase(search)
                 .or(user.department.containsIgnoreCase(search));
+    }
+
+    private BooleanExpression hasPhoneNumber() {
+        return user.phoneNum.isNotNull().and(user.phoneNum.ne(""));
+    }
+
+    private BooleanExpression hasAcceptedStudyApplication() {
+        return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
+                .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
+    }
+
+    private BooleanExpression notificationRecipientSearchKeyword(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return user.userName.containsIgnoreCase(search)
+                .or(user.id.stringValue().contains(search));
     }
 }
