@@ -29,9 +29,11 @@ public class StudyQueryRepository {
     }
 
     public List<Study> searchStudies(StudySearchCond cond, Integer cursor, int size) {
-        return queryFactory
-                .selectFrom(study).distinct()
-                .leftJoin(study.tags, studyTag).fetchJoin()
+        List<Integer> studyIds = queryFactory
+                .select(study.id)
+                .distinct()
+                .from(study)
+                .leftJoin(study.tags, studyTag)
                 .where(study.studyStatus.eq(StudyStatus.APPROVED),
                         cursorLt(cursor),
                         yearEq(cond.getYear()),
@@ -42,6 +44,25 @@ public class StudyQueryRepository {
                         tagsIn(cond.getStudyTagNames()))
                 .orderBy(study.id.desc())
                 .limit(size + 1)
+                .fetch();
+
+        return findStudiesWithTags(studyIds);
+    }
+
+    /**
+     * 컬렉션 fetch join에 페이지 제한을 함께 적용하면 조인된 태그 행이 잘릴 수 있다.
+     * 페이지 대상 스터디를 먼저 확정한 뒤, 각 스터디의 전체 태그를 조회한다.
+     */
+    private List<Study> findStudiesWithTags(List<Integer> studyIds) {
+        if (studyIds.isEmpty()) {
+            return List.of();
+        }
+
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(study.id.in(studyIds))
+                .orderBy(study.id.desc())
                 .fetch();
     }
 
@@ -276,9 +297,11 @@ public class StudyQueryRepository {
     }
 
     public List<Study> searchStudiesWithOffset(StudySearchCond cond, int page, int size) {
-        return queryFactory
-                .selectFrom(study).distinct()
-                .leftJoin(study.tags, studyTag).fetchJoin()
+        List<Integer> studyIds = queryFactory
+                .select(study.id)
+                .distinct()
+                .from(study)
+                .leftJoin(study.tags, studyTag)
                 .where(study.studyStatus.eq(StudyStatus.APPROVED),
                         yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
@@ -290,6 +313,8 @@ public class StudyQueryRepository {
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
+
+        return findStudiesWithTags(studyIds);
     }
 
     public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
