@@ -71,6 +71,21 @@ public class UserApply extends BaseTimeEntity {
         }
     }
 
+    /**
+     * 합격 상태를 되돌린다. 부원을 명단에서 뺄 때 함께 호출한다.
+     *
+     * ACCEPT를 남겨두면 멘토가 다시 합격 처리해도 이미 승낙 상태라 걸러져 수강생이 복구되지 않고,
+     * 회비 확인 시 이 지원서를 근거로 수강생이 되살아난다.
+     */
+    public void revertAcceptance() {
+        if (this.primaryStatus == UserApplyStatus.ACCEPT) {
+            this.primaryStatus = UserApplyStatus.REJECT;
+        }
+        if (this.secondaryStatus == UserApplyStatus.ACCEPT) {
+            this.secondaryStatus = UserApplyStatus.REJECT;
+        }
+    }
+
     public void addSecondaryStudy(Integer studyId, String studyName, String intro) {
         this.secondaryStudy = studyId;
         this.secondaryStudyName = studyName;

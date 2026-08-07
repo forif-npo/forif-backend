@@ -293,8 +293,12 @@ public class StaffAccountService {
     /**
      * 대상 운영진 조회 + 권한 검증 (공통)
      * - ADMIN role 확인
-     * - 회장은 위임 절차 없이 삭제할 수 없고, 부회장 대상은 회장만 관리 가능
+     * - 부회장 대상은 회장만 관리 가능
      * - 자기 자신은 관리 불가
+     *
+     * 회장 보호는 여기 두지 않는다. 이 헬퍼는 수정도 함께 쓰기 때문에, 여기서 막으면
+     * 회장 비밀번호 재설정까지 불가능해진다. 요청자는 자기 자신을 관리할 수 없어
+     * 회장 본인도 못 바꾸고, 부회장은 권한이 없어 아무도 손댈 수 없게 된다.
      */
     private StaffAccount findAndValidateTargetAdmin(StaffAccount requester, Long targetUserId) {
         if (requester.getUserId().equals(targetUserId)) {
@@ -303,10 +307,6 @@ public class StaffAccountService {
 
         StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        if ("회장".equals(target.getAffiliation())) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
 
         if ("부회장".equals(target.getAffiliation()) && !"회장".equals(requester.getAffiliation())) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
@@ -341,12 +341,17 @@ public class StaffAccountService {
     }
 
     /**
-     * 운영진 계정 삭제
+     * 운영진 계정 삭제.
+     * 회장은 삭제할 수 없다. 지우려면 먼저 차기 회장에게 위임해야 한다.
      */
     @Transactional
     public void deleteAdmin(Long requesterId, Long targetUserId) {
         StaffAccount requester = validatePresidentTeam(requesterId);
         StaffAccount target = findAndValidateTargetAdmin(requester, targetUserId);
+
+        if ("회장".equals(target.getAffiliation())) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
 
         staffAccountRepository.delete(target);
         refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
