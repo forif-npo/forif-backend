@@ -425,6 +425,25 @@ public class UserService {
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
+    /**
+     * 현재 활동 학기 부원 명단에서 제외한다.
+     * User 계정과 지난 학기 수강 이력은 보존하며, 현재 학기의 수강 관계만 하드 삭제한다.
+     */
+    @Transactional
+    public void deleteCurrentSemesterMember(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ForifException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        SemesterInfo active = semesterService.getActive();
+        int deletedCount = studyUserRepository.deleteByUserIdAndStudyYearSemester(
+                userId, active.actYear(), active.actSemester());
+
+        if (deletedCount == 0) {
+            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
+        }
+    }
+
     /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberResponse> getApplicants(int year, int semester, Long cursor, int size, String search) {

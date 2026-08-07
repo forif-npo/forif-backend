@@ -86,6 +86,7 @@ public enum ErrorCode {
     HACKATHON_EVALUATION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR072-404", "해커톤 평가를 찾을 수 없습니다."),
     HACKATHON_AWARD_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR073-404", "해커톤 수상 결과를 찾을 수 없습니다."),
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR077-404", "파일을 찾을 수 없습니다."),
+    CURRENT_SEMESTER_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR128-404", "현재 활동 학기에 등록된 부원이 아닙니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),

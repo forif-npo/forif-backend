@@ -4,6 +4,7 @@ import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserId;
 import org.forif_backend.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -58,6 +59,17 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
     void deleteByStudyId(Integer studyId);
 
     void deleteByUserIdAndStudyId(Long userId, Integer studyId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM StudyUser su
+            WHERE su.user.id = :userId
+              AND su.study.actYear = :year
+              AND su.study.actSemester = :semester
+            """)
+    int deleteByUserIdAndStudyYearSemester(@Param("userId") Long userId,
+                                           @Param("year") int year,
+                                           @Param("semester") int semester);
 
     @Query("""
             SELECT CASE WHEN COUNT(su) > 0 THEN true ELSE false END

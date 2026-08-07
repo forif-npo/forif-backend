@@ -46,6 +46,11 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     }
 
     @Override
+    public int deleteByUserIdAndStudyYearSemester(Long userId, int year, int semester) {
+        return studyUserJpaRepository.deleteByUserIdAndStudyYearSemester(userId, year, semester);
+    }
+
+    @Override
     public long countBySemester(int year, int semester) {
         return studyUserJpaRepository.countBySemester(year, semester);
     }
