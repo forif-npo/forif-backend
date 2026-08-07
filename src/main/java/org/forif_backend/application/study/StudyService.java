@@ -66,7 +66,7 @@ public class StudyService {
 
         if (page != null) {
             List<Study> studies = studyRepository.getStudiesWithOffset(searchCond, page, size);
-            List<StudyDto> dtos = studies.stream().map(StudyDto::from).toList();
+            List<StudyDto> dtos = studies.stream().map(this::toStudyDto).toList();
             boolean hasNext = (long) (page + 1) * size < totalElements;
             return CursorPageResponse.ofOffset(dtos, hasNext, totalElements, page, size);
         }
@@ -74,7 +74,7 @@ public class StudyService {
         List<Study> studies = studyRepository.getStudies(searchCond, cursor, size);
         boolean hasNext = studies.size() > size;
         List<Study> content = hasNext ? studies.subList(0, size) : studies;
-        List<StudyDto> dtos = content.stream().map(StudyDto::from).toList();
+        List<StudyDto> dtos = content.stream().map(this::toStudyDto).toList();
         Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(dtos, nextCursor, hasNext, totalElements);
     }
@@ -84,7 +84,7 @@ public class StudyService {
 
         return studyRepository.findStudiesByMentorId(mentorId)
             .stream()
-            .map(StudyDto::from)
+            .map(this::toStudyDto)
             .toList();
     }
 
@@ -409,6 +409,20 @@ public class StudyService {
     private FileInfo uploadAndBuildFileInfo(MultipartFile file) {
         String objectKey = filePort.uploadFile(file);
         return filePort.generatePresignedViewUrl(objectKey);
+    }
+
+    private StudyDto toStudyDto(Study study) {
+        String thumbnailImage = study.getThumbnailImage();
+        if (thumbnailImage == null || thumbnailImage.isBlank()) {
+            return StudyDto.from(study);
+        }
+
+        return StudyDto.from(
+                study,
+                thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")
+                        ? thumbnailImage
+                        : filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl()
+        );
     }
 
     /**

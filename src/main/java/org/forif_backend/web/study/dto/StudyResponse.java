@@ -20,6 +20,7 @@ public record StudyResponse(
         String location,
         String difficulty,
         String imgUrl,
+        String thumbnailImage,
         Integer actYear,
         Integer actSemester
 ) {
@@ -51,6 +52,7 @@ public record StudyResponse(
                 study.getLocation(),
                 difficultyValue,
                 study.getImgUrl(),
+                study.getThumbnailImage(),
                 study.getActYear(),
                 study.getActSemester()
         );
