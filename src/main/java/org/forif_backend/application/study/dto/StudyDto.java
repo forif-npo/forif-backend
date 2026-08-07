@@ -29,8 +29,13 @@ public class StudyDto {
     private final String location;
     private final StudyDifficulty difficulty;
     private final String imgUrl;
+    private final String thumbnailImage;
 
     public static StudyDto from(Study studyEntity) {
+        return from(studyEntity, null);
+    }
+
+    public static StudyDto from(Study studyEntity, String thumbnailImage) {
         return StudyDto.builder()
                 .id(studyEntity.getId())
                 .actYear(studyEntity.getActYear())
@@ -48,6 +53,7 @@ public class StudyDto {
                 .location(studyEntity.getLocation())
                 .difficulty(studyEntity.getDifficulty())
                 .imgUrl(studyEntity.getImgUrl())
+                .thumbnailImage(thumbnailImage)
                 .build();
     }
 }
