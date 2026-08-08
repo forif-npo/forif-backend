@@ -14,7 +14,6 @@ import java.util.List;
 public class UpdateStudyRequest {
 
     private String studyName;
-    private String subTitle;
     private String oneLiner;
     private String explanation;
     private String goal;

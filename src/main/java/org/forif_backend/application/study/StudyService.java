@@ -193,7 +193,6 @@ public class StudyService {
 
         // null이 아닌 기본 필드만 반영
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
-        if (request.getSubTitle() != null) study.setSubTitle(request.getSubTitle());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
         if (request.getExplanation() != null) study.setExplanation(request.getExplanation());
         if (request.getGoal() != null) study.setGoal(request.getGoal());

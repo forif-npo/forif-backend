@@ -148,7 +148,8 @@ public class Study extends BaseTimeEntity {
      */
     public void applyRequestData(CreateStudyApplyRequest request, List<StudyTag> tags, User secondaryMentor) {
         this.studyName = request.getTitle();
-        this.subTitle = request.getSubTitle();
+        this.subTitle = null;
+        this.oneLiner = request.getOneLiner();
         this.goal = request.getGoal();
         this.explanation = request.getExplanation();
         this.isOnline = request.getIsOnline();

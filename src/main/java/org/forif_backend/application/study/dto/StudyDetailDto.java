@@ -15,7 +15,6 @@ public class StudyDetailDto {
     private final int actYear;
     private final int actSemester;
     private final String studyName;
-    private final String subTitle;
     private final String primaryMentorName;
     private final String secondaryMentorName;
     private final List<StudyTagDto> tags;
@@ -47,7 +46,6 @@ public class StudyDetailDto {
                 .actYear(study.getActYear())
                 .actSemester(study.getActSemester())
                 .studyName(study.getStudyName())
-                .subTitle(study.getSubTitle())
                 .primaryMentorName(study.getPrimaryMentorName())
                 .secondaryMentorName(study.getSecondaryMentorName())
                 .tags(study.getTags().stream().map(StudyTagDto::from).toList())
