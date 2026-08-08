@@ -17,6 +17,7 @@ public record StudyInfoDto(
         String endTime,
         String location,
         Integer difficulty,
-        String imgUrl
+        String imgUrl,
+        String thumbnailImage
 ) {
 }
