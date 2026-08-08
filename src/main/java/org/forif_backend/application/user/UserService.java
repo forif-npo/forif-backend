@@ -233,7 +233,7 @@ public class UserService {
                             study.getId(),
                             study.getStudyName(),
                             tags,
-                            study.getSubTitle(),
+                            study.getOneLiner(),
                             study.getExplanation(),
                             study.getStartTime(),
                             study.getEndTime(),

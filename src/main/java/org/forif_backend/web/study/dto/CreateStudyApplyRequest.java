@@ -24,7 +24,8 @@ public class CreateStudyApplyRequest {
     private String title;                   // 스터디 이름
 
     @NotBlank
-    private String subTitle;                // 스터디 한 줄 설명
+    @Length(max = 100, message = "한 줄 소개는 100자 이내로 작성해주세요.")
+    private String oneLiner;                // 스터디 한 줄 소개
 
     @Size(min = 1, message = "스터디 태그는 최소 1개 이상 선택해야 합니다.")
     private List<Long> studyTagId;          // 스터디 태그 id
