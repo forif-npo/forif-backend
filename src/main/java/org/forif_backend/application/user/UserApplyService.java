@@ -96,7 +96,7 @@ public class UserApplyService {
     public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
 
-        UserApply apply = userRepository.findUserApplyById(applyId);
+        UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
@@ -115,6 +115,38 @@ public class UserApplyService {
         } else {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    /**
+     * 본인의 대기 중인 스터디 신청서를 취소합니다.
+     * 신청서 행을 삭제하므로, 1·2순위가 모두 대기 상태일 때만 허용합니다.
+     */
+    @Transactional
+    public void cancelApplication(Long userId, Long applyId) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
+
+        UserApply apply = getApplication(applyId);
+
+        if (!apply.getApplier().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        boolean hasReviewedPrimary = apply.getPrimaryStatus() != UserApplyStatus.PENDING;
+        boolean hasReviewedSecondary = apply.getSecondaryStatus() != null
+                && apply.getSecondaryStatus() != UserApplyStatus.PENDING;
+        if (hasReviewedPrimary || hasReviewedSecondary) {
+            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        }
+
+        userRepository.deleteUserApply(apply);
+    }
+
+    private UserApply getApplication(Long applyId) {
+        UserApply apply = userRepository.findUserApplyById(applyId);
+        if (apply == null) {
+            throw new ForifException(ErrorCode.STUDY_APPLY_NOT_FOUND);
+        }
+        return apply;
     }
 
     /**

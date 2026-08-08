@@ -25,6 +25,8 @@ public interface UserRepository {
 
     void createUserApply(UserApply userApply);
 
+    void deleteUserApply(UserApply userApply);
+
     boolean existUserApply(int year, int semester, User applier);
 
     Optional<UserApply> findUserApplyByYearAndSemesterAndUser(int year, int semester, User user);
