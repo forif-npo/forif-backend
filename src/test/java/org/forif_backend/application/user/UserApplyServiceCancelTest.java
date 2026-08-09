@@ -3,6 +3,7 @@ package org.forif_backend.application.user;
 import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.study.StudyMentorAccess;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -14,6 +15,7 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -24,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,6 +55,11 @@ class UserApplyServiceCancelTest {
 
     @InjectMocks
     private UserApplyService userApplyService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+    }
 
     @Test
     void deletesOwnApplicationWhenAllPrioritiesArePending() {
@@ -102,6 +110,17 @@ class UserApplyServiceCancelTest {
     }
 
     @Test
+    void doesNotDeleteApplicationFromAnotherSemester() {
+        UserApply application = pendingApplication(applicant(), 2025, 2);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+
+        assertError(ErrorCode.STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER,
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+
+        verify(userRepository, never()).deleteUserApply(application);
+    }
+
+    @Test
     void returnsNotFoundWhenApplicationDoesNotExist() {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(null);
 
@@ -133,10 +152,14 @@ class UserApplyServiceCancelTest {
     }
 
     private UserApply pendingApplication(User applicant) {
+        return pendingApplication(applicant, 2026, 1);
+    }
+
+    private UserApply pendingApplication(User applicant, int year, int semester) {
         Study study = mock(Study.class);
         when(study.getId()).thenReturn(10);
         when(study.getStudyName()).thenReturn("1순위 스터디");
-        return UserApply.applyStudy(applicant, study, "지원 동기", 2026, 1);
+        return UserApply.applyStudy(applicant, study, "지원 동기", year, semester);
     }
 
     private void assertError(ErrorCode expectedErrorCode, Runnable action) {
