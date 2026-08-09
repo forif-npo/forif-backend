@@ -213,9 +213,8 @@ public class StudyService {
         }
 
         // 태그 교체
-        if (request.getStudyTagIds() != null) {
-            List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagIds());
-            study.setTags(tags);
+        if (request.getStudyTagIds() != null || request.getStudyTagNames() != null) {
+            study.setTags(resolveStudyTags(request.getStudyTagIds(), request.getStudyTagNames()));
         }
 
         // 커리큘럼: 기존 삭제 후 재생성
@@ -270,13 +269,47 @@ public class StudyService {
         SemesterInfo semester = semesterService.getActive();
         Study study = Study.createPendingStudy(mentor, semester.actYear(), semester.actSemester());
 
-        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());
 
         // 공통 데이터 반영
         study.applyRequestData(request, tags, secondaryMentor);
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private List<StudyTag> resolveStudyTags(CreateStudyApplyRequest request) {
+        return resolveStudyTags(request.getStudyTagId(), request.getStudyTagNames());
+    }
+
+    private List<StudyTag> resolveStudyTags(List<Long> tagIds, List<String> tagNames) {
+        List<StudyTag> tags;
+        int requestedTagCount;
+
+        if (tagNames != null && !tagNames.isEmpty()) {
+            List<String> normalizedTagNames = tagNames.stream()
+                    .map(String::trim)
+                    .distinct()
+                    .toList();
+            tags = studyRepository.findAllStudyTagByName(normalizedTagNames);
+            requestedTagCount = normalizedTagNames.size();
+        } else {
+            if (tagIds == null || tagIds.isEmpty()) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+
+            List<Long> distinctTagIds = tagIds.stream()
+                    .distinct()
+                    .toList();
+            tags = studyRepository.findAllStudyTagById(distinctTagIds);
+            requestedTagCount = distinctTagIds.size();
+        }
+
+        if (tags.size() != requestedTagCount) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+
+        return tags;
     }
 
     private User resolveSecondaryMentor(Long primaryMentorId, Long secondaryMentorId) {
@@ -350,7 +383,7 @@ public class StudyService {
         study.reApply(); // 내부에서 상태값을 변경하는 로직
 
         // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
-        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
         study.applyRequestData(request, tags, secondaryMentor);
 

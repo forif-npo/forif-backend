@@ -30,6 +30,15 @@ public class CreateStudyApplyRequest {
     @Size(min = 1, message = "스터디 태그는 최소 1개 이상 선택해야 합니다.")
     private List<Long> studyTagId;          // 스터디 태그 id
 
+    @Size(min = 1, message = "스터디 태그는 최소 1개 이상 선택해야 합니다.")
+    private List<@NotBlank String> studyTagNames; // 스터디 태그 이름
+
+    @AssertTrue(message = "스터디 태그는 최소 1개 이상 선택해야 합니다.")
+    public boolean isStudyTagProvided() {
+        return (studyTagId != null && !studyTagId.isEmpty())
+                || (studyTagNames != null && !studyTagNames.isEmpty());
+    }
+
     @NotBlank
     @Length(min = 50, max = 500, message = "스터디 목표는 50자 이상 500자 이내로 작성해주세요.")
     private String goal;                    // 스터디 목표

@@ -33,6 +33,7 @@ public class UpdateStudyRequest {
     private LocalDateTime interviewDate;
 
     private List<Long> studyTagIds;
+    private List<String> studyTagNames;
     private List<Plan> studyPlanList;
     private List<Reference> references;
 
