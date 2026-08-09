@@ -251,6 +251,35 @@ public class StudyService {
     }
 
     /**
+     * 멘토가 승인 전 스터디 개설 신청을 취소한다.
+     */
+    @Transactional
+    public void cancelStudyApplication(Integer studyId, Long userId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (!study.isMentor(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        semesterPhaseGuard.requireOpen(
+                SemesterPhase.MENTOR_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        );
+        if (study.getStudyStatus() != StudyStatus.PENDING
+                && study.getStudyStatus() != StudyStatus.RE_APPLIED
+                && study.getStudyStatus() != StudyStatus.REJECTED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        studyRepository.deleteStudyPlansByStudyId(studyId);
+        studyRepository.deleteStudyReferencesByStudyId(studyId);
+        studyRepository.deleteStudyUsersByStudyId(studyId);
+        studyRepository.deleteMentorStudiesByStudyId(studyId);
+        studyRepository.deleteStudyById(studyId);
+    }
+
+    /**
      * 스터디 개설 신청 저장 메서드입니다.
      * @param mentorId 개설 신청하는 유저 id
      * @param request 신청 정보
