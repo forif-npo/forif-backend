@@ -49,7 +49,7 @@ public class StudyRepositoryImpl implements StudyRepository {
 
     @Override
     public List<StudyTag> findAllStudyTagByName(List<String> tagNames) {
-        return studyTagJpaRepository.findByNameIn(tagNames);
+        return studyTagJpaRepository.findByNameInIgnoreCase(tagNames);
     }
 
     @Override

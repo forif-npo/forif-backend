@@ -283,33 +283,38 @@ public class StudyService {
     }
 
     private List<StudyTag> resolveStudyTags(List<Long> tagIds, List<String> tagNames) {
-        List<StudyTag> tags;
-        int requestedTagCount;
-
         if (tagNames != null && !tagNames.isEmpty()) {
             List<String> normalizedTagNames = tagNames.stream()
-                    .map(String::trim)
+                    .map(StudyService::normalizeTagName)
                     .distinct()
                     .toList();
-            tags = studyRepository.findAllStudyTagByName(normalizedTagNames);
-            requestedTagCount = normalizedTagNames.size();
-        } else {
-            if (tagIds == null || tagIds.isEmpty()) {
+            List<StudyTag> tags = studyRepository.findAllStudyTagByName(normalizedTagNames);
+            if (tags.size() != normalizedTagNames.size()) {
                 throw new ForifException(ErrorCode.INVALID_INPUT);
             }
+            return tags;
+        }
 
+        if (tagIds != null && !tagIds.isEmpty()) {
             List<Long> distinctTagIds = tagIds.stream()
                     .distinct()
                     .toList();
-            tags = studyRepository.findAllStudyTagById(distinctTagIds);
-            requestedTagCount = distinctTagIds.size();
+            List<StudyTag> tags = studyRepository.findAllStudyTagById(distinctTagIds);
+            if (tags.size() != distinctTagIds.size()) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            return tags;
         }
 
-        if (tags.size() != requestedTagCount) {
+        // 수정 요청에서 명시적으로 빈 목록을 보내면 기존 태그를 모두 해제한다.
+        return List.of();
+    }
+
+    private static String normalizeTagName(String tagName) {
+        if (tagName == null || tagName.isBlank()) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
-
-        return tags;
+        return tagName.strip().toLowerCase(Locale.ROOT);
     }
 
     private User resolveSecondaryMentor(Long primaryMentorId, Long secondaryMentorId) {
