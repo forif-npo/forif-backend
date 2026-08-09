@@ -191,4 +191,9 @@ public class StudyRepositoryImpl implements StudyRepository {
         return studyQueryRepository.findStudiesByMentorId(mentorId);
     }
 
+    @Override
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
+        return studyQueryRepository.findStudyApplicationsByMentorId(mentorId);
+    }
+
 }

@@ -369,4 +369,22 @@ public class StudyQueryRepository {
                 .orderBy(study.createdAt.desc())
                 .fetch();
     }
+
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
+        return queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .leftJoin(study.secondaryMentor, secondaryMentor)
+                .where(
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(secondaryMentor.id.eq(mentorId)),
+                        study.studyStatus.in(
+                                StudyStatus.PENDING,
+                                StudyStatus.RE_APPLIED,
+                                StudyStatus.REJECTED
+                        )
+                )
+                .orderBy(study.createdAt.desc())
+                .fetch();
+    }
 }

@@ -134,4 +134,5 @@ public interface StudyRepository {
      * @return 스터디 리스트
      */
     List<Study> findStudiesByMentorId(Long mentorId);
+    List<Study> findStudyApplicationsByMentorId(Long mentorId);
 }
