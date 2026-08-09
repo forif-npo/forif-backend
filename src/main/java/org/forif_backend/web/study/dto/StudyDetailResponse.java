@@ -34,6 +34,7 @@ public record StudyDetailResponse(
         String selectionCriteria,
         Integer capacity,
         Boolean requiresInterview,
+        LocalDateTime interviewDate,
         List<PlanResponse> plans,
         List<ReferenceResponse> references,
         List<MentorInfo> mentors
@@ -107,6 +108,7 @@ public record StudyDetailResponse(
                 dto.getSelectionCriteria(),
                 dto.getCapacity(),
                 dto.getRequiresInterview(),
+                dto.getInterviewDate(),
                 dto.getPlans().stream().map(PlanResponse::from).toList(),
                 dto.getReferences().stream().map(ReferenceResponse::from).toList(),
                 dto.getMentors().stream().map(MentorInfo::from).toList()
