@@ -89,6 +89,31 @@ public class StudyService {
     }
 
     @Transactional(readOnly = true)
+    public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
+        return studyRepository.findStudyApplicationsByMentorId(mentorId)
+                .stream()
+                .map(study -> StudyApplicationDto.from(study, canModifyStudyApplication(study)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StudyApplicationDetailDto getMyStudyApplication(Long mentorId, Integer studyId) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (!study.isMentor(mentorId) || study.getStudyStatus() == StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        return StudyApplicationDetailDto.builder()
+                .study(getStudyDetail(studyId))
+                .studyStatus(study.getStudyStatus())
+                .rejectReason(study.getRejectReason())
+                .canModify(canModifyStudyApplication(study))
+                .build();
+    }
+
+    @Transactional(readOnly = true)
     public UserStudiesResult getUserStudies(Long userId) {
         // 1. userId로 스터디 목록 조회 (이미 연도, 학기 내림차순으로 정렬됨)
         List<Study> studies = studyRepository.findStudiesByUserId(userId);
@@ -347,6 +372,7 @@ public class StudyService {
         if (!study.isMentor(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT, study.getActYear(), study.getActSemester());
         study.reApply(); // 내부에서 상태값을 변경하는 로직
 
         // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
@@ -362,6 +388,43 @@ public class StudyService {
         // 5. 신규 리소스 저장 및 파일 조회 URL 생성
         // 기존에 만들어둔 공통 메서드를 호출하고 그 결과를 그대로 반환합니다.
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    @Transactional
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                                        MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (!study.isMentor(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT, study.getActYear(), study.getActSemester());
+        if (study.getStudyStatus() == StudyStatus.REJECTED) {
+            study.reApply();
+        } else if (study.getStudyStatus() != StudyStatus.PENDING
+                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+        study.applyRequestData(request, tags, secondaryMentor);
+
+        studyRepository.deleteStudyPlansByStudyId(studyId);
+        if (request.getReferences() != null) {
+            studyRepository.deleteStudyReferencesByStudyId(studyId);
+        }
+
+        return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private boolean canModifyStudyApplication(Study study) {
+        return semesterPhaseGuard.isOpen(
+                SemesterPhase.MENTOR_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        );
     }
 
     /**
@@ -400,6 +463,7 @@ public class StudyService {
         studyRepository.saveAllStudyReference(referenceList);
 
         return CreateStudyApplyInfo.builder()
+                .studyId(study.getId())
                 .thumbnailUploadInfo(thumbnailInfo)
                 .referenceUploadInfos(referenceUploadInfos)
                 .build();
