@@ -62,6 +62,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public void deleteUserApply(UserApply userApply) {
+        userApplyJpaRepository.delete(userApply);
+    }
+
+    @Override
     public boolean existUserApply(int year, int semester, User applier) {
         Integer isExist = queryFactory.selectOne()
                 .from(userApply)

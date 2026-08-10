@@ -4,12 +4,16 @@ import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.study.StudyMentorAccess;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,13 +23,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class UserApplyServiceAcceptanceTest {
+class UserApplyServiceDeletedApplicationTest {
 
     @Mock
     private SemesterService semesterService;
@@ -46,39 +51,43 @@ class UserApplyServiceAcceptanceTest {
     private UserApplyService userApplyService;
 
     @Test
-    void acceptsApplicationWithoutDirectlyCreatingStudyUser() {
+    void skipsDeletedApplicationAndRejectsRemainingApplications() {
         Study study = mock(Study.class);
-        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
-        UserApply application = mock(UserApply.class);
-
-        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
-        when(userRepository.findUserApplyById(100L)).thenReturn(application);
-        when(application.getPrimaryStudy()).thenReturn(10);
-        when(application.getApplier()).thenReturn(applicant);
-
-        userApplyService.acceptApplications(99L, 10, List.of(100L));
-
-        verify(application).updateStatus(10, org.forif_backend.domain.user.UserApplyStatus.ACCEPT);
-        verify(duesService).ensureMemberCheck(study, applicant);
-        verify(duesService).registerStudyUserIfEligible(study, applicant);
-        verify(studyUserRepository, never()).save(org.mockito.ArgumentMatchers.any());
-    }
-
-    @Test
-    void skipsDeletedApplicationAndAcceptsRemainingApplications() {
-        Study study = mock(Study.class);
-        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply remainingApplication = mock(UserApply.class);
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(userRepository.findUserApplyById(100L)).thenReturn(null);
         when(userRepository.findUserApplyById(101L)).thenReturn(remainingApplication);
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
-        when(remainingApplication.getApplier()).thenReturn(applicant);
 
-        userApplyService.acceptApplications(99L, 10, List.of(100L, 101L));
+        userApplyService.rejectApplications(99L, 10, List.of(100L, 101L));
 
-        verify(remainingApplication).updateStatus(10, org.forif_backend.domain.user.UserApplyStatus.ACCEPT);
-        verify(duesService).registerStudyUserIfEligible(study, applicant);
+        verify(remainingApplication).updateStatus(10, UserApplyStatus.REJECT);
+    }
+
+    @Test
+    void returnsNotFoundWhenMentorViewsDeletedApplication() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(userRepository.findUserApplyById(100L)).thenReturn(null);
+
+        assertError(() -> userApplyService.getApplyDetailInfo(99L, 10, 100L));
+    }
+
+    @Test
+    void returnsNotFoundWhenMentorUpdatesDeletedApplication() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(userRepository.findUserApplyById(100L)).thenReturn(null);
+
+        assertError(() -> userApplyService.updateApplyStatus(
+                99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));
+    }
+
+    private void assertError(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.STUDY_APPLY_NOT_FOUND));
     }
 }

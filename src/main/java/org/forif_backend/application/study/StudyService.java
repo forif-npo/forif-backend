@@ -122,7 +122,7 @@ public class StudyService {
                                             .semester(semester)
                                             .semesterLabel(year + "-" + semester)
                                             .isCurrent(year == currentYear && semester == currentSemester)
-                                            .study(StudyInfo.from(firstStudy,
+                                            .study(toStudyInfo(firstStudy,
                                                     certificateIssuedMap.getOrDefault(firstStudy.getId(), false)))  // 첫 번째 스터디만 (한 학기에 1개)
                                             .build();
                                 }
@@ -422,6 +422,21 @@ public class StudyService {
                         ? thumbnailImage
                         : filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl()
         );
+    }
+
+    private StudyInfo toStudyInfo(Study study, boolean certificateIssued) {
+        return StudyInfo.from(study, certificateIssued, resolveThumbnailImage(study));
+    }
+
+    private String resolveThumbnailImage(Study study) {
+        String thumbnailImage = study.getThumbnailImage();
+        if (thumbnailImage == null || thumbnailImage.isBlank()) {
+            return null;
+        }
+        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
+            return thumbnailImage;
+        }
+        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
     }
 
     /**

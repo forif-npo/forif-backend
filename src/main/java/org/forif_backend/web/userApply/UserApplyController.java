@@ -51,6 +51,16 @@ public class UserApplyController {
         return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }
 
+    @Operation(summary = "수강 신청 취소", description = "본인의 대기 중인 스터디 수강 신청서를 취소합니다.")
+    @DeleteMapping("/{applyId}")
+    public ResponseEntity<ApiResponse<Void>> cancelApplication(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId
+    ) {
+        userApplyService.cancelApplication(userId, applyId);
+        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+    }
+
     @Operation(summary = "신청자 목록 조회 (멘토 전용)", description = "해당 스터디에 신청한 멘티 목록을 조회합니다. 상태 필터 및 날짜 정렬을 지원합니다.")
     @GetMapping("/{studyId}")
     public ResponseEntity<ApiResponse<PageResponse<UserApplyResponse>>> getUserApply(

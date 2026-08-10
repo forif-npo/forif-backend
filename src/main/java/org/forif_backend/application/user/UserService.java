@@ -273,12 +273,24 @@ public class UserService {
                 study.getEndTime(),
                 study.getLocation(),
                 study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
-                study.getImgUrl()
+                study.getImgUrl(),
+                resolveThumbnailImage(study)
         );
 
         Integer statusValue = status != null ? status.ordinal() : null;
 
         return new ApplicationDetailDto(priority, studyInfo, statusValue, intro);
+    }
+
+    private String resolveThumbnailImage(Study study) {
+        String thumbnailImage = study.getThumbnailImage();
+        if (thumbnailImage == null || thumbnailImage.isBlank()) {
+            return null;
+        }
+        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
+            return thumbnailImage;
+        }
+        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
     }
 
     /**

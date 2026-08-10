@@ -32,6 +32,7 @@ public record UserStudiesResponse(
             String location,
             Integer difficulty,
             String imgUrl,
+            String thumbnailImage,
             boolean certificateIssued
     ) {
     }

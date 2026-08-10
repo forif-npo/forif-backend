@@ -96,7 +96,7 @@ public class UserApplyService {
     public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
 
-        UserApply apply = userRepository.findUserApplyById(applyId);
+        UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
@@ -118,6 +118,41 @@ public class UserApplyService {
     }
 
     /**
+     * 본인의 활동 학기 대기 중 스터디 신청서를 취소합니다.
+     * 신청서 행을 삭제하므로, 1·2순위가 모두 대기 상태일 때만 허용합니다.
+     */
+    @Transactional
+    public void cancelApplication(Long userId, Long applyId) {
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
+
+        UserApply apply = getApplication(applyId);
+
+        if (!apply.getApplier().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        requireActiveSemesterApplication(apply);
+
+        boolean hasReviewedPrimary = apply.getPrimaryStatus() != UserApplyStatus.PENDING;
+        boolean hasReviewedSecondary = apply.getSecondaryStatus() != null
+                && apply.getSecondaryStatus() != UserApplyStatus.PENDING;
+        if (hasReviewedPrimary || hasReviewedSecondary) {
+            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        }
+
+        userRepository.deleteUserApply(apply);
+    }
+
+    private UserApply getApplication(Long applyId) {
+        return findApplication(applyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_APPLY_NOT_FOUND));
+    }
+
+    private Optional<UserApply> findApplication(Long applyId) {
+        return Optional.ofNullable(userRepository.findUserApplyById(applyId));
+    }
+
+    /**
      * 합격 처리 메서드
      * @param userId 멘토 유저 id
      * @param studyId 스터디 id
@@ -130,7 +165,11 @@ public class UserApplyService {
         Study study = getStudyIfActiveMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
-            UserApply apply = userRepository.findUserApplyById(applyId);
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
 
             boolean isPrimary = apply.getPrimaryStudy() == studyId;
             boolean isSecondary = studyId.equals(apply.getSecondaryStudy());
@@ -178,7 +217,11 @@ public class UserApplyService {
         getStudyIfActiveMentor(userId, studyId);
 
         for (Long applyId : applyIds) {
-            UserApply apply = userRepository.findUserApplyById(applyId);
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
 
             boolean isPrimary = apply.getPrimaryStudy() == studyId;
             boolean isSecondary = studyId.equals(apply.getSecondaryStudy());
@@ -258,7 +301,7 @@ public class UserApplyService {
      */
     public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
         Study study = getStudyIfMentor(userId, studyId);
-        UserApply userApply = userRepository.findUserApplyById(applyId);
+        UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
         if (userApply.getPrimaryStudy() != study.getId() && !study.getId().equals(userApply.getSecondaryStudy())) {
@@ -279,7 +322,7 @@ public class UserApplyService {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         Study study = getStudyIfActiveMentor(userId, studyId);
-        UserApply userApply = userRepository.findUserApplyById(applyId);
+        UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
         if (userApply.getPrimaryStudy() != study.getId() && !study.getId().equals(userApply.getSecondaryStudy())) {
@@ -310,6 +353,13 @@ public class UserApplyService {
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         return study;
+    }
+
+    private void requireActiveSemesterApplication(UserApply apply) {
+        SemesterInfo active = semesterService.getActive();
+        if (apply.getApplyYear() != active.actYear() || apply.getApplySemester() != active.actSemester()) {
+            throw new ForifException(ErrorCode.STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER);
+        }
     }
 
     private String getApplicationContentForStudy(UserApply userApply, Integer studyId) {
