@@ -43,6 +43,13 @@ public class StudyDetailDto {
     public static StudyDetailDto of(Study study, List<StudyPlan> plans,
                                      List<StudyReference> references,
                                      List<MentorStudy> mentorStudies) {
+        return of(study, plans, references, mentorStudies, study.getThumbnailImage());
+    }
+
+    public static StudyDetailDto of(Study study, List<StudyPlan> plans,
+                                     List<StudyReference> references,
+                                     List<MentorStudy> mentorStudies,
+                                     String thumbnailImage) {
         return StudyDetailDto.builder()
                 .id(study.getId())
                 .actYear(study.getActYear())
@@ -61,7 +68,7 @@ public class StudyDetailDto {
                 .locationDetail(study.getLocationDetail())
                 .difficulty(study.getDifficulty())
                 .imgUrl(study.getImgUrl())
-                .thumbnailImage(study.getThumbnailImage())
+                .thumbnailImage(thumbnailImage)
                 .isOnline(study.getIsOnline())
                 .goal(study.getGoal())
                 .selectionCriteria(study.getSelectionCriteria())

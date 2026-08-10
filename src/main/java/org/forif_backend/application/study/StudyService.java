@@ -182,7 +182,13 @@ public class StudyService {
         List<StudyReference> references = studyRepository.findStudyReferencesByStudyId(studyId);
         List<MentorStudy> mentorStudies = studyRepository.findMentorStudiesByStudyId(studyId);
 
-        return StudyDetailDto.of(study, plans, references, mentorStudies);
+        return StudyDetailDto.of(
+                study,
+                plans,
+                references,
+                mentorStudies,
+                resolveThumbnailImage(study)
+        );
     }
 
     @Transactional(readOnly = true)
