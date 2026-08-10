@@ -169,6 +169,7 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public void deleteStudyPlansByStudyId(Integer studyId) {
         studyPlanJpaRepository.deleteByStudyId(studyId);
+        studyPlanJpaRepository.flush();
     }
 
     @Override

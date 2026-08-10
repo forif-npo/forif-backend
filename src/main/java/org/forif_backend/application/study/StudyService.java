@@ -220,6 +220,10 @@ public class StudyService {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
+        applyStudyUpdate(studyId, study, request);
+    }
+
+    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
         // null이 아닌 기본 필드만 반영
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
@@ -234,7 +238,11 @@ public class StudyService {
         if (request.getCapacity() != null) study.setCapacity(request.getCapacity());
         if (request.getSelectionCriteria() != null) study.setSelectionCriteria(request.getSelectionCriteria());
         if (request.getRequiresInterview() != null) study.setRequiresInterview(request.getRequiresInterview());
-        if (request.getInterviewDate() != null) study.setInterviewDate(request.getInterviewDate());
+        if (Boolean.FALSE.equals(request.getRequiresInterview())) {
+            study.setInterviewDate(null);
+        } else if (request.getInterviewDate() != null) {
+            study.setInterviewDate(request.getInterviewDate());
+        }
 
         // enum 변환 필드
         if (request.getDifficulty() != null) {
@@ -462,26 +470,30 @@ public class StudyService {
     }
 
     @Transactional
-    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyRequest request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, false);
+        Study study = findModifiableStudyApplication(studyId, userId, false);
+        applyStudyUpdate(studyId, study, request);
+
+        FileInfo thumbnailInfo = null;
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
+            study.setThumbnailImage(thumbnailInfo.objectKey());
+        }
+
+        studyRepository.saveStudy(study);
+
+        return CreateStudyApplyInfo.builder()
+                .studyId(study.getId())
+                .thumbnailUploadInfo(thumbnailInfo)
+                .referenceUploadInfos(List.of())
+                .build();
     }
 
     private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
-        Study study = studyRepository.findStudyByIdWithTags(studyId)
-                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
-
-        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
-
-        if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
-            study.reApply();
-        } else if (study.getStudyStatus() != StudyStatus.PENDING
-                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
-        }
+        Study study = findModifiableStudyApplication(studyId, userId, rejectedOnly);
 
         List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
@@ -495,6 +507,23 @@ public class StudyService {
         }
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private Study findModifiableStudyApplication(Integer studyId, Long userId, boolean rejectedOnly) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+
+        if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
+            study.reApply();
+        } else if (study.getStudyStatus() != StudyStatus.PENDING
+                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        return study;
     }
 
     private boolean canModifyStudyApplication(Study study) {

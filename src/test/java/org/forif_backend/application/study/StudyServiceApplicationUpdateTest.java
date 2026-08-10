@@ -13,9 +13,8 @@ import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyTag;
 import org.forif_backend.domain.study.StudyUserRepository;
-import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
+import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -78,7 +77,7 @@ class StudyServiceApplicationUpdateTest {
                 .requireMentorOfActiveSemester(study, 10L);
 
         assertThatThrownBy(() -> studyService.updateStudyApplication(
-                1, 10L, new CreateStudyApplyRequest(), null, null))
+                1, 10L, new UpdateStudyRequest(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER));
@@ -106,20 +105,33 @@ class StudyServiceApplicationUpdateTest {
     @Test
     void keepsExistingPlansWhenTheUpdateRequestOmitsStudyPlanList() {
         Study study = mock(Study.class);
-        User primaryMentor = mock(User.class);
         StudyTag tag = mock(StudyTag.class);
-        CreateStudyApplyRequest request = new CreateStudyApplyRequest();
+        UpdateStudyRequest request = new UpdateStudyRequest();
         request.setStudyTagNames(List.of("ai"));
 
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
-        when(study.getPrimaryMentor()).thenReturn(primaryMentor);
-        when(primaryMentor.getId()).thenReturn(10L);
         when(studyRepository.findAllStudyTagByName(List.of("ai"))).thenReturn(List.of(tag));
 
         studyService.updateStudyApplication(1, 10L, request, null, null);
 
         verify(studyRepository, never()).deleteStudyPlansByStudyId(1);
         verify(studyRepository).findAllStudyTagByName(List.of("ai"));
+    }
+
+    @Test
+    void updatesOnlyExplanationWithoutReplacingPlans() {
+        Study study = mock(Study.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setExplanation("수정된 스터디 소개입니다. 충분히 긴 설명을 입력했습니다.");
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
+
+        studyService.updateStudyApplication(1, 10L, request, null, null);
+
+        verify(study).setExplanation(request.getExplanation());
+        verify(studyRepository, never()).deleteStudyPlansByStudyId(1);
+        verify(studyRepository, never()).saveAllStudyPlan(org.mockito.ArgumentMatchers.anyList());
     }
 }
