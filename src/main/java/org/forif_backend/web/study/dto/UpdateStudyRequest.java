@@ -8,6 +8,7 @@ import org.forif_backend.domain.study.ReferenceType;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -37,6 +38,7 @@ public class UpdateStudyRequest {
     private List<@NotBlank String> studyTagNames;
     private List<Plan> studyPlanList;
     private List<Reference> references;
+    private List<UUID> retainedReferenceIds;
 
     @Getter
     @Setter
@@ -54,5 +56,6 @@ public class UpdateStudyRequest {
     public static class Reference {
         private ReferenceType type;
         private String url;
+        private String fileName;
     }
 }
