@@ -37,6 +37,7 @@ class StudyServiceTagUpdateTest {
                 mock(SemesterService.class),
                 mock(SemesterPhaseGuard.class),
                 mock(StudyRecruitStatusPolicy.class),
+                mock(StudyMentorAccess.class),
                 studyRepository,
                 mock(StudyUserRepository.class),
                 mock(UserRepository.class),

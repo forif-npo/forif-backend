@@ -41,6 +41,7 @@ public class StudyService {
     private final SemesterService semesterService;
     private final SemesterPhaseGuard semesterPhaseGuard;
     private final StudyRecruitStatusPolicy recruitStatusPolicy;
+    private final StudyMentorAccess studyMentorAccess;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final UserRepository userRepository;
@@ -86,6 +87,31 @@ public class StudyService {
             .stream()
             .map(this::toStudyDto)
             .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
+        return studyRepository.findStudyApplicationsByMentorId(mentorId)
+                .stream()
+                .map(study -> StudyApplicationDto.from(study, canModifyStudyApplication(study)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StudyApplicationDetailDto getMyStudyApplication(Long mentorId, Integer studyId) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (!study.isMentor(mentorId) || study.getStudyStatus() == StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        return StudyApplicationDetailDto.builder()
+                .study(getStudyDetail(studyId))
+                .studyStatus(study.getStudyStatus())
+                .rejectReason(study.getRejectReason())
+                .canModify(canModifyStudyApplication(study))
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -376,30 +402,55 @@ public class StudyService {
     @Transactional
     public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                              MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, true);
+    }
 
-        // 1. 스터디 조회 (태그 포함)
+    @Transactional
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                                        MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, false);
+    }
+
+    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles,
+                                                         boolean rejectedOnly) {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        // 2. 권한 검증 및 상태 변경
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
-        study.reApply(); // 내부에서 상태값을 변경하는 로직
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
 
-        // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
+        if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
+            study.reApply();
+        } else if (study.getStudyStatus() != StudyStatus.PENDING
+                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
         List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
         study.applyRequestData(request, tags, secondaryMentor);
 
-        // 4. 기존 연관 리소스(커리큘럼, 참고자료) 삭제
-        // 재신청은 기존 내용을 덮어쓰는 개념이므로 삭제 후 재등록
-        studyRepository.deleteStudyPlansByStudyId(studyId);
-        studyRepository.deleteStudyReferencesByStudyId(studyId);
+        if (request.getStudyPlanList() != null) {
+            studyRepository.deleteStudyPlansByStudyId(studyId);
+        }
+        if (request.getReferences() != null) {
+            studyRepository.deleteStudyReferencesByStudyId(studyId);
+        }
 
-        // 5. 신규 리소스 저장 및 파일 조회 URL 생성
-        // 기존에 만들어둔 공통 메서드를 호출하고 그 결과를 그대로 반환합니다.
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private boolean canModifyStudyApplication(Study study) {
+        SemesterInfo active = semesterService.getActive();
+        return study.getStudyStatus() != StudyStatus.APPROVED
+                && study.getActYear() == active.actYear()
+                && study.getActSemester() == active.actSemester()
+                && semesterPhaseGuard.isOpen(
+                SemesterPhase.MENTOR_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        );
     }
 
     /**
@@ -438,6 +489,7 @@ public class StudyService {
         studyRepository.saveAllStudyReference(referenceList);
 
         return CreateStudyApplyInfo.builder()
+                .studyId(study.getId())
                 .thumbnailUploadInfo(thumbnailInfo)
                 .referenceUploadInfos(referenceUploadInfos)
                 .build();

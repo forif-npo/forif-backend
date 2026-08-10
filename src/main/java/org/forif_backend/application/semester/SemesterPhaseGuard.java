@@ -72,4 +72,13 @@ public class SemesterPhaseGuard {
                 null
         )));
     }
+
+    /** 일정이 없으면 상시 개방으로 간주하는 동일한 정책을 조회 응답에도 적용한다. */
+    @Transactional(readOnly = true)
+    public boolean isOpen(SemesterPhase phase, int actYear, int actSemester) {
+        return semesterScheduleRepository
+                .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
+                .map(schedule -> schedule.contains(LocalDateTime.now()))
+                .orElse(true);
+    }
 }
