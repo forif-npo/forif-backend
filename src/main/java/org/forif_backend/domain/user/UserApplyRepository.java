@@ -15,4 +15,7 @@ public interface UserApplyRepository {
     List<User> findApplicantsByYearSemester(int year, int semester, String search);
 
     boolean existsByApplierIdAndYearSemester(Long userId, int year, int semester);
+
+    /** 해당 스터디를 1·2순위로 지원한 신청서가 하나라도 있는지 */
+    boolean existsByStudyId(Integer studyId);
 }

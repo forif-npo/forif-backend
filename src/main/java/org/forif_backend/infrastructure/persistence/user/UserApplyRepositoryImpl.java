@@ -27,4 +27,9 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     public boolean existsByApplierIdAndYearSemester(Long userId, int year, int semester) {
         return userApplyJpaRepository.existsByApplierIdAndApplyYearAndApplySemester(userId, year, semester);
     }
+
+    @Override
+    public boolean existsByStudyId(Integer studyId) {
+        return userApplyJpaRepository.existsByStudyId(studyId);
+    }
 }

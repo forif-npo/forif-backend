@@ -19,6 +19,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
@@ -41,9 +42,12 @@ public class StudyService {
     private final SemesterService semesterService;
     private final SemesterPhaseGuard semesterPhaseGuard;
     private final StudyRecruitStatusPolicy recruitStatusPolicy;
+    private final StudyMentorAccess studyMentorAccess;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
+    private final StudyAttendanceRepository studyAttendanceRepository;
     private final UserRepository userRepository;
+    private final UserApplyRepository userApplyRepository;
     private final FilePort filePort;
     private final StaffAccountService staffAccountService;
     private final StaffAccountRepository staffAccountRepository;
@@ -89,6 +93,31 @@ public class StudyService {
     }
 
     @Transactional(readOnly = true)
+    public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
+        return studyRepository.findStudyApplicationsByMentorId(mentorId)
+                .stream()
+                .map(study -> StudyApplicationDto.from(study, canModifyStudyApplication(study)))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StudyApplicationDetailDto getMyStudyApplication(Long mentorId, Integer studyId) {
+        Study study = studyRepository.findStudyByIdWithTags(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (!study.isMentor(mentorId) || study.getStudyStatus() == StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        return StudyApplicationDetailDto.builder()
+                .study(getStudyDetail(studyId))
+                .studyStatus(study.getStudyStatus())
+                .rejectReason(study.getRejectReason())
+                .canModify(canModifyStudyApplication(study))
+                .build();
+    }
+
+    @Transactional(readOnly = true)
     public UserStudiesResult getUserStudies(Long userId) {
         // 1. userId로 스터디 목록 조회 (이미 연도, 학기 내림차순으로 정렬됨)
         List<Study> studies = studyRepository.findStudiesByUserId(userId);
@@ -122,7 +151,7 @@ public class StudyService {
                                             .semester(semester)
                                             .semesterLabel(year + "-" + semester)
                                             .isCurrent(year == currentYear && semester == currentSemester)
-                                            .study(StudyInfo.from(firstStudy,
+                                            .study(toStudyInfo(firstStudy,
                                                     certificateIssuedMap.getOrDefault(firstStudy.getId(), false)))  // 첫 번째 스터디만 (한 학기에 1개)
                                             .build();
                                 }
@@ -213,9 +242,8 @@ public class StudyService {
         }
 
         // 태그 교체
-        if (request.getStudyTagIds() != null) {
-            List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagIds());
-            study.setTags(tags);
+        if (request.getStudyTagIds() != null || request.getStudyTagNames() != null) {
+            study.setTags(resolveStudyTags(request.getStudyTagIds(), request.getStudyTagNames()));
         }
 
         // 커리큘럼: 기존 삭제 후 재생성
@@ -258,25 +286,49 @@ public class StudyService {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
-        semesterPhaseGuard.requireOpen(
-                SemesterPhase.MENTOR_RECRUIT,
-                study.getActYear(),
-                study.getActSemester()
-        );
-        if (study.getStudyStatus() != StudyStatus.PENDING
-                && study.getStudyStatus() != StudyStatus.RE_APPLIED
-                && study.getStudyStatus() != StudyStatus.REJECTED) {
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+
+        if (study.getStudyStatus() == StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
+        // 승인 전 스터디에는 지원서·수강생·출석이 없어야 정상이다. 있는데 조용히 지우면
+        // 멘티 기록이 소리 없이 사라지므로, 취소를 막고 운영진 확인을 거치게 한다.
+        if (userApplyRepository.existsByStudyId(studyId)
+                || !studyUserRepository.findAllByStudyId(studyId).isEmpty()
+                || !studyAttendanceRepository.findAllByStudyId(studyId).isEmpty()) {
+            throw new ForifException(ErrorCode.STUDY_CANCEL_HAS_DEPENDENTS);
+        }
+
+        deleteStoredFiles(study);
+
         studyRepository.deleteStudyPlansByStudyId(studyId);
         studyRepository.deleteStudyReferencesByStudyId(studyId);
-        studyRepository.deleteStudyUsersByStudyId(studyId);
         studyRepository.deleteMentorStudiesByStudyId(studyId);
         studyRepository.deleteStudyById(studyId);
+    }
+
+    /** 취소된 스터디의 썸네일·첨부 파일을 스토리지에서 걷어낸다 */
+    private void deleteStoredFiles(Study study) {
+        List<String> objectKeys = new ArrayList<>();
+        if (study.getThumbnailImage() != null && !study.getThumbnailImage().isBlank()) {
+            objectKeys.add(study.getThumbnailImage());
+        }
+        studyRepository.findStudyReferencesByStudyId(study.getId()).stream()
+                .filter(ref -> ref.getReferenceType() == ReferenceType.FILE)
+                .map(StudyReference::getContent)
+                .filter(Objects::nonNull)
+                .forEach(objectKeys::add);
+
+        for (String objectKey : objectKeys) {
+            try {
+                filePort.deleteFile(objectKey);
+            } catch (Exception e) {
+                // 파일 삭제 실패가 취소 자체를 막을 이유는 없다. 남은 파일은 따로 정리한다
+                log.warn("스터디 취소 중 파일 삭제 실패: {}", objectKey, e);
+            }
+        }
     }
 
     /**
@@ -299,13 +351,52 @@ public class StudyService {
         SemesterInfo semester = semesterService.getActive();
         Study study = Study.createPendingStudy(mentor, semester.actYear(), semester.actSemester());
 
-        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());
 
         // 공통 데이터 반영
         study.applyRequestData(request, tags, secondaryMentor);
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private List<StudyTag> resolveStudyTags(CreateStudyApplyRequest request) {
+        return resolveStudyTags(request.getStudyTagId(), request.getStudyTagNames());
+    }
+
+    private List<StudyTag> resolveStudyTags(List<Long> tagIds, List<String> tagNames) {
+        if (tagNames != null && !tagNames.isEmpty()) {
+            List<String> normalizedTagNames = tagNames.stream()
+                    .map(StudyService::normalizeTagName)
+                    .distinct()
+                    .toList();
+            List<StudyTag> tags = studyRepository.findAllStudyTagByName(normalizedTagNames);
+            if (tags.size() != normalizedTagNames.size()) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            return tags;
+        }
+
+        if (tagIds != null && !tagIds.isEmpty()) {
+            List<Long> distinctTagIds = tagIds.stream()
+                    .distinct()
+                    .toList();
+            List<StudyTag> tags = studyRepository.findAllStudyTagById(distinctTagIds);
+            if (tags.size() != distinctTagIds.size()) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            return tags;
+        }
+
+        // 수정 요청에서 명시적으로 빈 목록을 보내면 기존 태그를 모두 해제한다.
+        return List.of();
+    }
+
+    private static String normalizeTagName(String tagName) {
+        if (tagName == null || tagName.isBlank()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        return tagName.strip().toLowerCase(Locale.ROOT);
     }
 
     private User resolveSecondaryMentor(Long primaryMentorId, Long secondaryMentorId) {
@@ -367,30 +458,55 @@ public class StudyService {
     @Transactional
     public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                              MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, true);
+    }
 
-        // 1. 스터디 조회 (태그 포함)
+    @Transactional
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                                        MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, false);
+    }
+
+    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles,
+                                                         boolean rejectedOnly) {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        // 2. 권한 검증 및 상태 변경
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
-        }
-        study.reApply(); // 내부에서 상태값을 변경하는 로직
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
 
-        // 3. 기본 데이터 업데이트 (스터디명, 설명, 태그 등)
-        List<StudyTag> tags = studyRepository.findAllStudyTagById(request.getStudyTagId());
+        if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
+            study.reApply();
+        } else if (study.getStudyStatus() != StudyStatus.PENDING
+                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
         study.applyRequestData(request, tags, secondaryMentor);
 
-        // 4. 기존 연관 리소스(커리큘럼, 참고자료) 삭제
-        // 재신청은 기존 내용을 덮어쓰는 개념이므로 삭제 후 재등록
-        studyRepository.deleteStudyPlansByStudyId(studyId);
-        studyRepository.deleteStudyReferencesByStudyId(studyId);
+        if (request.getStudyPlanList() != null) {
+            studyRepository.deleteStudyPlansByStudyId(studyId);
+        }
+        if (request.getReferences() != null) {
+            studyRepository.deleteStudyReferencesByStudyId(studyId);
+        }
 
-        // 5. 신규 리소스 저장 및 파일 조회 URL 생성
-        // 기존에 만들어둔 공통 메서드를 호출하고 그 결과를 그대로 반환합니다.
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+    }
+
+    private boolean canModifyStudyApplication(Study study) {
+        SemesterInfo active = semesterService.getActive();
+        return study.getStudyStatus() != StudyStatus.APPROVED
+                && study.getActYear() == active.actYear()
+                && study.getActSemester() == active.actSemester()
+                && semesterPhaseGuard.isOpen(
+                SemesterPhase.MENTOR_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        );
     }
 
     /**
@@ -429,6 +545,7 @@ public class StudyService {
         studyRepository.saveAllStudyReference(referenceList);
 
         return CreateStudyApplyInfo.builder()
+                .studyId(study.getId())
                 .thumbnailUploadInfo(thumbnailInfo)
                 .referenceUploadInfos(referenceUploadInfos)
                 .build();
@@ -451,6 +568,21 @@ public class StudyService {
                         ? thumbnailImage
                         : filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl()
         );
+    }
+
+    private StudyInfo toStudyInfo(Study study, boolean certificateIssued) {
+        return StudyInfo.from(study, certificateIssued, resolveThumbnailImage(study));
+    }
+
+    private String resolveThumbnailImage(Study study) {
+        String thumbnailImage = study.getThumbnailImage();
+        if (thumbnailImage == null || thumbnailImage.isBlank()) {
+            return null;
+        }
+        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
+            return thumbnailImage;
+        }
+        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
     }
 
     /**

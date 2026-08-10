@@ -7,6 +7,7 @@ import java.util.List;
 
 @Builder
 public record CreateStudyApplyInfo(
+        Integer studyId,
         FileInfo thumbnailUploadInfo,
         List<FileInfo> referenceUploadInfos
 ) {

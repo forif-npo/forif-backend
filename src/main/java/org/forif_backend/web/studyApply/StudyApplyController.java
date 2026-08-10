@@ -11,9 +11,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.StudyService;
 import org.forif_backend.application.study.dto.CreateStudyApplyInfo;
+import org.forif_backend.application.study.dto.StudyApplicationDetailDto;
+import org.forif_backend.application.study.dto.StudyApplicationDto;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.CreateStudyApplyResponse;
+import org.forif_backend.web.study.dto.StudyApplicationDetailResponse;
+import org.forif_backend.web.study.dto.StudyApplicationResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -70,6 +74,46 @@ public class StudyApplyController {
     ) {
         studyService.cancelStudyApplication(studyId, userId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @Operation(summary = "내 스터디 개설 신청 목록 조회", description = "승인 전 또는 반려된 본인의 스터디 개설 신청서를 조회합니다.")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<List<StudyApplicationResponse>>> getMyStudyApplications(
+            @AuthenticationPrincipal Long userId
+    ) {
+        List<StudyApplicationResponse> applications = studyService.getMyStudyApplications(userId)
+                .stream()
+                .map(StudyApplicationResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(applications));
+    }
+
+    @Operation(summary = "내 스터디 개설 신청 상세 조회", description = "본인이 개설한 승인 전 또는 반려된 신청서만 조회할 수 있습니다.")
+    @GetMapping("/{studyId}")
+    public ResponseEntity<ApiResponse<StudyApplicationDetailResponse>> getMyStudyApplication(
+            @PathVariable Integer studyId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        StudyApplicationDetailDto application = studyService.getMyStudyApplication(userId, studyId);
+        return ResponseEntity.ok(ApiResponse.success(StudyApplicationDetailResponse.from(
+                application.getStudy(),
+                application.getStudyStatus(),
+                application.getRejectReason(),
+                application.isCanModify()
+        )));
+    }
+
+    @Operation(summary = "내 스터디 개설 신청 수정", description = "승인 전 본인 신청서만 수정할 수 있으며, 반려 건은 수정 후 재신청 상태로 전환됩니다.")
+    @PatchMapping(value = "/{studyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> updateStudyApplication(
+            @PathVariable Integer studyId,
+            @AuthenticationPrincipal Long userId,
+            @RequestPart("studyRequest") @Valid CreateStudyApplyRequest request,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @RequestPart(value = "references", required = false) List<MultipartFile> references
+    ) {
+        CreateStudyApplyInfo info = studyService.updateStudyApplication(studyId, userId, request, thumbnail, references);
+        return ResponseEntity.ok(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 
     @Operation(summary = "스터디 개설 재신청", description = """

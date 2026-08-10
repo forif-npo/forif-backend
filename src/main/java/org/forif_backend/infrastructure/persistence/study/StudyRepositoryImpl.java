@@ -48,6 +48,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public List<StudyTag> findAllStudyTagByName(List<String> tagNames) {
+        return studyTagJpaRepository.findByNameInIgnoreCase(tagNames);
+    }
+
+    @Override
     public List<Study> findStudiesByUserId(Long userId) {
         return studyQueryRepository.findStudiesByUserId(userId);
     }
@@ -184,6 +189,11 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public List<Study> findStudiesByMentorId(Long mentorId){
         return studyQueryRepository.findStudiesByMentorId(mentorId);
+    }
+
+    @Override
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
+        return studyQueryRepository.findStudyApplicationsByMentorId(mentorId);
     }
 
 }

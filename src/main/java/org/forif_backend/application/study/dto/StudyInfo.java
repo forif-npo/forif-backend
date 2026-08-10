@@ -21,6 +21,7 @@ public record StudyInfo(
         String location,
         Integer difficulty,
         String imgUrl,
+        String thumbnailImage,
         boolean certificateIssued
 ) {
     /**
@@ -31,6 +32,10 @@ public record StudyInfo(
     }
 
     public static StudyInfo from(Study study, boolean certificateIssued) {
+        return from(study, certificateIssued, null);
+    }
+
+    public static StudyInfo from(Study study, boolean certificateIssued, String thumbnailImage) {
         // tags 리스트를 태그 이름 리스트로 변환
         List<String> tagNames = study.getTags() != null
                 ? study.getTags().stream()
@@ -51,6 +56,7 @@ public record StudyInfo(
                 .location(study.getLocation())
                 .difficulty(study.getDifficulty() != null ? study.getDifficulty().getLevel() : null)
                 .imgUrl(study.getImgUrl())
+                .thumbnailImage(thumbnailImage)
                 .certificateIssued(certificateIssued)
                 .build();
     }
