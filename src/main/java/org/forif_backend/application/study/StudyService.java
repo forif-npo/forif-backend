@@ -19,6 +19,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
@@ -44,7 +45,9 @@ public class StudyService {
     private final StudyMentorAccess studyMentorAccess;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
+    private final StudyAttendanceRepository studyAttendanceRepository;
     private final UserRepository userRepository;
+    private final UserApplyRepository userApplyRepository;
     private final FilePort filePort;
     private final StaffAccountService staffAccountService;
     private final StaffAccountRepository staffAccountRepository;
@@ -273,6 +276,59 @@ public class StudyService {
         studyRepository.deleteStudyUsersByStudyId(studyId);
         studyRepository.deleteMentorStudiesByStudyId(studyId);
         studyRepository.deleteStudyById(studyId);
+    }
+
+    /**
+     * 멘토가 승인 전 스터디 개설 신청을 취소한다.
+     */
+    @Transactional
+    public void cancelStudyApplication(Integer studyId, Long userId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+
+        if (study.getStudyStatus() == StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        // 승인 전 스터디에는 지원서·수강생·출석이 없어야 정상이다. 있는데 조용히 지우면
+        // 멘티 기록이 소리 없이 사라지므로, 취소를 막고 운영진 확인을 거치게 한다.
+        if (userApplyRepository.existsByStudyId(studyId)
+                || !studyUserRepository.findAllByStudyId(studyId).isEmpty()
+                || !studyAttendanceRepository.findAllByStudyId(studyId).isEmpty()) {
+            throw new ForifException(ErrorCode.STUDY_CANCEL_HAS_DEPENDENTS);
+        }
+
+        deleteStoredFiles(study);
+
+        studyRepository.deleteStudyPlansByStudyId(studyId);
+        studyRepository.deleteStudyReferencesByStudyId(studyId);
+        studyRepository.deleteMentorStudiesByStudyId(studyId);
+        studyRepository.deleteStudyById(studyId);
+    }
+
+    /** 취소된 스터디의 썸네일·첨부 파일을 스토리지에서 걷어낸다 */
+    private void deleteStoredFiles(Study study) {
+        List<String> objectKeys = new ArrayList<>();
+        if (study.getThumbnailImage() != null && !study.getThumbnailImage().isBlank()) {
+            objectKeys.add(study.getThumbnailImage());
+        }
+        studyRepository.findStudyReferencesByStudyId(study.getId()).stream()
+                .filter(ref -> ref.getReferenceType() == ReferenceType.FILE)
+                .map(StudyReference::getContent)
+                .filter(Objects::nonNull)
+                .forEach(objectKeys::add);
+
+        for (String objectKey : objectKeys) {
+            try {
+                filePort.deleteFile(objectKey);
+            } catch (Exception e) {
+                // 파일 삭제 실패가 취소 자체를 막을 이유는 없다. 남은 파일은 따로 정리한다
+                log.warn("스터디 취소 중 파일 삭제 실패: {}", objectKey, e);
+            }
+        }
     }
 
     /**

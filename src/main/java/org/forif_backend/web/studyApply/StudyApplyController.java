@@ -66,6 +66,16 @@ public class StudyApplyController {
         return ResponseEntity.ok().body(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 
+    @Operation(summary = "내 스터디 개설 신청 취소", description = "개설 신청 기간 내 승인 전 본인 신청서를 취소하고 삭제합니다.")
+    @DeleteMapping("/{studyId}")
+    public ResponseEntity<ApiResponse<Void>> cancelStudyApplication(
+            @PathVariable Integer studyId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        studyService.cancelStudyApplication(studyId, userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     @Operation(summary = "내 스터디 개설 신청 목록 조회", description = "승인 전 또는 반려된 본인의 스터디 개설 신청서를 조회합니다.")
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<List<StudyApplicationResponse>>> getMyStudyApplications(

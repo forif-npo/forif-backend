@@ -16,6 +16,12 @@ public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
     List<UserApply> findByApplierId(Long applierId);
 
     @Query("""
+            SELECT COUNT(ua) > 0 FROM UserApply ua
+            WHERE ua.primaryStudy = :studyId OR ua.secondaryStudy = :studyId
+            """)
+    boolean existsByStudyId(@Param("studyId") Integer studyId);
+
+    @Query("""
             SELECT u FROM User u
             WHERE EXISTS (
                 SELECT 1 FROM UserApply ua

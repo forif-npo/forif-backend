@@ -40,7 +40,9 @@ class StudyServiceTagUpdateTest {
                 mock(StudyMentorAccess.class),
                 studyRepository,
                 mock(StudyUserRepository.class),
+                mock(org.forif_backend.domain.study.StudyAttendanceRepository.class),
                 mock(UserRepository.class),
+                mock(org.forif_backend.domain.user.UserApplyRepository.class),
                 mock(FilePort.class),
                 mock(StaffAccountService.class),
                 mock(StaffAccountRepository.class)
