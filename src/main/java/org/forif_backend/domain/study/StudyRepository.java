@@ -7,6 +7,7 @@ import java.util.Optional;
 public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
     List<StudyTag> findAllStudyTagById(List<Long> tagIds);
+    List<StudyTag> findAllStudyTagByName(List<String> tagNames);
     List<Study> getStudies(StudySearchCond cond, Integer cursor, int size);
     List<Study> getStudiesWithOffset(StudySearchCond cond, int page, int size);
     long countStudiesForUser(StudySearchCond cond);

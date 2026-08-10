@@ -3,6 +3,7 @@ package org.forif_backend.web.study.dto;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import jakarta.validation.constraints.NotBlank;
 import org.forif_backend.domain.study.ReferenceType;
 
 import java.time.LocalDateTime;
@@ -33,6 +34,7 @@ public class UpdateStudyRequest {
     private LocalDateTime interviewDate;
 
     private List<Long> studyTagIds;
+    private List<@NotBlank String> studyTagNames;
     private List<Plan> studyPlanList;
     private List<Reference> references;
 

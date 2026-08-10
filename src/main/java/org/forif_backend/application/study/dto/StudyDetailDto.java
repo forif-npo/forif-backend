@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -34,6 +35,7 @@ public class StudyDetailDto {
     private final String selectionCriteria;
     private final Integer capacity;
     private final Boolean requiresInterview;
+    private final LocalDateTime interviewDate;
     private final List<StudyPlanDto> plans;
     private final List<StudyReferenceDto> references;
     private final List<MentorStudyDto> mentors;
@@ -65,6 +67,7 @@ public class StudyDetailDto {
                 .selectionCriteria(study.getSelectionCriteria())
                 .capacity(study.getCapacity())
                 .requiresInterview(study.getRequiresInterview())
+                .interviewDate(study.getInterviewDate())
                 .plans(plans.stream().map(StudyPlanDto::from).toList())
                 .references(references.stream().map(StudyReferenceDto::from).toList())
                 .mentors(mentorStudies.stream().map(MentorStudyDto::from).toList())

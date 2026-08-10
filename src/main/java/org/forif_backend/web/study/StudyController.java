@@ -112,7 +112,7 @@ public class StudyController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateStudy(
             @Parameter(description = "수정할 스터디 ID") @PathVariable Integer studyId,
-            @RequestBody UpdateStudyRequest request
+            @RequestBody @Valid UpdateStudyRequest request
     ) {
         studyService.updateStudy(studyId, request);
         return ResponseEntity.ok(ApiResponse.success(null));
