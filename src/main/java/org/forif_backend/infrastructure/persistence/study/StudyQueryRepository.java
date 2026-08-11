@@ -7,9 +7,11 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.jpa.JPAExpressions;
 import jakarta.persistence.EntityManager;
 
 import org.forif_backend.domain.study.*;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.QUser;
 import org.springframework.stereotype.Repository;
 import com.querydsl.core.types.dsl.BooleanExpression;
@@ -23,6 +25,7 @@ public class StudyQueryRepository {
     private final QStudyUser studyUser = QStudyUser.studyUser;
     private final QMentorStudy mentorStudy = QMentorStudy.mentorStudy;
     private final QUser secondaryMentor = new QUser("secondaryMentor");
+    private final QUser mentorUser = new QUser("mentorUser");
 
     public StudyQueryRepository(EntityManager em) {
         queryFactory = new JPAQueryFactory(em);
@@ -188,6 +191,162 @@ public class StudyQueryRepository {
                         t -> t.get(study.studyName),
                         (existing, replacement) -> existing
                 ));
+    }
+
+    public Map<Long, String> findMentorStudyNamesByUserIds(
+            List<Long> userIds,
+            Integer year,
+            Integer semester
+    ) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Set<String>> studyNamesByMentorId = new java.util.LinkedHashMap<>();
+        collectMentorStudyNames(
+                study.primaryMentor.id,
+                userIds,
+                year,
+                semester,
+                studyNamesByMentorId
+        );
+        collectMentorStudyNames(
+                study.secondaryMentor.id,
+                userIds,
+                year,
+                semester,
+                studyNamesByMentorId
+        );
+
+        return studyNamesByMentorId.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> String.join(", ", entry.getValue())
+                ));
+    }
+
+    public List<User> searchMentors(Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(mentorUser)
+                .where(
+                        mentorStudyExists(null, null),
+                        mentorCursorLt(cursor),
+                        mentorSearchKeyword(search)
+                )
+                .orderBy(mentorUser.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public List<User> searchMentorsWithOffset(int page, int size, String search) {
+        return queryFactory
+                .selectFrom(mentorUser)
+                .where(mentorStudyExists(null, null), mentorSearchKeyword(search))
+                .orderBy(mentorUser.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    public long countMentors(String search) {
+        Long count = queryFactory
+                .select(mentorUser.count())
+                .from(mentorUser)
+                .where(mentorStudyExists(null, null), mentorSearchKeyword(search))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    public List<User> searchMentorsByYearSemester(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search
+    ) {
+        return queryFactory
+                .selectFrom(mentorUser)
+                .where(
+                        mentorStudyExists(year, semester),
+                        mentorCursorLt(cursor),
+                        mentorSearchKeyword(search)
+                )
+                .orderBy(mentorUser.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    public List<User> searchMentorsByYearSemesterWithOffset(
+            int year,
+            int semester,
+            int page,
+            int size,
+            String search
+    ) {
+        return queryFactory
+                .selectFrom(mentorUser)
+                .where(mentorStudyExists(year, semester), mentorSearchKeyword(search))
+                .orderBy(mentorUser.id.desc())
+                .offset((long) page * size)
+                .limit(size)
+                .fetch();
+    }
+
+    public long countMentorsByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(mentorUser.count())
+                .from(mentorUser)
+                .where(mentorStudyExists(year, semester), mentorSearchKeyword(search))
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    private void collectMentorStudyNames(
+            com.querydsl.core.types.dsl.NumberPath<Long> mentorId,
+            List<Long> userIds,
+            Integer year,
+            Integer semester,
+            Map<Long, Set<String>> studyNamesByMentorId
+    ) {
+        queryFactory
+                .select(mentorId, study.studyName)
+                .from(study)
+                .where(mentorId.in(userIds), yearEq(year), semesterEq(semester))
+                .orderBy(study.studyName.asc())
+                .fetch()
+                .forEach(tuple -> {
+                    Long id = tuple.get(mentorId);
+                    String name = tuple.get(study.studyName);
+                    if (id != null && name != null) {
+                        studyNamesByMentorId
+                                .computeIfAbsent(id, ignored -> new java.util.LinkedHashSet<>())
+                                .add(name);
+                    }
+                });
+    }
+
+    private BooleanExpression mentorStudyExists(Integer year, Integer semester) {
+        return JPAExpressions
+                .selectOne()
+                .from(study)
+                .where(
+                        yearEq(year),
+                        semesterEq(semester),
+                        study.primaryMentor.id.eq(mentorUser.id)
+                                .or(study.secondaryMentor.id.eq(mentorUser.id))
+                )
+                .exists();
+    }
+
+    private BooleanExpression mentorCursorLt(Long cursor) {
+        return cursor == null ? null : mentorUser.id.lt(cursor);
+    }
+
+    private BooleanExpression mentorSearchKeyword(String search) {
+        if (search == null || search.isBlank()) {
+            return null;
+        }
+        return mentorUser.userName.containsIgnoreCase(search);
     }
 
     public Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester) {

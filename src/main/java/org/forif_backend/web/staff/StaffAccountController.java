@@ -11,6 +11,7 @@ import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
+import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.dto.response.ApiResponse;
@@ -186,7 +187,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(cursor, page, size, search);
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(cursor, page, size, search);
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
@@ -214,7 +215,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
     ) {
-        CursorPageResponse<StaffAccount> result = staffAccountService.getMentors(year, semester, cursor, page, size, search);
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(year, semester, cursor, page, size, search);
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)

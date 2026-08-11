@@ -1,7 +1,7 @@
 package org.forif_backend.web.staff.dto;
 
 import lombok.Builder;
-import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.application.staff.dto.MentorSummary;
 
 @Builder
 public record MentorResponse(
@@ -11,13 +11,13 @@ public record MentorResponse(
     String phoneNum,
     String studyName
 ) {
-    public static MentorResponse from(StaffAccount staffAccount) {
+    public static MentorResponse from(MentorSummary mentor) {
         return MentorResponse.builder()
-                .userId(staffAccount.getUserId())
-                .name(staffAccount.getName())
-                .department(staffAccount.getUser().getDepartment())
-                .phoneNum(staffAccount.getUser().getPhoneNum())
-                .studyName(staffAccount.getAffiliation())
+                .userId(mentor.userId())
+                .name(mentor.name())
+                .department(mentor.department())
+                .phoneNum(mentor.phoneNum())
+                .studyName(mentor.studyName())
                 .build();
     }
 }
