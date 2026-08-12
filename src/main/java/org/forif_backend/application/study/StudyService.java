@@ -25,6 +25,8 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -236,7 +238,8 @@ public class StudyService {
                     study,
                     request.getReferences(),
                     request.getRetainedReferenceIds(),
-                    List.of()
+                    List.of(),
+                    true
             );
         }
     }
@@ -255,6 +258,12 @@ public class StudyService {
         if (request.getIsOnline() != null) study.setIsOnline(request.getIsOnline());
         if (request.getCapacity() != null) study.setCapacity(request.getCapacity());
         if (request.getSelectionCriteria() != null) study.setSelectionCriteria(request.getSelectionCriteria());
+        if (request.getSecondaryMentorId() != null) {
+            User secondaryMentor = resolveSecondaryMentor(
+                    study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+            study.setSecondaryMentor(secondaryMentor);
+            study.setSecondaryMentorName(secondaryMentor.getUserName());
+        }
         if (request.getRequiresInterview() != null) study.setRequiresInterview(request.getRequiresInterview());
         if (Boolean.FALSE.equals(request.getRequiresInterview())) {
             study.setInterviewDate(null);
@@ -492,13 +501,19 @@ public class StudyService {
                         study,
                         request.getReferences(),
                         request.getRetainedReferenceIds(),
-                        Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList)
+                        Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList),
+                        false
                 );
 
         FileInfo thumbnailInfo = null;
         if (thumbnail != null && !thumbnail.isEmpty()) {
+            String previousThumbnailObjectKey = study.getThumbnailImage();
             thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
             study.setThumbnailImage(thumbnailInfo.objectKey());
+            deleteStoredFilesAfterCompletion(
+                    Collections.singletonList(previousThumbnailObjectKey),
+                    List.of(thumbnailInfo.objectKey())
+            );
         }
 
         studyRepository.saveStudy(study);
@@ -515,22 +530,28 @@ public class StudyService {
             Study study,
             List<UpdateStudyRequest.Reference> newReferences,
             List<UUID> retainedReferenceIds,
-            List<MultipartFile> referenceFiles
+            List<MultipartFile> referenceFiles,
+            boolean skipUnuploadedFileReferences
     ) {
         List<StudyReference> existingReferences = studyRepository.findStudyReferencesByStudyId(studyId);
         Map<UUID, StudyReference> existingById = existingReferences.stream()
                 .collect(Collectors.toMap(StudyReference::getId, reference -> reference));
-        Set<UUID> retainedIds = new LinkedHashSet<>(Optional.ofNullable(retainedReferenceIds).orElseGet(List::of));
+        // retained_reference_ids를 보내지 않은 기존 어드민 클라이언트는 FILE 참고자료를 유지한다.
+        Set<UUID> retainedIds = retainedReferenceIds == null
+                ? existingReferences.stream()
+                .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                .map(StudyReference::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                : new LinkedHashSet<>(retainedReferenceIds);
 
         if (!existingById.keySet().containsAll(retainedIds)) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
-        List<StudyReference> references = new ArrayList<>();
-        for (UUID retainedId : retainedIds) {
-            StudyReference reference = existingById.get(retainedId);
-            references.add(StudyReference.create(study, reference.getReferenceType(), reference.getContent()));
-        }
+        List<StudyReference> removedReferences = existingReferences.stream()
+                .filter(reference -> !retainedIds.contains(reference.getId()))
+                .toList();
+        List<StudyReference> referencesToCreate = new ArrayList<>();
 
         List<FileInfo> uploadedFiles = new ArrayList<>();
         for (UpdateStudyRequest.Reference reference : newReferences) {
@@ -538,18 +559,68 @@ public class StudyService {
                 MultipartFile file = referenceFiles.stream()
                         .filter(candidate -> Objects.equals(candidate.getOriginalFilename(), reference.getFileName()))
                         .findFirst()
-                        .orElseThrow(() -> new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT));
-                FileInfo fileInfo = uploadAndBuildFileInfo(file);
-                uploadedFiles.add(fileInfo);
-                references.add(StudyReference.create(study, ReferenceType.FILE, fileInfo.objectKey()));
+                        .orElse(null);
+                if (file != null) {
+                    FileInfo fileInfo = uploadAndBuildFileInfo(file);
+                    uploadedFiles.add(fileInfo);
+                    referencesToCreate.add(StudyReference.create(study, ReferenceType.FILE, fileInfo.objectKey()));
+                } else if (!skipUnuploadedFileReferences) {
+                    throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+                }
+                // JSON 어드민 수정은 조회용 FILE URL을 저장하지 않는다. 기존 FILE은 retained 정책으로 유지된다.
             } else {
-                references.add(StudyReference.create(study, reference.getType(), reference.getUrl()));
+                referencesToCreate.add(StudyReference.create(study, reference.getType(), reference.getUrl()));
             }
         }
 
-        studyRepository.deleteStudyReferencesByStudyId(studyId);
-        studyRepository.saveAllStudyReference(references);
+        if (!removedReferences.isEmpty()) {
+            studyRepository.deleteStudyReferencesByIds(removedReferences.stream()
+                    .map(StudyReference::getId)
+                    .toList());
+        }
+        if (!referencesToCreate.isEmpty()) {
+            studyRepository.saveAllStudyReference(referencesToCreate);
+        }
+        deleteStoredFilesAfterCompletion(
+                removedReferences.stream()
+                        .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                        .map(StudyReference::getContent)
+                        .toList(),
+                uploadedFiles.stream().map(FileInfo::objectKey).toList()
+        );
         return uploadedFiles;
+    }
+
+    /** DB 반영 성공 뒤 교체 전 파일을 지우고, 롤백 시 새로 올린 파일을 회수한다. */
+    private void deleteStoredFilesAfterCompletion(List<String> previousObjectKeys, List<String> uploadedObjectKeys) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    deleteStoredFilesQuietly(previousObjectKeys);
+                } else {
+                    deleteStoredFilesQuietly(uploadedObjectKeys);
+                }
+            }
+        });
+    }
+
+    private void deleteStoredFilesQuietly(List<String> objectKeys) {
+        for (String objectKey : objectKeys) {
+            if (objectKey == null || objectKey.isBlank()
+                    || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+                continue;
+            }
+            try {
+                filePort.deleteFile(objectKey);
+            } catch (Exception e) {
+                log.warn("스터디 수정 중 파일 삭제 실패: {}", objectKey, e);
+            }
+        }
     }
 
     private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
@@ -605,8 +676,8 @@ public class StudyService {
      */
     private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyRequest request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        // 썸네일 처리
         FileInfo thumbnailInfo = null;
+        // 썸네일 처리
         if (thumbnail != null && !thumbnail.isEmpty()) {
             thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
             study.setThumbnailImage(thumbnailInfo.objectKey());

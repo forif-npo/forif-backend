@@ -16,6 +16,7 @@ import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -23,14 +24,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import org.forif_backend.domain.study.ReferenceType;
+import org.forif_backend.domain.study.StudyReference;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class StudyServiceApplicationUpdateTest {
@@ -66,6 +73,13 @@ class StudyServiceApplicationUpdateTest {
                 staffAccountService,
                 staffAccountRepository
         );
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test
@@ -134,4 +148,59 @@ class StudyServiceApplicationUpdateTest {
         verify(studyRepository, never()).deleteStudyPlansByStudyId(1);
         verify(studyRepository, never()).saveAllStudyPlan(org.mockito.ArgumentMatchers.anyList());
     }
+
+    @Test
+    void keepsExistingFileReferencesWhenLegacyAdminRequestOmitsRetainedReferenceIds() {
+        Study study = mock(Study.class);
+        StudyReference fileReference = mock(StudyReference.class);
+        UUID referenceId = UUID.randomUUID();
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        UpdateStudyRequest.Reference fileReferenceRequest = new UpdateStudyRequest.Reference();
+        fileReferenceRequest.setType(ReferenceType.FILE);
+        fileReferenceRequest.setUrl("https://files.example.com/temporary-view-url");
+        request.setReferences(List.of(fileReferenceRequest));
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(studyRepository.findStudyReferencesByStudyId(1)).thenReturn(List.of(fileReference));
+        when(fileReference.getId()).thenReturn(referenceId);
+        when(fileReference.getReferenceType()).thenReturn(ReferenceType.FILE);
+
+        studyService.updateStudy(1, request);
+
+        verify(studyRepository, never()).deleteStudyReferencesByIds(anyList());
+        verify(studyRepository, never()).saveAllStudyReference(anyList());
+    }
+
+    @Test
+    void preservesRetainedReferenceIdAndDeletesOnlyRemovedFileAfterCommit() {
+        Study study = mock(Study.class);
+        StudyReference retainedReference = mock(StudyReference.class);
+        StudyReference removedFileReference = mock(StudyReference.class);
+        UUID retainedId = UUID.randomUUID();
+        UUID removedId = UUID.randomUUID();
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setReferences(List.of());
+        request.setRetainedReferenceIds(List.of(retainedId));
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(studyRepository.findStudyReferencesByStudyId(1))
+                .thenReturn(List.of(retainedReference, removedFileReference));
+        when(retainedReference.getId()).thenReturn(retainedId);
+        when(removedFileReference.getId()).thenReturn(removedId);
+        when(removedFileReference.getReferenceType()).thenReturn(ReferenceType.FILE);
+        when(removedFileReference.getContent()).thenReturn("studies/references/old.pdf");
+        TransactionSynchronizationManager.initSynchronization();
+
+        studyService.updateStudy(1, request);
+
+        verify(studyRepository).deleteStudyReferencesByIds(List.of(removedId));
+        verify(studyRepository, never()).saveAllStudyReference(anyList());
+        verify(filePort, never()).deleteFile("studies/references/old.pdf");
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+
+        verify(filePort).deleteFile("studies/references/old.pdf");
+    }
+
 }

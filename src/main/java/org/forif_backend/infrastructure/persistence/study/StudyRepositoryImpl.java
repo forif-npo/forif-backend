@@ -3,6 +3,7 @@ package org.forif_backend.infrastructure.persistence.study;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.*;
@@ -175,6 +176,16 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public void deleteStudyReferencesByStudyId(Integer studyId) {
         studyReferenceJpaRepository.deleteByStudyId(studyId);
+        studyReferenceJpaRepository.flush();
+    }
+
+    @Override
+    public void deleteStudyReferencesByIds(List<UUID> referenceIds) {
+        if (referenceIds.isEmpty()) {
+            return;
+        }
+        studyReferenceJpaRepository.deleteByIdIn(referenceIds);
+        studyReferenceJpaRepository.flush();
     }
 
     @Override

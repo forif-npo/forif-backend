@@ -1,5 +1,6 @@
 package org.forif_backend.web.study.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,6 +16,7 @@ import java.util.UUID;
 @NoArgsConstructor
 public class UpdateStudyRequest {
 
+    @JsonAlias("title")
     private String studyName;
     private String oneLiner;
     private String explanation;
@@ -24,7 +26,9 @@ public class UpdateStudyRequest {
     private String endTime;
     private Integer weekDay;
 
+    @JsonAlias("study_location")
     private String location;
+    @JsonAlias("study_location_detail")
     private String locationDetail;
     private Boolean isOnline;
 
@@ -34,8 +38,11 @@ public class UpdateStudyRequest {
     private Boolean requiresInterview;
     private LocalDateTime interviewDate;
 
+    @JsonAlias("study_tag_id")
     private List<Long> studyTagIds;
     private List<@NotBlank String> studyTagNames;
+    @JsonAlias("secondary_mentor_id")
+    private Long secondaryMentorId;
     private List<Plan> studyPlanList;
     private List<Reference> references;
     private List<UUID> retainedReferenceIds;
