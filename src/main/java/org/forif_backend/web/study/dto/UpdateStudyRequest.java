@@ -1,6 +1,8 @@
 package org.forif_backend.web.study.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -41,11 +43,18 @@ public class UpdateStudyRequest {
     @JsonAlias("study_tag_id")
     private List<Long> studyTagIds;
     private List<@NotBlank String> studyTagNames;
-    @JsonAlias("secondary_mentor_id")
     private Long secondaryMentorId;
+    @JsonIgnore
+    private boolean secondaryMentorIdPresent;
     private List<Plan> studyPlanList;
     private List<Reference> references;
     private List<UUID> retainedReferenceIds;
+
+    @JsonSetter("secondary_mentor_id")
+    public void setSecondaryMentorId(Long secondaryMentorId) {
+        this.secondaryMentorId = secondaryMentorId;
+        this.secondaryMentorIdPresent = true;
+    }
 
     @Getter
     @Setter

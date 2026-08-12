@@ -150,6 +150,21 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void removesSecondaryMentorWhenThePatchExplicitlySendsNull() {
+        Study study = mock(Study.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setSecondaryMentorId(null);
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
+
+        studyService.updateStudyApplication(1, 10L, request, null, null);
+
+        verify(study).setSecondaryMentor(null);
+        verify(study).setSecondaryMentorName(null);
+    }
+
+    @Test
     void keepsExistingFileReferencesWhenLegacyAdminRequestOmitsRetainedReferenceIds() {
         Study study = mock(Study.class);
         StudyReference fileReference = mock(StudyReference.class);

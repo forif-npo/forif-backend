@@ -30,5 +30,15 @@ class UpdateStudyRequestTest {
         assertThat(request.getLocationDetail()).isEqualTo("301호");
         assertThat(request.getStudyTagIds()).isEqualTo(List.of(1L, 2L));
         assertThat(request.getSecondaryMentorId()).isEqualTo(20L);
+        assertThat(request.isSecondaryMentorIdPresent()).isTrue();
+    }
+
+    @Test
+    void distinguishesExplicitSecondaryMentorRemovalFromAnOmittedField() throws Exception {
+        UpdateStudyRequest request = objectMapper.readValue(
+                "{\"secondary_mentor_id\": null}", UpdateStudyRequest.class);
+
+        assertThat(request.isSecondaryMentorIdPresent()).isTrue();
+        assertThat(request.getSecondaryMentorId()).isNull();
     }
 }

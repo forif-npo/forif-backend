@@ -258,11 +258,13 @@ public class StudyService {
         if (request.getIsOnline() != null) study.setIsOnline(request.getIsOnline());
         if (request.getCapacity() != null) study.setCapacity(request.getCapacity());
         if (request.getSelectionCriteria() != null) study.setSelectionCriteria(request.getSelectionCriteria());
-        if (request.getSecondaryMentorId() != null) {
-            User secondaryMentor = resolveSecondaryMentor(
+        if (request.isSecondaryMentorIdPresent()) {
+            User secondaryMentor = request.getSecondaryMentorId() == null
+                    ? null
+                    : resolveSecondaryMentor(
                     study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
             study.setSecondaryMentor(secondaryMentor);
-            study.setSecondaryMentorName(secondaryMentor.getUserName());
+            study.setSecondaryMentorName(secondaryMentor == null ? null : secondaryMentor.getUserName());
         }
         if (request.getRequiresInterview() != null) study.setRequiresInterview(request.getRequiresInterview());
         if (Boolean.FALSE.equals(request.getRequiresInterview())) {
