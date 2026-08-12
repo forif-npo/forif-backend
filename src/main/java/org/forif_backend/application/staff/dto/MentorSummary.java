@@ -7,15 +7,17 @@ public record MentorSummary(
         String name,
         String department,
         String phoneNum,
-        String studyName
+        String studyName,
+        boolean manageable
 ) {
-    public static MentorSummary from(User user, String studyName) {
+    public static MentorSummary from(User user, String studyName, boolean manageable) {
         return new MentorSummary(
                 user.getId(),
                 user.getUserName(),
                 user.getDepartment(),
                 user.getPhoneNum(),
-                studyName
+                studyName,
+                manageable
         );
     }
 }

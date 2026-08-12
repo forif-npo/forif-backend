@@ -28,4 +28,7 @@ public interface StaffAccountJpaRepository extends JpaRepository<StaffAccount, L
             FROM StaffAccount sa WHERE sa.user.id = :userId AND sa.role = :role
             """)
     boolean existsByUserIdAndRole(@Param("userId") Long userId, @Param("role") StaffRole role);
+
+    @Query("SELECT sa.user.id FROM StaffAccount sa WHERE sa.user.id IN :userIds AND sa.role = :role")
+    List<Long> findUserIdsByUserIdInAndRole(@Param("userIds") List<Long> userIds, @Param("role") StaffRole role);
 }

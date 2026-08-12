@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -194,8 +195,13 @@ public class StaffAccountService {
     ) {
         List<Long> userIds = page.content().stream().map(User::getId).toList();
         Map<Long, String> studyNames = studyRepository.findMentorStudyNamesByUserIds(userIds, year, semester);
+        Set<Long> manageableUserIds = staffAccountRepository.findMentorAccountUserIdsByUserIds(userIds);
         return page.withContent(page.content().stream()
-                .map(user -> MentorSummary.from(user, studyNames.get(user.getId())))
+                .map(user -> MentorSummary.from(
+                        user,
+                        studyNames.get(user.getId()),
+                        manageableUserIds.contains(user.getId())
+                ))
                 .toList());
     }
 

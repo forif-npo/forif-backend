@@ -178,6 +178,7 @@ public class StaffAccountController {
             - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
             - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
             둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            - manageable: 기존 멘토 계정이 있어 수정·삭제 API를 사용할 수 있는지 여부입니다.
             """)
     @GetMapping("/api/v1/admin/mentors")
     @PreAuthorize("hasRole('ADMIN')")
@@ -185,7 +186,7 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search
     ) {
         CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(cursor, page, size, search);
 
@@ -204,6 +205,7 @@ public class StaffAccountController {
             - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
             - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
             둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            - manageable: 기존 멘토 계정이 있어 수정·삭제 API를 사용할 수 있는지 여부입니다.
             """)
     @GetMapping("/api/v1/admin/mentors/{year}/{semester}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -213,7 +215,7 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search
     ) {
         CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(year, semester, cursor, page, size, search);
 
