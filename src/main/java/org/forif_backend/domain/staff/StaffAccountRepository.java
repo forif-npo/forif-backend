@@ -3,6 +3,7 @@ package org.forif_backend.domain.staff;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public interface StaffAccountRepository {
 
@@ -26,6 +27,8 @@ public interface StaffAccountRepository {
      * 여러 사용자의 StaffRole을 배치 조회 (역할이 둘이면 ADMIN 우선)
      */
     Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds);
+
+    Set<Long> findMentorAccountUserIdsByUserIds(List<Long> userIds);
 
     StaffAccount save(StaffAccount staffAccount);
 

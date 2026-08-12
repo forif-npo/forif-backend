@@ -3,6 +3,7 @@ package org.forif_backend.domain.study;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.forif_backend.domain.user.User;
 
 public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
@@ -17,6 +18,17 @@ public interface StudyRepository {
      * 여러 사용자의 현재 학기 스터디명을 배치 조회
      */
     Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester);
+
+    /** 주·부멘토 관계를 기준으로 멘토별 스터디명을 배치 조회한다. */
+    Map<Long, String> findMentorStudyNamesByUserIds(List<Long> userIds, Integer year, Integer semester);
+
+    /** 주·부멘토 관계를 기준으로 멘토를 조회한다. */
+    List<User> searchMentors(Long cursor, int size, String search);
+    List<User> searchMentorsWithOffset(int page, int size, String search);
+    long countMentors(String search);
+    List<User> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search);
+    List<User> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search);
+    long countMentorsByYearSemester(int year, int semester, String search);
 
     /**
      * 여러 사용자의 해당 학기 수강 스터디를 배치 조회

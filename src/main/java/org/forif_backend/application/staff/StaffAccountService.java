@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
+import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.auth.JwtProvider;
@@ -17,6 +18,7 @@ import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.User;
@@ -26,6 +28,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +42,7 @@ public class StaffAccountService {
     private final JwtProvider jwtProvider;
     private final RefreshTokenService refreshTokenService;
     private final UserRepository userRepository;
+    private final StudyRepository studyRepository;
     private final ForifTeamRepository forifTeamRepository;
 
     /**
@@ -135,40 +140,69 @@ public class StaffAccountService {
      * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getMentors(Long cursor, Integer page, int size, String search) {
-        long totalElements = staffAccountRepository.count(search);
+    public CursorPageResponse<MentorSummary> getMentors(Long cursor, Integer page, int size, String search) {
+        long totalElements = studyRepository.countMentors(search);
 
         if (page != null) {
-            List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsWithOffset(page, size, search);
+            List<User> mentors = studyRepository.searchMentorsWithOffset(page, size, search);
             boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
+            return toMentorPage(
+                    CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
+                    null,
+                    null
+            );
         }
 
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchWithCursor(cursor, size, search);
-        boolean hasNext = staffAccounts.size() > size;
-        List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
+        List<User> mentors = studyRepository.searchMentors(cursor, size, search);
+        boolean hasNext = mentors.size() > size;
+        List<User> content = hasNext ? mentors.subList(0, size) : mentors;
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId().intValue() : null;
+        return toMentorPage(CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements), null, null);
     }
 
     /**
      * 학기별 멘토 목록 조회 (운영진 전용, 커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<StaffAccount> getMentors(int year, int semester, Long cursor, Integer page, int size, String search) {
-        long totalElements = staffAccountRepository.countMentorsByYearSemester(year, semester, search);
+    public CursorPageResponse<MentorSummary> getMentors(int year, int semester, Long cursor, Integer page, int size, String search) {
+        long totalElements = studyRepository.countMentorsByYearSemester(year, semester, search);
 
         if (page != null) {
-            List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
+            List<User> mentors = studyRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
             boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
+            return toMentorPage(
+                    CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
+                    year,
+                    semester
+            );
         }
 
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
-        boolean hasNext = staffAccounts.size() > size;
-        List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
+        List<User> mentors = studyRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+        boolean hasNext = mentors.size() > size;
+        List<User> content = hasNext ? mentors.subList(0, size) : mentors;
+        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId().intValue() : null;
+        return toMentorPage(
+                CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements),
+                year,
+                semester
+        );
+    }
+
+    private CursorPageResponse<MentorSummary> toMentorPage(
+            CursorPageResponse<User> page,
+            Integer year,
+            Integer semester
+    ) {
+        List<Long> userIds = page.content().stream().map(User::getId).toList();
+        Map<Long, String> studyNames = studyRepository.findMentorStudyNamesByUserIds(userIds, year, semester);
+        Set<Long> manageableUserIds = staffAccountRepository.findMentorAccountUserIdsByUserIds(userIds);
+        return page.withContent(page.content().stream()
+                .map(user -> MentorSummary.from(
+                        user,
+                        studyNames.get(user.getId()),
+                        manageableUserIds.contains(user.getId())
+                ))
+                .toList());
     }
 
     /**
