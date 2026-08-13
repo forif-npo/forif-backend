@@ -17,10 +17,14 @@ public class StudyReferenceDto {
     private final String content;
 
     public static StudyReferenceDto from(StudyReference reference) {
+        return from(reference, reference.getContent());
+    }
+
+    public static StudyReferenceDto from(StudyReference reference, String content) {
         return StudyReferenceDto.builder()
                 .id(reference.getId())
                 .referenceType(reference.getReferenceType())
-                .content(reference.getContent())
+                .content(content)
                 .build();
     }
 }

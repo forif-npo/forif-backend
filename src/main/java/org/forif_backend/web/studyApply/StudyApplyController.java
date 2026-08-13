@@ -18,6 +18,7 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.CreateStudyApplyResponse;
 import org.forif_backend.web.study.dto.StudyApplicationDetailResponse;
 import org.forif_backend.web.study.dto.StudyApplicationResponse;
+import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -103,12 +104,12 @@ public class StudyApplyController {
         )));
     }
 
-    @Operation(summary = "내 스터디 개설 신청 수정", description = "승인 전 본인 신청서만 수정할 수 있으며, 반려 건은 수정 후 재신청 상태로 전환됩니다.")
+    @Operation(summary = "내 스터디 개설 신청 수정", description = "승인 전 본인 신청서의 변경한 항목만 수정할 수 있으며, 반려 건은 수정 후 재신청 상태로 전환됩니다.")
     @PatchMapping(value = "/{studyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> updateStudyApplication(
             @PathVariable Integer studyId,
             @AuthenticationPrincipal Long userId,
-            @RequestPart("studyRequest") @Valid CreateStudyApplyRequest request,
+            @RequestPart("studyRequest") @Valid UpdateStudyRequest request,
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "references", required = false) List<MultipartFile> references
     ) {

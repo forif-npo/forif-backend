@@ -3,6 +3,7 @@ package org.forif_backend.domain.study;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.forif_backend.domain.user.User;
 
 public interface StudyRepository {
@@ -128,6 +129,11 @@ public interface StudyRepository {
      * 스터디 ID에 해당하는 참고자료 전체 삭제
      */
     void deleteStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 지정한 참고자료만 삭제한다.
+     */
+    void deleteStudyReferencesByIds(List<UUID> referenceIds);
 
     /**
      * 스터디 ID에 해당하는 수강생 전체 삭제

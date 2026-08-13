@@ -7,6 +7,8 @@ import org.forif_backend.domain.study.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Getter
 @RequiredArgsConstructor
@@ -43,6 +45,21 @@ public class StudyDetailDto {
     public static StudyDetailDto of(Study study, List<StudyPlan> plans,
                                      List<StudyReference> references,
                                      List<MentorStudy> mentorStudies) {
+        return of(study, plans, references, mentorStudies, study.getThumbnailImage());
+    }
+
+    public static StudyDetailDto of(Study study, List<StudyPlan> plans,
+                                     List<StudyReference> references,
+                                     List<MentorStudy> mentorStudies,
+                                     String thumbnailImage) {
+        return of(study, plans, references, mentorStudies, thumbnailImage, Map.of());
+    }
+
+    public static StudyDetailDto of(Study study, List<StudyPlan> plans,
+                                     List<StudyReference> references,
+                                     List<MentorStudy> mentorStudies,
+                                     String thumbnailImage,
+                                     Map<UUID, String> referenceContents) {
         return StudyDetailDto.builder()
                 .id(study.getId())
                 .actYear(study.getActYear())
@@ -61,7 +78,7 @@ public class StudyDetailDto {
                 .locationDetail(study.getLocationDetail())
                 .difficulty(study.getDifficulty())
                 .imgUrl(study.getImgUrl())
-                .thumbnailImage(study.getThumbnailImage())
+                .thumbnailImage(thumbnailImage)
                 .isOnline(study.getIsOnline())
                 .goal(study.getGoal())
                 .selectionCriteria(study.getSelectionCriteria())
@@ -69,7 +86,12 @@ public class StudyDetailDto {
                 .requiresInterview(study.getRequiresInterview())
                 .interviewDate(study.getInterviewDate())
                 .plans(plans.stream().map(StudyPlanDto::from).toList())
-                .references(references.stream().map(StudyReferenceDto::from).toList())
+                .references(references.stream()
+                        .map(reference -> StudyReferenceDto.from(
+                                reference,
+                                referenceContents.getOrDefault(reference.getId(), reference.getContent())
+                        ))
+                        .toList())
                 .mentors(mentorStudies.stream().map(MentorStudyDto::from).toList())
                 .build();
     }

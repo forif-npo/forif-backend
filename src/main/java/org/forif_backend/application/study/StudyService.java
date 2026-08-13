@@ -25,6 +25,8 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -181,8 +183,17 @@ public class StudyService {
         List<StudyPlan> plans = studyRepository.findStudyPlansByStudyId(studyId);
         List<StudyReference> references = studyRepository.findStudyReferencesByStudyId(studyId);
         List<MentorStudy> mentorStudies = studyRepository.findMentorStudiesByStudyId(studyId);
+        Map<UUID, String> referenceContents = references.stream()
+                .collect(Collectors.toMap(StudyReference::getId, this::resolveReferenceContent));
 
-        return StudyDetailDto.of(study, plans, references, mentorStudies);
+        return StudyDetailDto.of(
+                study,
+                plans,
+                references,
+                mentorStudies,
+                resolveThumbnailImage(study),
+                referenceContents
+        );
     }
 
     @Transactional(readOnly = true)
@@ -220,6 +231,21 @@ public class StudyService {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
+        applyStudyUpdate(studyId, study, request);
+        if (request.getReferences() != null) {
+            replaceStudyReferences(
+                    studyId,
+                    study,
+                    request.getReferences(),
+                    request.getRetainedReferenceIds(),
+                    List.of(),
+                    true,
+                    true
+            );
+        }
+    }
+
+    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
         // null이 아닌 기본 필드만 반영
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
@@ -233,8 +259,20 @@ public class StudyService {
         if (request.getIsOnline() != null) study.setIsOnline(request.getIsOnline());
         if (request.getCapacity() != null) study.setCapacity(request.getCapacity());
         if (request.getSelectionCriteria() != null) study.setSelectionCriteria(request.getSelectionCriteria());
+        if (request.isSecondaryMentorIdPresent()) {
+            User secondaryMentor = request.getSecondaryMentorId() == null
+                    ? null
+                    : resolveSecondaryMentor(
+                    study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+            study.setSecondaryMentor(secondaryMentor);
+            study.setSecondaryMentorName(secondaryMentor == null ? null : secondaryMentor.getUserName());
+        }
         if (request.getRequiresInterview() != null) study.setRequiresInterview(request.getRequiresInterview());
-        if (request.getInterviewDate() != null) study.setInterviewDate(request.getInterviewDate());
+        if (Boolean.FALSE.equals(request.getRequiresInterview())) {
+            study.setInterviewDate(null);
+        } else if (request.getInterviewDate() != null) {
+            study.setInterviewDate(request.getInterviewDate());
+        }
 
         // enum 변환 필드
         if (request.getDifficulty() != null) {
@@ -256,14 +294,6 @@ public class StudyService {
             studyRepository.saveAllStudyPlan(plans);
         }
 
-        // 참고자료: 기존 삭제 후 재생성
-        if (request.getReferences() != null) {
-            studyRepository.deleteStudyReferencesByStudyId(studyId);
-            List<StudyReference> references = request.getReferences().stream()
-                    .map(ref -> StudyReference.create(study, ref.getType(), ref.getUrl()))
-                    .toList();
-            studyRepository.saveAllStudyReference(references);
-        }
     }
 
     @Transactional
@@ -462,14 +492,181 @@ public class StudyService {
     }
 
     @Transactional
-    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyRequest request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, false);
+        Study study = findModifiableStudyApplication(studyId, userId, false);
+        applyStudyUpdate(studyId, study, request);
+
+        List<FileInfo> referenceUploadInfos = request.getReferences() == null
+                ? List.of()
+                : replaceStudyReferences(
+                        studyId,
+                        study,
+                        request.getReferences(),
+                        request.getRetainedReferenceIds(),
+                        Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList),
+                        false,
+                        false
+                );
+
+        FileInfo thumbnailInfo = null;
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            String previousThumbnailObjectKey = study.getThumbnailImage();
+            thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
+            study.setThumbnailImage(thumbnailInfo.objectKey());
+            deleteStoredFilesAfterCompletion(
+                    Collections.singletonList(previousThumbnailObjectKey),
+                    List.of(thumbnailInfo.objectKey())
+            );
+        }
+
+        studyRepository.saveStudy(study);
+
+        return CreateStudyApplyInfo.builder()
+                .studyId(study.getId())
+                .thumbnailUploadInfo(thumbnailInfo)
+                .referenceUploadInfos(referenceUploadInfos)
+                .build();
+    }
+
+    private List<FileInfo> replaceStudyReferences(
+            Integer studyId,
+            Study study,
+            List<UpdateStudyRequest.Reference> newReferences,
+            List<UUID> retainedReferenceIds,
+            List<MultipartFile> referenceFiles,
+            boolean skipUnuploadedFileReferences,
+            boolean retainExistingFilesWhenRetainedIdsOmitted
+    ) {
+        List<StudyReference> existingReferences = studyRepository.findStudyReferencesByStudyId(studyId);
+        Map<UUID, StudyReference> existingById = existingReferences.stream()
+                .collect(Collectors.toMap(StudyReference::getId, reference -> reference));
+        // 구형 어드민 JSON 클라이언트만 retained_reference_ids 생략 시 FILE 참고자료를 유지한다.
+        Set<UUID> retainedIds = retainedReferenceIds == null && retainExistingFilesWhenRetainedIdsOmitted
+                ? existingReferences.stream()
+                .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                .map(StudyReference::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new))
+                : new LinkedHashSet<>(Optional.ofNullable(retainedReferenceIds).orElseGet(Collections::emptyList));
+
+        if (!existingById.keySet().containsAll(retainedIds)) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        List<StudyReference> removedReferences = existingReferences.stream()
+                .filter(reference -> !retainedIds.contains(reference.getId()))
+                .toList();
+        List<StudyReference> referencesToCreate = new ArrayList<>();
+
+        List<FileInfo> uploadedFiles = new ArrayList<>();
+        for (UpdateStudyRequest.Reference reference : newReferences) {
+            if (reference.getType() == ReferenceType.FILE) {
+                MultipartFile file = referenceFiles.stream()
+                        .filter(candidate -> Objects.equals(candidate.getOriginalFilename(), reference.getFileName()))
+                        .findFirst()
+                        .orElse(null);
+                if (file != null) {
+                    FileInfo fileInfo = uploadAndBuildFileInfo(file);
+                    uploadedFiles.add(fileInfo);
+                    referencesToCreate.add(StudyReference.create(study, ReferenceType.FILE, fileInfo.objectKey()));
+                } else if (!skipUnuploadedFileReferences) {
+                    throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+                }
+                // JSON 어드민 수정은 조회용 FILE URL을 저장하지 않는다. 기존 FILE은 retained 정책으로 유지된다.
+            } else {
+                referencesToCreate.add(StudyReference.create(study, reference.getType(), reference.getUrl()));
+            }
+        }
+
+        if (!removedReferences.isEmpty()) {
+            studyRepository.deleteStudyReferencesByIds(removedReferences.stream()
+                    .map(StudyReference::getId)
+                    .toList());
+        }
+        if (!referencesToCreate.isEmpty()) {
+            studyRepository.saveAllStudyReference(referencesToCreate);
+        }
+        deleteStoredFilesAfterCompletion(
+                removedReferences.stream()
+                        .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                        .map(StudyReference::getContent)
+                        .toList(),
+                uploadedFiles.stream().map(FileInfo::objectKey).toList()
+        );
+        return uploadedFiles;
+    }
+
+    /** DB 반영 성공 뒤 교체 전 파일을 지우고, 롤백 시 새로 올린 파일을 회수한다. */
+    private void deleteStoredFilesAfterCompletion(List<String> previousObjectKeys, List<String> uploadedObjectKeys) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_COMMITTED) {
+                    deleteStoredFilesQuietly(previousObjectKeys);
+                } else {
+                    deleteStoredFilesQuietly(uploadedObjectKeys);
+                }
+            }
+        });
+    }
+
+    private void deleteStoredFilesQuietly(List<String> objectKeys) {
+        for (String objectKey : objectKeys) {
+            if (objectKey == null || objectKey.isBlank()
+                    || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
+                continue;
+            }
+            try {
+                filePort.deleteFile(objectKey);
+            } catch (Exception e) {
+                log.warn("스터디 수정 중 파일 삭제 실패: {}", objectKey, e);
+            }
+        }
     }
 
     private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
+        Study study = findModifiableStudyApplication(studyId, userId, rejectedOnly);
+
+        List<StudyTag> tags = resolveStudyTags(request);
+        User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+        study.applyRequestData(request, tags, secondaryMentor);
+
+        if (request.getStudyPlanList() != null) {
+            studyRepository.deleteStudyPlansByStudyId(studyId);
+        }
+        List<String> previousReferenceObjectKeys = List.of();
+        if (request.getReferences() != null) {
+            previousReferenceObjectKeys = studyRepository.findStudyReferencesByStudyId(studyId).stream()
+                    .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                    .map(StudyReference::getContent)
+                    .toList();
+            studyRepository.deleteStudyReferencesByStudyId(studyId);
+        }
+
+        String previousThumbnailObjectKey = thumbnail != null && !thumbnail.isEmpty()
+                ? study.getThumbnailImage()
+                : null;
+        CreateStudyApplyInfo result = saveStudyWithResources(study, request, thumbnail, referenceFiles);
+        List<String> previousObjectKeys = new ArrayList<>(previousReferenceObjectKeys);
+        previousObjectKeys.add(previousThumbnailObjectKey);
+        List<String> uploadedObjectKeys = new ArrayList<>(result.referenceUploadInfos().stream()
+                .map(FileInfo::objectKey)
+                .toList());
+        if (result.thumbnailUploadInfo() != null) {
+            uploadedObjectKeys.add(result.thumbnailUploadInfo().objectKey());
+        }
+        deleteStoredFilesAfterCompletion(previousObjectKeys, uploadedObjectKeys);
+
+        return result;
+    }
+
+    private Study findModifiableStudyApplication(Integer studyId, Long userId, boolean rejectedOnly) {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
@@ -483,18 +680,7 @@ public class StudyService {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
-        List<StudyTag> tags = resolveStudyTags(request);
-        User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
-        study.applyRequestData(request, tags, secondaryMentor);
-
-        if (request.getStudyPlanList() != null) {
-            studyRepository.deleteStudyPlansByStudyId(studyId);
-        }
-        if (request.getReferences() != null) {
-            studyRepository.deleteStudyReferencesByStudyId(studyId);
-        }
-
-        return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+        return study;
     }
 
     private boolean canModifyStudyApplication(Study study) {
@@ -514,8 +700,8 @@ public class StudyService {
      */
     private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyRequest request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
-        // 썸네일 처리
         FileInfo thumbnailInfo = null;
+        // 썸네일 처리
         if (thumbnail != null && !thumbnail.isEmpty()) {
             thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
             study.setThumbnailImage(thumbnailInfo.objectKey());
@@ -583,6 +769,18 @@ public class StudyService {
             return thumbnailImage;
         }
         return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
+    }
+
+    private String resolveReferenceContent(StudyReference reference) {
+        String content = reference.getContent();
+        if (reference.getReferenceType() != ReferenceType.FILE
+                || content == null
+                || content.isBlank()
+                || content.startsWith("http://")
+                || content.startsWith("https://")) {
+            return content;
+        }
+        return filePort.generatePresignedViewUrl(content).presignedUrl();
     }
 
     /**

@@ -11,4 +11,5 @@ public interface StudyReferenceJpaRepository extends JpaRepository<StudyReferenc
     List<StudyReference> findByStudy(Study study);
     List<StudyReference> findByStudyId(Integer studyId);
     void deleteByStudyId(Integer studyId);
+    void deleteByIdIn(List<UUID> referenceIds);
 }
