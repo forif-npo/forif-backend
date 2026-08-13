@@ -1,6 +1,7 @@
 package org.forif_backend.application.study;
 
 import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
@@ -13,7 +14,9 @@ import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyTag;
 import org.forif_backend.domain.study.StudyUserRepository;
+import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
@@ -38,6 +41,7 @@ import org.forif_backend.domain.study.ReferenceType;
 import org.forif_backend.domain.study.StudyReference;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.multipart.MultipartFile;
 
 @ExtendWith(MockitoExtension.class)
 class StudyServiceApplicationUpdateTest {
@@ -184,6 +188,77 @@ class StudyServiceApplicationUpdateTest {
 
         verify(studyRepository, never()).deleteStudyReferencesByIds(anyList());
         verify(studyRepository, never()).saveAllStudyReference(anyList());
+    }
+
+    @Test
+    void replacesExistingFileReferencesWhenMentorMultipartRequestOmitsRetainedReferenceIds() {
+        Study study = mock(Study.class);
+        StudyReference existingFileReference = mock(StudyReference.class);
+        UUID existingReferenceId = UUID.randomUUID();
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setReferences(List.of());
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
+        when(studyRepository.findStudyReferencesByStudyId(1)).thenReturn(List.of(existingFileReference));
+        when(existingFileReference.getId()).thenReturn(existingReferenceId);
+        when(existingFileReference.getReferenceType()).thenReturn(ReferenceType.FILE);
+        when(existingFileReference.getContent()).thenReturn("studies/references/old.pdf");
+        TransactionSynchronizationManager.initSynchronization();
+
+        studyService.updateStudyApplication(1, 10L, request, null, List.of());
+
+        verify(studyRepository).deleteStudyReferencesByIds(List.of(existingReferenceId));
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+        verify(filePort).deleteFile("studies/references/old.pdf");
+    }
+
+    @Test
+    void deletesReplacedReferenceFilesAfterReapplying() {
+        Study study = mock(Study.class);
+        User primaryMentor = mock(User.class);
+        StudyReference existingFileReference = mock(StudyReference.class);
+        MultipartFile replacementFile = mock(MultipartFile.class);
+        MultipartFile replacementThumbnail = mock(MultipartFile.class);
+        CreateStudyApplyRequest request = new CreateStudyApplyRequest();
+        CreateStudyApplyRequest.Reference replacementReference = new CreateStudyApplyRequest.Reference();
+        replacementReference.setType(ReferenceType.FILE);
+        replacementReference.setFileName("replacement.pdf");
+        request.setReferences(List.of(replacementReference));
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getPrimaryMentor()).thenReturn(primaryMentor);
+        when(primaryMentor.getId()).thenReturn(10L);
+        when(study.getThumbnailImage()).thenReturn("studies/thumbnails/rejected.png");
+        when(studyRepository.findStudyReferencesByStudyId(1)).thenReturn(List.of(existingFileReference));
+        when(existingFileReference.getReferenceType()).thenReturn(ReferenceType.FILE);
+        when(existingFileReference.getContent()).thenReturn("studies/references/rejected.pdf");
+        when(replacementFile.getOriginalFilename()).thenReturn("replacement.pdf");
+        when(filePort.uploadFile(replacementFile)).thenReturn("studies/references/replacement.pdf");
+        when(filePort.generatePresignedViewUrl("studies/references/replacement.pdf"))
+                .thenReturn(new FileInfo("studies/references/replacement.pdf", "https://example.com/replacement.pdf"));
+        when(replacementThumbnail.isEmpty()).thenReturn(false);
+        when(filePort.uploadFile(replacementThumbnail)).thenReturn("studies/thumbnails/replacement.png");
+        when(filePort.generatePresignedViewUrl("studies/thumbnails/replacement.png"))
+                .thenReturn(new FileInfo("studies/thumbnails/replacement.png", "https://example.com/replacement.png"));
+        TransactionSynchronizationManager.initSynchronization();
+
+        studyService.reApplyStudy(1, 10L, request, replacementThumbnail, List.of(replacementFile));
+
+        verify(studyRepository).deleteStudyReferencesByStudyId(1);
+        verify(filePort).uploadFile(replacementFile);
+        verify(filePort).uploadFile(replacementThumbnail);
+        verify(filePort, never()).deleteFile("studies/references/rejected.pdf");
+        verify(filePort, never()).deleteFile("studies/thumbnails/rejected.png");
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+
+        verify(filePort).deleteFile("studies/references/rejected.pdf");
+        verify(filePort).deleteFile("studies/thumbnails/rejected.png");
+        verify(filePort, never()).deleteFile("studies/references/replacement.pdf");
+        verify(filePort, never()).deleteFile("studies/thumbnails/replacement.png");
     }
 
     @Test

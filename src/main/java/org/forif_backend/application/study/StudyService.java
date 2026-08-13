@@ -239,6 +239,7 @@ public class StudyService {
                     request.getReferences(),
                     request.getRetainedReferenceIds(),
                     List.of(),
+                    true,
                     true
             );
         }
@@ -504,6 +505,7 @@ public class StudyService {
                         request.getReferences(),
                         request.getRetainedReferenceIds(),
                         Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList),
+                        false,
                         false
                 );
 
@@ -533,18 +535,19 @@ public class StudyService {
             List<UpdateStudyRequest.Reference> newReferences,
             List<UUID> retainedReferenceIds,
             List<MultipartFile> referenceFiles,
-            boolean skipUnuploadedFileReferences
+            boolean skipUnuploadedFileReferences,
+            boolean retainExistingFilesWhenRetainedIdsOmitted
     ) {
         List<StudyReference> existingReferences = studyRepository.findStudyReferencesByStudyId(studyId);
         Map<UUID, StudyReference> existingById = existingReferences.stream()
                 .collect(Collectors.toMap(StudyReference::getId, reference -> reference));
-        // retained_reference_ids를 보내지 않은 기존 어드민 클라이언트는 FILE 참고자료를 유지한다.
-        Set<UUID> retainedIds = retainedReferenceIds == null
+        // 구형 어드민 JSON 클라이언트만 retained_reference_ids 생략 시 FILE 참고자료를 유지한다.
+        Set<UUID> retainedIds = retainedReferenceIds == null && retainExistingFilesWhenRetainedIdsOmitted
                 ? existingReferences.stream()
                 .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
                 .map(StudyReference::getId)
                 .collect(Collectors.toCollection(LinkedHashSet::new))
-                : new LinkedHashSet<>(retainedReferenceIds);
+                : new LinkedHashSet<>(Optional.ofNullable(retainedReferenceIds).orElseGet(Collections::emptyList));
 
         if (!existingById.keySet().containsAll(retainedIds)) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
@@ -637,11 +640,30 @@ public class StudyService {
         if (request.getStudyPlanList() != null) {
             studyRepository.deleteStudyPlansByStudyId(studyId);
         }
+        List<String> previousReferenceObjectKeys = List.of();
         if (request.getReferences() != null) {
+            previousReferenceObjectKeys = studyRepository.findStudyReferencesByStudyId(studyId).stream()
+                    .filter(reference -> reference.getReferenceType() == ReferenceType.FILE)
+                    .map(StudyReference::getContent)
+                    .toList();
             studyRepository.deleteStudyReferencesByStudyId(studyId);
         }
 
-        return saveStudyWithResources(study, request, thumbnail, referenceFiles);
+        String previousThumbnailObjectKey = thumbnail != null && !thumbnail.isEmpty()
+                ? study.getThumbnailImage()
+                : null;
+        CreateStudyApplyInfo result = saveStudyWithResources(study, request, thumbnail, referenceFiles);
+        List<String> previousObjectKeys = new ArrayList<>(previousReferenceObjectKeys);
+        previousObjectKeys.add(previousThumbnailObjectKey);
+        List<String> uploadedObjectKeys = new ArrayList<>(result.referenceUploadInfos().stream()
+                .map(FileInfo::objectKey)
+                .toList());
+        if (result.thumbnailUploadInfo() != null) {
+            uploadedObjectKeys.add(result.thumbnailUploadInfo().objectKey());
+        }
+        deleteStoredFilesAfterCompletion(previousObjectKeys, uploadedObjectKeys);
+
+        return result;
     }
 
     private Study findModifiableStudyApplication(Integer studyId, Long userId, boolean rejectedOnly) {
