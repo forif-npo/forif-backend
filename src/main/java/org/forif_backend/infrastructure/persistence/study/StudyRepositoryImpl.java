@@ -10,6 +10,7 @@ import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudySearchCond;
+import org.forif_backend.domain.user.User;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -61,6 +62,57 @@ public class StudyRepositoryImpl implements StudyRepository {
     @Override
     public Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester) {
         return studyQueryRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
+    }
+
+    @Override
+    public Map<Long, String> findMentorStudyNamesByUserIds(
+            List<Long> userIds,
+            Integer year,
+            Integer semester
+    ) {
+        return studyQueryRepository.findMentorStudyNamesByUserIds(userIds, year, semester);
+    }
+
+    @Override
+    public List<User> searchMentors(Long cursor, int size, String search) {
+        return studyQueryRepository.searchMentors(cursor, size, search);
+    }
+
+    @Override
+    public List<User> searchMentorsWithOffset(int page, int size, String search) {
+        return studyQueryRepository.searchMentorsWithOffset(page, size, search);
+    }
+
+    @Override
+    public long countMentors(String search) {
+        return studyQueryRepository.countMentors(search);
+    }
+
+    @Override
+    public List<User> searchMentorsByYearSemester(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search
+    ) {
+        return studyQueryRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
+    }
+
+    @Override
+    public List<User> searchMentorsByYearSemesterWithOffset(
+            int year,
+            int semester,
+            int page,
+            int size,
+            String search
+    ) {
+        return studyQueryRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
+    }
+
+    @Override
+    public long countMentorsByYearSemester(int year, int semester, String search) {
+        return studyQueryRepository.countMentorsByYearSemester(year, semester, search);
     }
 
     @Override

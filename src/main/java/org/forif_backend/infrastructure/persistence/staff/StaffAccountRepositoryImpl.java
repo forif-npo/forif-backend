@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -38,6 +39,14 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     @Override
     public Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds) {
         return staffAccountQueryRepository.findStaffRolesByUserIds(userIds);
+    }
+
+    @Override
+    public Set<Long> findMentorAccountUserIdsByUserIds(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(staffAccountJpaRepository.findUserIdsByUserIdInAndRole(userIds, StaffRole.MENTOR));
     }
 
     @Override
