@@ -55,6 +55,17 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
     }
 
+    /** 썸네일 없이 JSON으로 보내던 기존 클라이언트가 415를 받지 않도록 병행 유지한다 */
+    @Operation(summary = "서비스 등록 신청 (JSON)", description = "썸네일 없이 JSON 본문만으로 서비스 등록을 신청합니다.")
+    @PostMapping(value = "/applications", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<ProductApplicationResponse>> applyProductJson(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody CreateProductApplicationRequest request
+    ) {
+        ProductInfo info = productService.applyProduct(userId, request.toCommand(), null);
+        return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
+    }
+
     @Operation(summary = "서비스 상세 조회", description = "게시된 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProduct(
