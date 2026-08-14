@@ -1,6 +1,7 @@
 package org.forif_backend.application.product;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.product.dto.CreateProductApplicationCommand;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.product.dto.ProductInfo;
@@ -16,6 +17,8 @@ import org.forif_backend.domain.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -23,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -85,7 +89,9 @@ public class ProductService {
 
         if (thumbnail != null && !thumbnail.isEmpty()) {
             validateImageFile(thumbnail);
-            product.updateThumbnail(filePort.uploadFile(thumbnail, THUMBNAIL_DIRECTORY));
+            String objectKey = filePort.uploadFile(thumbnail, THUMBNAIL_DIRECTORY);
+            product.updateThumbnail(objectKey);
+            deleteUploadOnRollback(objectKey);
         }
 
         try {
@@ -255,5 +261,24 @@ public class ProductService {
             throw new ForifException(ErrorCode.PRODUCT_URL_INVALID);
         }
         return trimmed;
+    }
+
+    /** 슬러그 경합 등으로 신청이 롤백되면 방금 올린 썸네일이 고아로 남지 않게 회수한다 */
+    private void deleteUploadOnRollback(String objectKey) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    try {
+                        filePort.deleteFile(objectKey);
+                    } catch (Exception e) {
+                        log.warn("롤백 후 썸네일 회수 실패: {}", objectKey, e);
+                    }
+                }
+            }
+        });
     }
 }

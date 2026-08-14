@@ -146,6 +146,11 @@ public class StaffAccountService {
         }
         String encodedPassword = password != null ? passwordEncoder.encode(password) : null;
         staffAccount.updateInfo(name, encodedPassword, affiliation);
+
+        if (password != null) {
+            // 운영진 재설정 경로도 유출 대응이므로 기존 MENTOR 세션을 끊는다 (updateAdmin과 동일 정책)
+            refreshTokenService.deleteRefreshToken(userId.toString(), StaffRole.MENTOR.getValue());
+        }
     }
 
     /**
@@ -387,6 +392,9 @@ public class StaffAccountService {
         if (password != null) {
             PasswordUtils.validate(password);
             staffAccount.updatePassword(passwordEncoder.encode(password));
+            // 비밀번호 재설정은 대개 유출 대응이다. 셀프 변경처럼 기존 세션을 끊지 않으면
+            // 탈취범의 refresh 토큰이 30일 동안 계속 로테이션되며 살아남는다.
+            refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
         }
         if (affiliation != null) {
             if ("회장".equals(affiliation) || "부회장".equals(affiliation)
