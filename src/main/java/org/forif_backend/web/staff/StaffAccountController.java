@@ -77,6 +77,17 @@ public class StaffAccountController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
+    @Operation(summary = "내 운영진 비밀번호 변경", description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다. 변경 후 이 계정의 운영진 세션이 만료되어 다시 로그인해야 합니다.")
+    @PatchMapping("/api/v1/staff/me/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> changeAdminPassword(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody @Valid ChangeAdminPasswordRequest request
+    ) {
+        staffAccountService.changeAdminPassword(userId, request.currentPassword(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     // ==================== 회장단 운영진 관리 API ====================
 
     /**

@@ -15,6 +15,7 @@ import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.common.util.PasswordUtils;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
@@ -84,6 +85,24 @@ public class StaffAccountService {
         );
     }
 
+    /** 현재 로그인한 운영진의 비밀번호를 변경하고 기존 ADMIN 세션을 무효화한다. */
+    @Transactional
+    public void changeAdminPassword(Long userId, String currentPassword, String newPassword) {
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        if (!passwordEncoder.matches(currentPassword, staffAccount.getPassword())) {
+            throw new ForifException(ErrorCode.PASSWORD_MISMATCH);
+        }
+        if (passwordEncoder.matches(newPassword, staffAccount.getPassword())) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        PasswordUtils.validate(newPassword);
+
+        staffAccount.updatePassword(passwordEncoder.encode(newPassword));
+        refreshTokenService.deleteRefreshToken(userId.toString(), StaffRole.ADMIN.getValue());
+    }
+
     /**
      * 멘토 계정 생성 (운영진 전용)
      */
@@ -92,6 +111,7 @@ public class StaffAccountService {
         if (staffAccountRepository.existsByUserIdAndRole(command.userId(), StaffRole.MENTOR)) {
             throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
         }
+        PasswordUtils.validate(command.password());
 
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -121,6 +141,9 @@ public class StaffAccountService {
             staffAccount.getUser().updateUserName(name);
         }
 
+        if (password != null) {
+            PasswordUtils.validate(password);
+        }
         String encodedPassword = password != null ? passwordEncoder.encode(password) : null;
         staffAccount.updateInfo(name, encodedPassword, affiliation);
     }
@@ -296,6 +319,7 @@ public class StaffAccountService {
         if (staffAccountRepository.existsByUserIdAndRole(command.userId(), StaffRole.ADMIN)) {
             throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
         }
+        PasswordUtils.validate(command.password());
 
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -361,6 +385,7 @@ public class StaffAccountService {
             staffAccount.updateName(name);
         }
         if (password != null) {
+            PasswordUtils.validate(password);
             staffAccount.updatePassword(passwordEncoder.encode(password));
         }
         if (affiliation != null) {
