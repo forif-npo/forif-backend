@@ -60,7 +60,7 @@ public class ProductService {
 
     /** 서비스 등록 신청 (부원) */
     @Transactional
-    public ProductInfo applyProduct(Long userId, CreateProductApplicationCommand command) {
+    public ProductInfo applyProduct(Long userId, CreateProductApplicationCommand command, MultipartFile thumbnail) {
         User applicant = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -82,6 +82,11 @@ public class ProductService {
                 applicant
         );
         product.addMember(ProductMember.create(product, applicant.getUserName(), "신청자"));
+
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            validateImageFile(thumbnail);
+            product.updateThumbnail(filePort.uploadFile(thumbnail, THUMBNAIL_DIRECTORY));
+        }
 
         try {
             return toInfo(productRepository.save(product));

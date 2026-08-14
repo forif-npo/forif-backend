@@ -15,6 +15,7 @@ public record ProductApplicationResponse(
         String sourceType,
         String serviceUrl,
         String githubUrl,
+        String thumbnailUrl,
         List<String> techStack,
         String status,
         String rejectReason,
@@ -30,6 +31,7 @@ public record ProductApplicationResponse(
                 .sourceType(info.sourceType())
                 .serviceUrl(info.serviceUrl())
                 .githubUrl(info.githubUrl())
+                .thumbnailUrl(info.thumbnailUrl())
                 .techStack(info.techStack())
                 .status(toApplicationStatus(info.status()))
                 .rejectReason(info.rejectReason())
