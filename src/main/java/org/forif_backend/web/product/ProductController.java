@@ -13,8 +13,10 @@ import org.forif_backend.web.product.dto.ProductApplicationResponse;
 import org.forif_backend.web.product.dto.ProductDetailResponse;
 import org.forif_backend.web.product.dto.ProductResponse;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -42,13 +44,14 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.fromList(applications)));
     }
 
-    @Operation(summary = "서비스 등록 신청", description = "부원이 직접 만든 서비스의 등록을 신청합니다. 운영진 승인 후 목록에 게시됩니다.")
-    @PostMapping("/applications")
+    @Operation(summary = "서비스 등록 신청", description = "부원이 직접 만든 서비스의 등록을 신청합니다. request(JSON)와 선택 썸네일 이미지 파일을 multipart/form-data로 전송합니다. 운영진 승인 후 목록에 게시됩니다.")
+    @PostMapping(value = "/applications", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ProductApplicationResponse>> applyProduct(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody CreateProductApplicationRequest request
+            @Valid @RequestPart("request") CreateProductApplicationRequest request,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
     ) {
-        ProductInfo info = productService.applyProduct(userId, request.toCommand());
+        ProductInfo info = productService.applyProduct(userId, request.toCommand(), thumbnail);
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
     }
 
