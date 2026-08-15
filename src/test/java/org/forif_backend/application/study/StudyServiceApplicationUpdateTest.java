@@ -191,6 +191,23 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void preventsRenamingAnAutonomousStudy() {
+        Study study = mock(Study.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setStudyName("변경된 스터디 이름");
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.isAutonomousStudy()).thenReturn(true);
+
+        assertThatThrownBy(() -> studyService.updateStudy(1, request))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE));
+
+        verify(study, never()).setStudyName("변경된 스터디 이름");
+    }
+
+    @Test
     void replacesExistingFileReferencesWhenMentorMultipartRequestOmitsRetainedReferenceIds() {
         Study study = mock(Study.class);
         StudyReference existingFileReference = mock(StudyReference.class);

@@ -24,5 +24,6 @@ class StudyTest {
         assertThat(study.getPrimaryMentorName()).isEqualTo("운영진");
         assertThat(study.getOneLiner()).isNotBlank();
         assertThat(study.getExplanation()).isNotBlank();
+        assertThat(study.isAutonomousStudy()).isTrue();
     }
 }

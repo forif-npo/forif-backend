@@ -135,6 +135,11 @@ public class Study extends BaseTimeEntity {
         return isPrimary || isSecondary;
     }
 
+    /** 자율스터디는 출석 및 수료증 발급 대상이 아니다. */
+    public boolean isAutonomousStudy() {
+        return AUTONOMOUS_STUDY_NAME.equals(this.studyName);
+    }
+
     /**
      * 초기 스터디 생성 메서드
      * @param mentor 멘토 유저

@@ -247,6 +247,11 @@ public class StudyService {
 
     private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
         // null이 아닌 기본 필드만 반영
+        if (study.isAutonomousStudy()
+                && request.getStudyName() != null
+                && !Study.AUTONOMOUS_STUDY_NAME.equals(request.getStudyName())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE);
+        }
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
         if (request.getExplanation() != null) study.setExplanation(request.getExplanation());

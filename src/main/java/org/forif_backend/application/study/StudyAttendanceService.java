@@ -120,6 +120,7 @@ public class StudyAttendanceService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentor(study, userId);
+        requireAttendanceTarget(study);
         return study;
     }
 
@@ -129,6 +130,13 @@ public class StudyAttendanceService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        requireAttendanceTarget(study);
         return study;
+    }
+
+    private void requireAttendanceTarget(Study study) {
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
+        }
     }
 }

@@ -89,6 +89,8 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR077-404", "파일을 찾을 수 없습니다."),
     CURRENT_SEMESTER_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR128-404", "현재 활동 학기에 등록된 부원이 아닙니다."),
     STUDY_CANCEL_HAS_DEPENDENTS(HttpStatus.BAD_REQUEST, "FOR130-400", "지원서나 수강 기록이 있는 스터디는 취소할 수 없습니다. 운영진에게 문의해주세요."),
+    AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR132-400", "자율스터디는 출석 체크 및 수료증 발급 대상이 아닙니다."),
+    AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "FOR133-400", "자율스터디의 이름은 변경할 수 없습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),
