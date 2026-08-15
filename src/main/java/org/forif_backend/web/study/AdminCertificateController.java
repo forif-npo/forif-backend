@@ -6,14 +6,22 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.study.CertificateService;
+import org.forif_backend.application.study.MentorConfirmationService;
 import org.forif_backend.application.study.dto.CertificateTargetsResult;
 import org.forif_backend.application.study.dto.IssueCertificatesResult;
+import org.forif_backend.application.study.dto.IssueMentorConfirmationsResult;
+import org.forif_backend.application.study.dto.MentorConfirmationStatusResult;
+import org.forif_backend.application.study.dto.MentorConfirmationTargetsResult;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.study.dto.CertificateTargetsResponse;
 import org.forif_backend.web.study.dto.IssueCertificatesRequest;
 import org.forif_backend.web.study.dto.IssueCertificatesResponse;
+import org.forif_backend.web.study.dto.IssueMentorConfirmationsRequest;
+import org.forif_backend.web.study.dto.IssueMentorConfirmationsResponse;
 import org.forif_backend.web.study.dto.ManualCertificateRequest;
 import org.forif_backend.web.study.dto.ManualCertificateResponse;
+import org.forif_backend.web.study.dto.MentorConfirmationStatusResponse;
+import org.forif_backend.web.study.dto.MentorConfirmationTargetsResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +40,37 @@ import org.springframework.web.multipart.MultipartFile;
 public class AdminCertificateController {
 
     private final CertificateService certificateService;
+    private final MentorConfirmationService mentorConfirmationService;
+
+    @GetMapping("/api/v1/admin/studies/{studyId}/mentor-confirmations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<MentorConfirmationTargetsResponse>> getMentorConfirmationTargets(
+            @PathVariable Integer studyId
+    ) {
+        MentorConfirmationTargetsResult result = mentorConfirmationService.getTargets(studyId);
+        return ResponseEntity.ok(ApiResponse.success(MentorConfirmationTargetsResponse.from(result)));
+    }
+
+    @GetMapping("/api/v1/admin/studies/{studyId}/mentor-confirmations/{mentorId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<MentorConfirmationStatusResponse>> getMentorConfirmationViewUrl(
+            @PathVariable Integer studyId,
+            @PathVariable Long mentorId
+    ) {
+        MentorConfirmationStatusResult result = mentorConfirmationService.getConfirmationForAdmin(studyId, mentorId);
+        return ResponseEntity.ok(ApiResponse.success(MentorConfirmationStatusResponse.from(result)));
+    }
+
+    @PostMapping("/api/v1/admin/studies/{studyId}/mentor-confirmations")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<IssueMentorConfirmationsResponse>> issueMentorConfirmations(
+            @PathVariable Integer studyId,
+            @Valid @RequestBody IssueMentorConfirmationsRequest request
+    ) {
+        IssueMentorConfirmationsResult result = mentorConfirmationService.issueConfirmations(
+                studyId, request.userIds(), request.activityPeriod());
+        return ResponseEntity.ok(ApiResponse.success(IssueMentorConfirmationsResponse.from(result)));
+    }
 
     @Operation(summary = "수료증 발급 대상 조회 (어드민 전용)",
             description = "스터디 멘티 전원의 출석 횟수, 해커톤 참여 여부, 발급 자격, 발급 상태를 조회합니다. 발급 자격: 출석 5회 이상 + 해당 학기 해커톤 참가 등록.")
