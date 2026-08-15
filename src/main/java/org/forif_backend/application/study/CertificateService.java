@@ -128,7 +128,7 @@ public class CertificateService {
                             .eligible(attendanceCount >= REQUIRED_ATTENDANCE && hackathonParticipated)
                             .certificateStatus(mentee.getCertificateStatus() != null
                                     ? mentee.getCertificateStatus() : 0)
-                            .certificateUrl(mentee.getCertificateUrl())
+                            .certificateUrl(resolveCertificateViewUrl(mentee.getCertificateObjectKey()))
                             .build();
                 })
                 .toList();
@@ -242,7 +242,7 @@ public class CertificateService {
             String objectKey = filePort.uploadBytes(image, userId + ".png", directory, "image/png");
             String certificateUrl = filePort.generatePresignedViewUrl(objectKey).presignedUrl();
 
-            mentee.issueCertificate(certificateUrl);
+            mentee.issueCertificate(objectKey);
             studyUserRepository.save(mentee);
 
             results.add(itemResult(userId, userName, true, "발급 완료", certificateUrl));
@@ -265,6 +265,16 @@ public class CertificateService {
                 .message(message)
                 .certificateUrl(certificateUrl)
                 .build();
+    }
+
+    private String resolveCertificateViewUrl(String certificateObjectKey) {
+        if (certificateObjectKey == null || certificateObjectKey.isBlank()) {
+            return null;
+        }
+        if (certificateObjectKey.startsWith("http://") || certificateObjectKey.startsWith("https://")) {
+            return certificateObjectKey;
+        }
+        return filePort.generatePresignedViewUrl(certificateObjectKey).presignedUrl();
     }
 
     private Study getStudy(Integer studyId) {

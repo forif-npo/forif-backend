@@ -306,12 +306,20 @@ public class UserService {
             throw new ForifException(ErrorCode.CERTIFICATE_NOT_ISSUED);
         }
 
-        // 3. certificateUrl 확인
-        if (studyUser.getCertificateUrl() == null || studyUser.getCertificateUrl().isEmpty()) {
+        // 3. 수료증 파일 object key 확인
+        String certificateObjectKey = studyUser.getCertificateObjectKey();
+        if (certificateObjectKey == null || certificateObjectKey.isBlank()) {
             throw new ForifException(ErrorCode.CERTIFICATE_NOT_ISSUED);
         }
 
-        return new GetCertificateResult(studyUser.getCertificateUrl());
+        // 과거 발급분은 Presigned URL 자체가 저장되어 있을 수 있어 그대로 반환한다.
+        if (certificateObjectKey.startsWith("http://") || certificateObjectKey.startsWith("https://")) {
+            return new GetCertificateResult(certificateObjectKey);
+        }
+
+        return new GetCertificateResult(
+                filePort.generatePresignedViewUrl(certificateObjectKey).presignedUrl()
+        );
     }
 
     /**
