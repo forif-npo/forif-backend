@@ -119,6 +119,19 @@ public class StudyController {
     }
 
     /**
+     * [어드민 전용] 자율스터디 개설
+     */
+    @Operation(summary = "자율스터디 개설 (어드민 전용)", description = "현재 활동 학기에 자율스터디를 즉시 개설하고, 개설한 운영진을 대표 멘토로 지정합니다. 같은 학기에는 한 번만 개설할 수 있습니다.")
+    @PostMapping("/api/v1/admin/studies/autonomous")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> createAutonomousStudy(
+            @AuthenticationPrincipal Long userId
+    ) {
+        studyService.createAutonomousStudy(userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
      * [어드민용] 스터디 삭제
      */
     @Operation(summary = "스터디 삭제 (어드민 전용)", description = "스터디와 관련된 플랜, 참고자료, 수강자 정보를 모두 삭제합니다.")

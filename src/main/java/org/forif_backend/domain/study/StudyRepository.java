@@ -8,6 +8,7 @@ import org.forif_backend.domain.user.User;
 
 public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
+    boolean existsByActYearAndActSemesterAndStudyName(int actYear, int actSemester, String studyName);
     List<StudyTag> findAllStudyTagById(List<Long> tagIds);
     List<StudyTag> findAllStudyTagByName(List<String> tagNames);
     List<Study> getStudies(StudySearchCond cond, Integer cursor, int size);

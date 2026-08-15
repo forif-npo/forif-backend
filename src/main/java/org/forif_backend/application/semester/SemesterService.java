@@ -52,6 +52,16 @@ public class SemesterService {
                 });
     }
 
+    /**
+     * 현재 활동 학기를 잠근 채 조회한다. 학기별 단일 리소스 생성 시 중복 생성을 막는 데 사용한다.
+     */
+    @Transactional
+    public SemesterInfo getActiveForUpdate() {
+        return semesterRepository.findActiveForUpdate()
+                .map(SemesterInfo::from)
+                .orElseThrow(() -> new ForifException(ErrorCode.SEMESTER_INVALID));
+    }
+
     public int getActiveYear() {
         return getActive().actYear();
     }

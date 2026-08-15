@@ -23,6 +23,14 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 @Table(name = "tb_study")
 public class Study extends BaseTimeEntity {
 
+    public static final String AUTONOMOUS_STUDY_NAME = "자율스터디";
+    private static final String AUTONOMOUS_STUDY_ONE_LINER =
+            "공통의 관심사로 원하는 분야를 자유롭게 공부하는 스터디";
+    private static final String AUTONOMOUS_STUDY_EXPLANATION =
+            "자율스터디는 공통의 관심사를 가진 부원들이 모여 자유롭게 원하는 분야를 공부하는 스터디입니다. "
+                    + "자율스터디는 FORIF 인증서가 발급되지 않으며, 출석 체크 대상에도 포함되지 않고 정해진 수업 회차나 일정이 없습니다. "
+                    + "자율부원은 정규 스터디를 수강하지 않고 FORIF에 등록한 부원으로, 정규스터디 영역 외에는 FORIF 부원으로서 다양한 혜택을 누릴 수 있습니다.";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "study_id")
@@ -139,6 +147,23 @@ public class Study extends BaseTimeEntity {
         study.actYear = actYear;
         study.actSemester = actSemester;
 
+        return study;
+    }
+
+    /**
+     * 운영진이 학기별로 개설하는 자율스터디를 생성한다.
+     * 자율스터디는 멘토 개설 신청을 거치지 않지만, 신청자를 관리할 운영진을 대표 멘토로 둔다.
+     */
+    public static Study createAutonomousStudy(User mentor, int actYear, int actSemester) {
+        Study study = new Study();
+        study.actYear = actYear;
+        study.actSemester = actSemester;
+        study.studyName = AUTONOMOUS_STUDY_NAME;
+        study.primaryMentor = mentor;
+        study.primaryMentorName = mentor.getUserName();
+        study.oneLiner = AUTONOMOUS_STUDY_ONE_LINER;
+        study.explanation = AUTONOMOUS_STUDY_EXPLANATION;
+        study.studyStatus = StudyStatus.APPROVED;
         return study;
     }
 

@@ -803,6 +803,39 @@ public class StudyService {
     }
 
     /**
+     * [어드민 전용] 현재 활동 학기의 자율스터디를 즉시 개설한다.
+     * 자율스터디도 일반 스터디와 같은 엔티티와 수강 신청 흐름을 사용하지만,
+     * 멘토 개설 신청 및 심사 과정은 거치지 않으며, 개설한 운영진이 대표 멘토가 된다.
+     */
+    @Transactional
+    public void createAutonomousStudy(Long adminUserId) {
+        // 활성 학기 행을 잠가 여러 운영진이 동시에 요청해도 존재 확인과 저장이 직렬화된다.
+        SemesterInfo semester = semesterService.getActiveForUpdate();
+
+        if (studyRepository.existsByActYearAndActSemesterAndStudyName(
+                semester.actYear(),
+                semester.actSemester(),
+                Study.AUTONOMOUS_STUDY_NAME
+        )) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_ALREADY_EXISTS);
+        }
+
+        User admin = userRepository.findUserById(adminUserId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+        Study study = Study.createAutonomousStudy(
+                admin,
+                semester.actYear(),
+                semester.actSemester()
+        );
+        study.setRecruitStatus(recruitStatusPolicy.resolve(
+                semester.actYear(),
+                semester.actSemester(),
+                LocalDateTime.now()
+        ));
+        studyRepository.saveStudy(study);
+    }
+
+    /**
      * [어드민 전용] 스터디 개설 거절
      */
     @Transactional

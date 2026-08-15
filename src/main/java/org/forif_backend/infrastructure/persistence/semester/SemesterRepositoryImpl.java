@@ -21,6 +21,11 @@ public class SemesterRepositoryImpl implements SemesterRepository {
     }
 
     @Override
+    public Optional<ActiveSemester> findActiveForUpdate() {
+        return activeSemesterJpaRepository.findByIdForUpdate(ActiveSemester.SINGLETON_ID);
+    }
+
+    @Override
     public ActiveSemester save(ActiveSemester activeSemester) {
         return activeSemesterJpaRepository.save(activeSemester);
     }
