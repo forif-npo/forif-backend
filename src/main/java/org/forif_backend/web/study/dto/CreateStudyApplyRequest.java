@@ -40,11 +40,11 @@ public class CreateStudyApplyRequest {
     }
 
     @NotBlank
-    @Length(min = 50, max = 500, message = "스터디 목표는 50자 이상 500자 이내로 작성해주세요.")
+    @Length(min = 50, max = 3000, message = "스터디 목표는 50자 이상 3000자 이내로 작성해주세요.")
     private String goal;                    // 스터디 목표
 
     @NotBlank
-    @Length(min = 50, max = 500, message = "스터디 소개는 50자 이상 500자 이내로 작성해주세요.")
+    @Length(min = 50, max = 3000, message = "스터디 소개는 50자 이상 3000자 이내로 작성해주세요.")
     private String explanation;             // 스터디 소개
 
     @NotNull

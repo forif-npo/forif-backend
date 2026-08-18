@@ -112,7 +112,7 @@ public class Study extends BaseTimeEntity {
 
     private Boolean isOnline;
 
-    @Column(length = 500)
+    @Column(length = 3000)
     private String goal;
 
     @Column(length = 50)
