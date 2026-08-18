@@ -47,7 +47,7 @@ public class StudyController {
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "조회 연도 (예: 2025)") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
-            @Parameter(description = "난이도 필터 (BEGINNER, INTERMEDIATE, ADVANCED)") @RequestParam(required = false) List<StudyDifficulty> difficulties,
+            @Parameter(description = "난이도 필터 (EASY=쉬움, SEMI_EASY=조금 쉬움, NORMAL=보통, SEMI_HARD=조금 어려움, HARD=어려움)") @RequestParam(required = false) List<StudyDifficulty> difficulties,
             @Parameter(description = "태그 이름 필터 (복수 입력 가능)") @RequestParam(required = false) String[] tags,
             @Parameter(description = "모집 상태 필터 (OPEN=모집중, CLOSED=모집마감)") @RequestParam(value = "recruit_status", required = false) RecruitStatus recruitStatus,
             @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search) {
