@@ -33,6 +33,8 @@ public class CertificateImageGenerator {
     private static final int IMAGE_WIDTH = 1280;
     private static final int FONT_SMALL = 21;
     private static final int FONT_LARGE = 48;
+    private static final int FONT_CONFIRMATION_TITLE = 44;
+    private static final int FONT_CONFIRMATION_BODY = 28;
     private static final int[] POS_DURATIONS = {300, 282};
     private static final int[] POS_DEPARTMENT = {652, 282};
     private static final int[] POS_STUDENT_NUMBER = {940, 282};
@@ -114,6 +116,60 @@ public class CertificateImageGenerator {
             return outputStream.toByteArray();
         } catch (IOException e) {
             log.error("수료증 이미지 생성 실패: {}({})", studentName, studentNumber, e);
+            throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * 동일한 양식 기반의 멘토 활동 확인서를 생성한다.
+     */
+    public byte[] generateMentorConfirmation(String mentorName, String studentNumber, String departmentName,
+                                             String studyName, String activityPeriod, String issueDate,
+                                             String presidentName, byte[] signatureImage) {
+        mentorName = sanitize(mentorName);
+        departmentName = sanitize(departmentName);
+        studyName = sanitize(studyName);
+        presidentName = sanitize(presidentName);
+        try {
+            BufferedImage image = loadTemplate();
+            Font baseFont = loadBaseFont();
+            Font smallFont = baseFont.deriveFont(Font.PLAIN, FONT_SMALL);
+            Font largeFont = baseFont.deriveFont(Font.PLAIN, FONT_LARGE);
+            Font titleFont = baseFont.deriveFont(Font.BOLD, FONT_CONFIRMATION_TITLE);
+            Font bodyFont = baseFont.deriveFont(Font.PLAIN, FONT_CONFIRMATION_BODY);
+            Font presidentFont = baseFont.deriveFont(Font.PLAIN, FONT_PRESIDENT);
+
+            Graphics2D graphics = image.createGraphics();
+            graphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(370, 120, 560, 95);
+            graphics.fillRect(230, 410, 820, 180);
+            graphics.setColor(Color.BLACK);
+
+            drawCentered(graphics, titleFont, "MENTOR CONFIRMATION", 145);
+            drawTopLeft(graphics, smallFont, activityPeriod, POS_DURATIONS[0], POS_DURATIONS[1]);
+            drawTopLeft(graphics, smallFont, departmentName, POS_DEPARTMENT[0], POS_DEPARTMENT[1]);
+            drawTopLeft(graphics, smallFont, studentNumber, POS_STUDENT_NUMBER[0], POS_STUDENT_NUMBER[1]);
+            drawCentered(graphics, largeFont, mentorName, POS_STUDENT_NAME_Y);
+            drawCentered(graphics, bodyFont, "has served as a mentor for", 430);
+            drawCentered(graphics, largeFont, studyName, POS_STUDY_NAME_Y);
+            drawCentered(graphics, bodyFont, "during the above activity period.", 550);
+            drawTopLeft(graphics, smallFont, issueDate, POS_DATE[0], POS_DATE[1]);
+            if (!presidentName.isBlank()) {
+                drawTopLeft(graphics, presidentFont, presidentName,
+                        POS_PRESIDENT_NAME[0], POS_PRESIDENT_NAME[1]);
+            }
+            if (signatureImage != null && signatureImage.length > 0) {
+                drawSignature(graphics, signatureImage);
+            }
+            graphics.dispose();
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", outputStream);
+            return outputStream.toByteArray();
+        } catch (IOException e) {
+            log.error("멘토 확인서 이미지 생성 실패: {}({})", mentorName, studentNumber, e);
             throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }

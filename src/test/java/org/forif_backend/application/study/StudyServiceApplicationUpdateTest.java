@@ -58,6 +58,7 @@ class StudyServiceApplicationUpdateTest {
     @Mock private FilePort filePort;
     @Mock private StaffAccountService staffAccountService;
     @Mock private StaffAccountRepository staffAccountRepository;
+    @Mock private org.forif_backend.domain.study.MentorConfirmationRepository mentorConfirmationRepository;
 
     private StudyService studyService;
 
@@ -75,7 +76,8 @@ class StudyServiceApplicationUpdateTest {
                 userApplyRepository,
                 filePort,
                 staffAccountService,
-                staffAccountRepository
+                staffAccountRepository,
+                mentorConfirmationRepository
         );
     }
 
