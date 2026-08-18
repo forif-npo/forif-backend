@@ -25,8 +25,11 @@ public class StudyUser {
 
     private Integer certificateStatus;
 
-    @Column(length = 300)
-    private String certificateUrl;
+    /**
+     * 수료증 파일의 S3 object key. 기존에 저장된 Presigned URL도 하위 호환을 위해 읽을 수 있다.
+     */
+    @Column(name = "certificate_url", length = 300)
+    private String certificateObjectKey;
 
     public static StudyUser create(Study study, User user) {
         StudyUser studyUser = new StudyUser();
@@ -38,8 +41,8 @@ public class StudyUser {
     /**
      * 수료증 발급 처리 (0: 미발급, 1: 발급)
      */
-    public void issueCertificate(String certificateUrl) {
+    public void issueCertificate(String certificateObjectKey) {
         this.certificateStatus = 1;
-        this.certificateUrl = certificateUrl;
+        this.certificateObjectKey = certificateObjectKey;
     }
 }
