@@ -208,6 +208,77 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void preventsRenamingARegularStudyToTheReservedAutonomousStudyName() {
+        Study study = mock(Study.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setStudyName(Study.AUTONOMOUS_STUDY_NAME);
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.isAutonomousStudy()).thenReturn(false);
+
+        assertThatThrownBy(() -> studyService.updateStudy(1, request))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
+
+        verify(study, never()).setStudyName(Study.AUTONOMOUS_STUDY_NAME);
+    }
+
+    @Test
+    void preventsUsingTheReservedNameWhenCreatingAStudyApplication() {
+        CreateStudyApplyRequest request = new CreateStudyApplyRequest();
+        request.setTitle(Study.AUTONOMOUS_STUDY_NAME);
+
+        assertThatThrownBy(() -> studyService.createStudyApply(10L, request, null, null))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
+
+        verify(userRepository, never()).findUserById(10L);
+    }
+
+    @Test
+    void preventsUsingTheReservedNameWhenReapplyingForAStudy() {
+        CreateStudyApplyRequest request = new CreateStudyApplyRequest();
+        request.setTitle(Study.AUTONOMOUS_STUDY_NAME);
+
+        assertThatThrownBy(() -> studyService.reApplyStudy(1, 10L, request, null, null))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
+
+        verify(studyRepository, never()).findStudyByIdWithTags(1);
+    }
+
+    @Test
+    void rejectsCreatingAnotherAutonomousStudyForTheActiveSemester() {
+        when(semesterService.getActiveForUpdate()).thenReturn(SemesterInfo.of(2026, 2));
+        when(studyRepository.existsByActYearAndActSemesterAndAutonomousFlagTrue(2026, 2)).thenReturn(true);
+
+        assertThatThrownBy(() -> studyService.createAutonomousStudy(10L))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_ALREADY_EXISTS));
+
+        verify(studyRepository, never()).saveStudy(org.mockito.ArgumentMatchers.any(Study.class));
+    }
+
+    @Test
+    void preventsCreatingAnAutonomousStudyAfterMenteeRecruitmentEnds() {
+        when(semesterService.getActiveForUpdate()).thenReturn(SemesterInfo.of(2026, 2));
+        doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
+                .when(semesterPhaseGuard)
+                .requireNotEnded(org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT, 2026, 2);
+
+        assertThatThrownBy(() -> studyService.createAutonomousStudy(10L))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
+
+        verify(studyRepository, never()).existsByActYearAndActSemesterAndAutonomousFlagTrue(2026, 2);
+    }
+
+    @Test
     void replacesExistingFileReferencesWhenMentorMultipartRequestOmitsRetainedReferenceIds() {
         Study study = mock(Study.class);
         StudyReference existingFileReference = mock(StudyReference.class);

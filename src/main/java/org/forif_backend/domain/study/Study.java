@@ -8,6 +8,7 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 import lombok.Setter;
 
 import org.forif_backend.common.BaseTimeEntity;
@@ -20,7 +21,13 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "tb_study")
+@Table(
+        name = "tb_study",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_study_autonomous_semester",
+                columnNames = {"act_year", "act_semester", "autonomous_flag"}
+        )
+)
 public class Study extends BaseTimeEntity {
 
     public static final String AUTONOMOUS_STUDY_NAME = "자율스터디";
@@ -44,6 +51,11 @@ public class Study extends BaseTimeEntity {
 
     @Column(length = 50)
     private String studyName;
+
+    /** 자율스터디만 true이며, 일반 스터디는 NULL로 보관한다. */
+    @Setter(AccessLevel.NONE)
+    @Column(name = "autonomous_flag")
+    private Boolean autonomousFlag;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "primary_mentor_id")
@@ -137,7 +149,11 @@ public class Study extends BaseTimeEntity {
 
     /** 자율스터디는 출석 및 수료증 발급 대상이 아니다. */
     public boolean isAutonomousStudy() {
-        return AUTONOMOUS_STUDY_NAME.equals(this.studyName);
+        return Boolean.TRUE.equals(this.autonomousFlag);
+    }
+
+    public static boolean isAutonomousStudyName(String studyName) {
+        return AUTONOMOUS_STUDY_NAME.equals(studyName);
     }
 
     /**
@@ -164,6 +180,7 @@ public class Study extends BaseTimeEntity {
         study.actYear = actYear;
         study.actSemester = actSemester;
         study.studyName = AUTONOMOUS_STUDY_NAME;
+        study.autonomousFlag = true;
         study.primaryMentor = mentor;
         study.primaryMentorName = mentor.getUserName();
         study.oneLiner = AUTONOMOUS_STUDY_ONE_LINER;

@@ -247,6 +247,10 @@ public class StudyService {
 
     private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
         // null이 아닌 기본 필드만 반영
+        if (!study.isAutonomousStudy()
+                && Study.isAutonomousStudyName(request.getStudyName())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED);
+        }
         if (study.isAutonomousStudy()
                 && request.getStudyName() != null
                 && !Study.AUTONOMOUS_STUDY_NAME.equals(request.getStudyName())) {
@@ -378,6 +382,7 @@ public class StudyService {
     public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
                                                  MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+        requireRegularStudyName(request.getTitle());
 
         User mentor = userRepository.findUserById(mentorId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -636,6 +641,7 @@ public class StudyService {
     private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
+        requireRegularStudyName(request.getTitle());
         Study study = findModifiableStudyApplication(studyId, userId, rejectedOnly);
 
         List<StudyTag> tags = resolveStudyTags(request);
@@ -816,12 +822,13 @@ public class StudyService {
     public void createAutonomousStudy(Long adminUserId) {
         // 활성 학기 행을 잠가 여러 운영진이 동시에 요청해도 존재 확인과 저장이 직렬화된다.
         SemesterInfo semester = semesterService.getActiveForUpdate();
+        // 정규 스터디와 같은 멘티 모집 흐름을 쓰므로, 모집이 끝난 뒤에는 빈 스터디 생성을 막는다.
+        // 모집 시작 전 개설은 허용해 일정이 열리는 즉시 신청을 받을 수 있다.
+        semesterPhaseGuard.requireNotEnded(
+                SemesterPhase.MENTEE_RECRUIT, semester.actYear(), semester.actSemester());
 
-        if (studyRepository.existsByActYearAndActSemesterAndStudyName(
-                semester.actYear(),
-                semester.actSemester(),
-                Study.AUTONOMOUS_STUDY_NAME
-        )) {
+        if (studyRepository.existsByActYearAndActSemesterAndAutonomousFlagTrue(
+                semester.actYear(), semester.actSemester())) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_ALREADY_EXISTS);
         }
 
@@ -838,6 +845,12 @@ public class StudyService {
                 LocalDateTime.now()
         ));
         studyRepository.saveStudy(study);
+    }
+
+    private void requireRegularStudyName(String studyName) {
+        if (Study.isAutonomousStudyName(studyName)) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED);
+        }
     }
 
     /**

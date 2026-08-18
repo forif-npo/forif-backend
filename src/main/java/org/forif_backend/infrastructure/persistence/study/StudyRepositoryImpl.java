@@ -30,8 +30,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public boolean existsByActYearAndActSemesterAndStudyName(int actYear, int actSemester,String studyName) {
-        return studyJpaRepository.existsByActYearAndActSemesterAndStudyName(actYear, actSemester, studyName);
+    public boolean existsByActYearAndActSemesterAndAutonomousFlagTrue(int actYear, int actSemester) {
+        return studyJpaRepository.existsByActYearAndActSemesterAndAutonomousFlagTrue(actYear, actSemester);
     }
 
     @Override

@@ -81,4 +81,17 @@ public class SemesterPhaseGuard {
                 .map(schedule -> schedule.contains(LocalDateTime.now()))
                 .orElse(true);
     }
+
+    /**
+     * 모집 시작 전에는 허용하되, 해당 모집 단계가 끝난 뒤에는 새 대상을 만들지 못하게 한다.
+     * 일정이 없는 학기는 기존 fail-open 정책을 따른다.
+     */
+    @Transactional(readOnly = true)
+    public void requireNotEnded(SemesterPhase phase, int actYear, int actSemester) {
+        Optional<SemesterSchedule> schedule =
+                semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
+        if (schedule.isPresent() && !LocalDateTime.now().isBefore(schedule.get().getEndsAt())) {
+            throw new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED);
+        }
+    }
 }

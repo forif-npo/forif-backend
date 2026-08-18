@@ -26,4 +26,14 @@ class StudyTest {
         assertThat(study.getExplanation()).isNotBlank();
         assertThat(study.isAutonomousStudy()).isTrue();
     }
+
+    @Test
+    void identifiesAnAutonomousStudyByTheDedicatedFlagInsteadOfItsName() {
+        User mentor = Mockito.mock(User.class);
+        given(mentor.getUserName()).willReturn("멘토");
+
+        Study regularStudy = Study.createPendingStudy(mentor, 2026, 2);
+
+        assertThat(regularStudy.isAutonomousStudy()).isFalse();
+    }
 }
