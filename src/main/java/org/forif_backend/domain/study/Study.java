@@ -8,6 +8,7 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.AccessLevel;
 import lombok.Setter;
 
 import org.forif_backend.common.BaseTimeEntity;
@@ -20,8 +21,22 @@ import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 @Getter
 @Setter
 @NoArgsConstructor
-@Table(name = "tb_study")
+@Table(
+        name = "tb_study",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_study_autonomous_semester",
+                columnNames = {"act_year", "act_semester", "autonomous_flag"}
+        )
+)
 public class Study extends BaseTimeEntity {
+
+    public static final String AUTONOMOUS_STUDY_NAME = "자율스터디";
+    private static final String AUTONOMOUS_STUDY_ONE_LINER =
+            "공통의 관심사로 원하는 분야를 자유롭게 공부하는 스터디";
+    private static final String AUTONOMOUS_STUDY_EXPLANATION =
+            "자율스터디는 공통의 관심사를 가진 부원들이 모여 자유롭게 원하는 분야를 공부하는 스터디입니다. "
+                    + "자율스터디는 FORIF 인증서가 발급되지 않으며, 출석 체크 대상에도 포함되지 않고 정해진 수업 회차나 일정이 없습니다. "
+                    + "자율부원은 정규 스터디를 수강하지 않고 FORIF에 등록한 부원으로, 정규스터디 영역 외에는 FORIF 부원으로서 다양한 혜택을 누릴 수 있습니다.";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,6 +51,11 @@ public class Study extends BaseTimeEntity {
 
     @Column(length = 50)
     private String studyName;
+
+    /** 자율스터디만 true이며, 일반 스터디는 NULL로 보관한다. */
+    @Setter(AccessLevel.NONE)
+    @Column(name = "autonomous_flag")
+    private Boolean autonomousFlag;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "primary_mentor_id")
@@ -127,6 +147,15 @@ public class Study extends BaseTimeEntity {
         return isPrimary || isSecondary;
     }
 
+    /** 자율스터디는 출석 및 수료증 발급 대상이 아니다. */
+    public boolean isAutonomousStudy() {
+        return Boolean.TRUE.equals(this.autonomousFlag);
+    }
+
+    public static boolean isAutonomousStudyName(String studyName) {
+        return AUTONOMOUS_STUDY_NAME.equals(studyName);
+    }
+
     /**
      * 초기 스터디 생성 메서드
      * @param mentor 멘토 유저
@@ -139,6 +168,24 @@ public class Study extends BaseTimeEntity {
         study.actYear = actYear;
         study.actSemester = actSemester;
 
+        return study;
+    }
+
+    /**
+     * 운영진이 학기별로 개설하는 자율스터디를 생성한다.
+     * 자율스터디는 멘토 개설 신청을 거치지 않지만, 신청자를 관리할 운영진을 대표 멘토로 둔다.
+     */
+    public static Study createAutonomousStudy(User mentor, int actYear, int actSemester) {
+        Study study = new Study();
+        study.actYear = actYear;
+        study.actSemester = actSemester;
+        study.studyName = AUTONOMOUS_STUDY_NAME;
+        study.autonomousFlag = true;
+        study.primaryMentor = mentor;
+        study.primaryMentorName = mentor.getUserName();
+        study.oneLiner = AUTONOMOUS_STUDY_ONE_LINER;
+        study.explanation = AUTONOMOUS_STUDY_EXPLANATION;
+        study.studyStatus = StudyStatus.APPROVED;
         return study;
     }
 

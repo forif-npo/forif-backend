@@ -247,6 +247,15 @@ public class StudyService {
 
     private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
         // null이 아닌 기본 필드만 반영
+        if (!study.isAutonomousStudy()
+                && Study.isAutonomousStudyName(request.getStudyName())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED);
+        }
+        if (study.isAutonomousStudy()
+                && request.getStudyName() != null
+                && !Study.AUTONOMOUS_STUDY_NAME.equals(request.getStudyName())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE);
+        }
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
         if (request.getExplanation() != null) study.setExplanation(request.getExplanation());
@@ -373,6 +382,7 @@ public class StudyService {
     public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
                                                  MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+        requireRegularStudyName(request.getTitle());
 
         User mentor = userRepository.findUserById(mentorId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -631,6 +641,7 @@ public class StudyService {
     private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
+        requireRegularStudyName(request.getTitle());
         Study study = findModifiableStudyApplication(studyId, userId, rejectedOnly);
 
         List<StudyTag> tags = resolveStudyTags(request);
@@ -800,6 +811,46 @@ public class StudyService {
                 study.getActYear(), study.getActSemester(), LocalDateTime.now()));
         // 멘토 계정을 따로 만들지 않는다. 멘토 권한은 tb_study의 멘토 관계에서
         // 요청 시점에 유도되므로, 승인된 순간부터 부원 로그인으로 관리할 수 있다.
+    }
+
+    /**
+     * [어드민 전용] 현재 활동 학기의 자율스터디를 즉시 개설한다.
+     * 자율스터디도 일반 스터디와 같은 엔티티와 수강 신청 흐름을 사용하지만,
+     * 멘토 개설 신청 및 심사 과정은 거치지 않으며, 개설한 운영진이 대표 멘토가 된다.
+     */
+    @Transactional
+    public void createAutonomousStudy(Long adminUserId) {
+        // 활성 학기 행을 잠가 여러 운영진이 동시에 요청해도 존재 확인과 저장이 직렬화된다.
+        SemesterInfo semester = semesterService.getActiveForUpdate();
+        // 정규 스터디와 같은 멘티 모집 흐름을 쓰므로, 모집이 끝난 뒤에는 빈 스터디 생성을 막는다.
+        // 모집 시작 전 개설은 허용해 일정이 열리는 즉시 신청을 받을 수 있다.
+        semesterPhaseGuard.requireNotEnded(
+                SemesterPhase.MENTEE_RECRUIT, semester.actYear(), semester.actSemester());
+
+        if (studyRepository.existsByActYearAndActSemesterAndAutonomousFlagTrue(
+                semester.actYear(), semester.actSemester())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_ALREADY_EXISTS);
+        }
+
+        User admin = userRepository.findUserById(adminUserId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+        Study study = Study.createAutonomousStudy(
+                admin,
+                semester.actYear(),
+                semester.actSemester()
+        );
+        study.setRecruitStatus(recruitStatusPolicy.resolve(
+                semester.actYear(),
+                semester.actSemester(),
+                LocalDateTime.now()
+        ));
+        studyRepository.saveStudy(study);
+    }
+
+    private void requireRegularStudyName(String studyName) {
+        if (Study.isAutonomousStudyName(studyName)) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED);
+        }
     }
 
     /**

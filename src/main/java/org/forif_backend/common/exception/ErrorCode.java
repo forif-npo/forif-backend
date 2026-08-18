@@ -89,6 +89,9 @@ public enum ErrorCode {
     FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR077-404", "파일을 찾을 수 없습니다."),
     CURRENT_SEMESTER_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR128-404", "현재 활동 학기에 등록된 부원이 아닙니다."),
     STUDY_CANCEL_HAS_DEPENDENTS(HttpStatus.BAD_REQUEST, "FOR130-400", "지원서나 수강 기록이 있는 스터디는 취소할 수 없습니다. 운영진에게 문의해주세요."),
+    AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR132-400", "자율스터디는 출석 체크 및 수료증 발급 대상이 아닙니다."),
+    AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "FOR133-400", "자율스터디의 이름은 변경할 수 없습니다."),
+    AUTONOMOUS_STUDY_NAME_RESERVED(HttpStatus.BAD_REQUEST, "FOR134-400", "자율스터디 명칭은 일반 스터디에 사용할 수 없습니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),
@@ -98,6 +101,7 @@ public enum ErrorCode {
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR048-409", "이미 가입된 이메일입니다."),
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
     HACKATHON_ACTIVE_EVENT_EXISTS(HttpStatus.CONFLICT, "FOR076-409", "진행 중인 해커톤이 있어 새 해커톤을 생성할 수 없습니다."),
+    AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 자율스터디가 이미 개설되어 있습니다."),
 
     // Product (서비스 쇼케이스)
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 서비스를 찾을 수 없습니다."),

@@ -151,6 +151,10 @@ public class CertificateService {
     public String issueManualCertificate(String userName, String studentNumber, String department,
                                          String studyName, String activityPeriod, String issueDate,
                                          String presidentName) {
+        if (Study.AUTONOMOUS_STUDY_NAME.equals(studyName == null ? null : studyName.trim())) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
+        }
+
         String resolvedIssueDate = issueDate == null || issueDate.isBlank()
                 ? LocalDate.now().format(ISSUE_DATE_FORMAT)
                 : issueDate;
@@ -278,7 +282,11 @@ public class CertificateService {
     }
 
     private Study getStudy(Integer studyId) {
-        return studyRepository.findStudyById(studyId)
+        Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
+        }
+        return study;
     }
 }
