@@ -45,7 +45,8 @@ class StudyServiceTagUpdateTest {
                 mock(org.forif_backend.domain.user.UserApplyRepository.class),
                 mock(FilePort.class),
                 mock(StaffAccountService.class),
-                mock(StaffAccountRepository.class)
+                mock(StaffAccountRepository.class),
+                mock(org.forif_backend.domain.study.MentorConfirmationRepository.class)
         );
     }
 

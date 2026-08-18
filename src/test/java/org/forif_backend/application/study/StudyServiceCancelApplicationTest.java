@@ -6,6 +6,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyAttendanceRepository;
+import org.forif_backend.domain.study.MentorConfirmationRepository;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUser;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -25,6 +27,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -66,6 +69,8 @@ class StudyServiceCancelApplicationTest {
     private org.forif_backend.application.staff.StaffAccountService staffAccountService;
     @Mock
     private org.forif_backend.domain.staff.StaffAccountRepository staffAccountRepository;
+    @Mock
+    private MentorConfirmationRepository mentorConfirmationRepository;
     @InjectMocks
     private StudyService studyService;
 
@@ -131,5 +136,14 @@ class StudyServiceCancelApplicationTest {
         studyService.cancelStudyApplication(STUDY_ID, MENTOR_ID);
 
         verify(studyRepository).deleteStudyById(STUDY_ID);
+    }
+
+    @Test
+    void 스터디_삭제_전에_멘토_확인서_발급_이력을_삭제한다() {
+        studyService.deleteStudy(STUDY_ID);
+
+        InOrder inOrder = inOrder(mentorConfirmationRepository, studyRepository);
+        inOrder.verify(mentorConfirmationRepository).deleteByStudyId(STUDY_ID);
+        inOrder.verify(studyRepository).deleteStudyById(STUDY_ID);
     }
 }

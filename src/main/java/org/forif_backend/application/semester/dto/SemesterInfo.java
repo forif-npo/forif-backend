@@ -24,8 +24,4 @@ public record SemesterInfo(int actYear, int actSemester, String label) {
         return actSemester == 1 ? of(actYear, 2) : of(actYear + 1, 1);
     }
 
-    /** 이전 학기 (1학기 이전은 전년도 2학기) */
-    public SemesterInfo previous() {
-        return actSemester == 1 ? of(actYear - 1, 2) : of(actYear, 1);
-    }
 }

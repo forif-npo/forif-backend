@@ -79,7 +79,6 @@ public class MentorConfirmationService {
         validateActivityPeriod(activityPeriod);
         Map<Long, User> mentors = mentorsOf(study).stream()
                 .collect(java.util.stream.Collectors.toMap(User::getId, mentor -> mentor));
-        Map<Long, MentorConfirmation> confirmations = confirmationByMentorId(studyId);
 
         StaffAccount president = staffAccountRepository.findByAffiliation("회장").stream()
                 .findFirst()
@@ -113,13 +112,9 @@ public class MentorConfirmationService {
                     signature
             );
             String objectKey = filePort.uploadBytes(image, mentor.getId() + ".png", directory, "image/png");
-            MentorConfirmation confirmation = confirmations.get(mentor.getId());
-            if (confirmation == null) {
-                confirmation = MentorConfirmation.issue(study, mentor, objectKey);
-            } else {
-                confirmation.reissue(objectKey);
-            }
-            mentorConfirmationRepository.save(confirmation);
+            // (study_id, mentor_id) 유니크 제약을 기준으로 원자적으로 재발급한다.
+            // 여러 운영진이 동시에 발급해도 INSERT 충돌 대신 마지막 발급 결과로 수렴한다.
+            mentorConfirmationRepository.upsert(study.getId(), mentor.getId(), objectKey);
 
             results.add(new IssueMentorConfirmationsResult.ItemResult(
                     mentor.getId(), mentor.getUserName(), true, "발급 완료", viewUrl(objectKey)));
@@ -132,15 +127,20 @@ public class MentorConfirmationService {
     @Transactional(readOnly = true)
     public MentorConfirmationStatusResult getMyConfirmation(Integer studyId, Long userId) {
         Study study = getCompletedApprovedStudy(studyId);
-        requireStudyMentor(study, userId);
-
-        return getConfirmationStatus(studyId, userId);
+        Optional<MentorConfirmation> confirmation = mentorConfirmationRepository
+                .findByStudyIdAndMentorId(studyId, userId);
+        // 현재 멘토는 미발급 상태를 조회할 수 있고, 교체된 전 멘토는 자신의 발급 이력으로 조회한다.
+        if (!study.isMentor(userId) && confirmation.isEmpty()) {
+            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
+        }
+        return confirmation
+                .map(value -> new MentorConfirmationStatusResult(true, viewUrl(value.getConfirmationObjectKey())))
+                .orElseGet(() -> new MentorConfirmationStatusResult(false, null));
     }
 
     @Transactional(readOnly = true)
     public MentorConfirmationStatusResult getConfirmationForAdmin(Integer studyId, Long userId) {
-        Study study = getCompletedApprovedStudy(studyId);
-        requireStudyMentor(study, userId);
+        getCompletedApprovedStudy(studyId);
         return getConfirmationStatus(studyId, userId);
     }
 
@@ -152,16 +152,10 @@ public class MentorConfirmationService {
                 .orElseGet(() -> new MentorConfirmationStatusResult(false, null));
     }
 
-    private void requireStudyMentor(Study study, Long userId) {
-        if (!study.isMentor(userId)) {
-            throw new ForifException(ErrorCode.NOT_STUDY_MENTOR);
-        }
-    }
-
     private void validateActivityPeriod(String activityPeriod) {
         Matcher matcher = ACTIVITY_PERIOD_PATTERN.matcher(activityPeriod);
         if (!matcher.matches()) {
-            throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_INVALID_ACTIVITY_PERIOD);
+            throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_INVALID_ACTIVITY_PERIOD_FORMAT);
         }
 
         try {
@@ -171,7 +165,7 @@ public class MentorConfirmationService {
                 throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_INVALID_ACTIVITY_PERIOD);
             }
         } catch (DateTimeParseException exception) {
-            throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_INVALID_ACTIVITY_PERIOD);
+            throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_INVALID_ACTIVITY_PERIOD_FORMAT);
         }
     }
 

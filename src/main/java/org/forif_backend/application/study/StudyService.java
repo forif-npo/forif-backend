@@ -53,6 +53,7 @@ public class StudyService {
     private final FilePort filePort;
     private final StaffAccountService staffAccountService;
     private final StaffAccountRepository staffAccountRepository;
+    private final MentorConfirmationRepository mentorConfirmationRepository;
 
     @Transactional(readOnly = true)
     public CursorPageResponse<StudyDto> getStudies(Integer cursor, Integer page, int size, Integer year, Integer semester,
@@ -305,6 +306,7 @@ public class StudyService {
         studyRepository.deleteStudyReferencesByStudyId(studyId);
         studyRepository.deleteStudyUsersByStudyId(studyId);
         studyRepository.deleteMentorStudiesByStudyId(studyId);
+        mentorConfirmationRepository.deleteByStudyId(studyId);
         studyRepository.deleteStudyById(studyId);
     }
 

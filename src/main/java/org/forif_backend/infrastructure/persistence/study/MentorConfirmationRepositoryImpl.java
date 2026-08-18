@@ -24,7 +24,12 @@ public class MentorConfirmationRepositoryImpl implements MentorConfirmationRepos
     }
 
     @Override
-    public void save(MentorConfirmation mentorConfirmation) {
-        mentorConfirmationJpaRepository.save(mentorConfirmation);
+    public void upsert(Integer studyId, Long mentorId, String confirmationObjectKey) {
+        mentorConfirmationJpaRepository.upsert(studyId, mentorId, confirmationObjectKey);
+    }
+
+    @Override
+    public void deleteByStudyId(Integer studyId) {
+        mentorConfirmationJpaRepository.deleteByStudyId(studyId);
     }
 }
