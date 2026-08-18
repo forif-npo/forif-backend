@@ -7,19 +7,22 @@ public record StudyApplicationDetailResponse(
         StudyDetailResponse study,
         String studyStatus,
         String rejectReason,
-        boolean canModify
+        boolean canModify,
+        boolean canCancel
 ) {
     public static StudyApplicationDetailResponse from(
             StudyDetailDto study,
             StudyStatus studyStatus,
             String rejectReason,
-            boolean canModify
+            boolean canModify,
+            boolean canCancel
     ) {
         return new StudyApplicationDetailResponse(
                 StudyDetailResponse.from(study),
                 studyStatus.getValue(),
                 rejectReason,
-                canModify
+                canModify,
+                canCancel
         );
     }
 }

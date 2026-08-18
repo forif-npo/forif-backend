@@ -99,7 +99,11 @@ public class StudyService {
     public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
         return studyRepository.findStudyApplicationsByMentorId(mentorId)
                 .stream()
-                .map(study -> StudyApplicationDto.from(study, canModifyStudyApplication(study)))
+                .map(study -> StudyApplicationDto.from(
+                        study,
+                        canModifyStudyApplication(study),
+                        canCancelStudyApplication(study)
+                ))
                 .toList();
     }
 
@@ -117,6 +121,7 @@ public class StudyService {
                 .studyStatus(study.getStudyStatus())
                 .rejectReason(study.getRejectReason())
                 .canModify(canModifyStudyApplication(study))
+                .canCancel(canCancelStudyApplication(study))
                 .build();
     }
 
@@ -684,7 +689,7 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+        semesterPhaseGuard.requireBeforeStart(SemesterPhase.MENTEE_RECRUIT);
 
         if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
             study.reApply();
@@ -697,6 +702,18 @@ public class StudyService {
     }
 
     private boolean canModifyStudyApplication(Study study) {
+        SemesterInfo active = semesterService.getActive();
+        return study.getStudyStatus() != StudyStatus.APPROVED
+                && study.getActYear() == active.actYear()
+                && study.getActSemester() == active.actSemester()
+                && semesterPhaseGuard.isBeforeStart(
+                SemesterPhase.MENTEE_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        );
+    }
+
+    private boolean canCancelStudyApplication(Study study) {
         SemesterInfo active = semesterService.getActive();
         return study.getStudyStatus() != StudyStatus.APPROVED
                 && study.getActYear() == active.actYear()

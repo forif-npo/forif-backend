@@ -100,11 +100,12 @@ public class StudyApplyController {
                 application.getStudy(),
                 application.getStudyStatus(),
                 application.getRejectReason(),
-                application.isCanModify()
+                application.isCanModify(),
+                application.isCanCancel()
         )));
     }
 
-    @Operation(summary = "내 스터디 개설 신청 수정", description = "승인 전 본인 신청서의 변경한 항목만 수정할 수 있으며, 반려 건은 수정 후 재신청 상태로 전환됩니다.")
+    @Operation(summary = "내 스터디 개설 신청 수정", description = "멘티 모집 시작 전까지 승인 전 본인 신청서의 변경한 항목만 수정할 수 있으며, 반려 건은 수정 후 재신청 상태로 전환됩니다.")
     @PatchMapping(value = "/{studyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<CreateStudyApplyResponse>> updateStudyApplication(
             @PathVariable Integer studyId,

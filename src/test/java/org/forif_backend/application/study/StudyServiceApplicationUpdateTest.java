@@ -102,7 +102,7 @@ class StudyServiceApplicationUpdateTest {
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER));
 
-        verify(semesterPhaseGuard, never()).requireOpen(org.forif_backend.domain.semester.SemesterPhase.MENTOR_RECRUIT);
+        verify(semesterPhaseGuard, never()).requireBeforeStart(org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT);
         verify(study, never()).reApply();
     }
 
@@ -118,8 +118,30 @@ class StudyServiceApplicationUpdateTest {
         boolean canModify = studyService.getMyStudyApplications(10L).get(0).isCanModify();
 
         assertThat(canModify).isFalse();
-        verify(semesterPhaseGuard, never()).isOpen(
-                org.forif_backend.domain.semester.SemesterPhase.MENTOR_RECRUIT, 2024, 2);
+        verify(semesterPhaseGuard, never()).isBeforeStart(
+                org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT, 2024, 2);
+    }
+
+    @Test
+    void allowsModificationButNotCancellationBetweenRecruitmentPeriods() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
+        when(study.getActYear()).thenReturn(2026);
+        when(study.getActSemester()).thenReturn(1);
+        when(study.getTags()).thenReturn(List.of());
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+        when(semesterPhaseGuard.isBeforeStart(
+                org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT, 2026, 1))
+                .thenReturn(true);
+        when(semesterPhaseGuard.isOpen(
+                org.forif_backend.domain.semester.SemesterPhase.MENTOR_RECRUIT, 2026, 1))
+                .thenReturn(false);
+
+        var application = studyService.getMyStudyApplications(10L).get(0);
+
+        assertThat(application.isCanModify()).isTrue();
+        assertThat(application.isCanCancel()).isFalse();
     }
 
     @Test
