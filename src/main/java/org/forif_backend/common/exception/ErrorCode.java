@@ -95,6 +95,7 @@ public enum ErrorCode {
     AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR132-400", "자율스터디는 출석 체크 및 수료증 발급 대상이 아닙니다."),
     AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE(HttpStatus.BAD_REQUEST, "FOR133-400", "자율스터디의 이름은 변경할 수 없습니다."),
     AUTONOMOUS_STUDY_NAME_RESERVED(HttpStatus.BAD_REQUEST, "FOR137-400", "자율스터디 명칭은 일반 스터디에 사용할 수 없습니다."),
+    AUTONOMOUS_STUDY_APPLICATION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR139-400", "자율스터디는 개설 신청서 조회 및 수정 대상이 아닙니다."),
 
     // 409 Conflict
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR044-409", "이미 가입된 사용자입니다."),

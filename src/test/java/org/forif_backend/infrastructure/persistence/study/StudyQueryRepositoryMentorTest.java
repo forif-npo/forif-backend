@@ -89,6 +89,8 @@ class StudyQueryRepositoryMentorTest {
         Study currentApproved = persistApprovedStudy(mentor, YEAR, SEMESTER, "현재 학기 승인 스터디");
         Study pastApproved = persistApprovedStudy(mentor, 2025, 2, "지난 학기 승인 스터디");
         Study rejected = persistRejectedStudy(mentor, null, "반려 신청서");
+        Study autonomous = Study.createAutonomousStudy(mentor, YEAR, SEMESTER);
+        entityManager.persist(autonomous);
         entityManager.flush();
         entityManager.clear();
 
@@ -98,7 +100,7 @@ class StudyQueryRepositoryMentorTest {
         assertThat(applications)
                 .extracting(Study::getId)
                 .contains(currentApproved.getId(), rejected.getId())
-                .doesNotContain(pastApproved.getId());
+                .doesNotContain(pastApproved.getId(), autonomous.getId());
     }
 
     private User persistUser(Long id, String name) {

@@ -197,6 +197,102 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void allowsUpdatingApprovedApplicationOperationalFields() {
+        Study study = mock(Study.class);
+        StudyTag tag = mock(StudyTag.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setExplanation("수정된 상세 소개입니다.");
+        request.setDifficulty(2);
+        request.setStartTime("19:00");
+        request.setStudyTagNames(List.of("backend"));
+        request.setStudyPlanList(List.of());
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(studyRepository.findAllStudyTagByName(List.of("backend"))).thenReturn(List.of(tag));
+
+        studyService.updateStudyApplication(1, 10L, request, null, null);
+
+        verify(study).setExplanation("수정된 상세 소개입니다.");
+        verify(study).setStartTime("19:00");
+        verify(study).setTags(List.of(tag));
+        verify(studyRepository).deleteStudyPlansByStudyId(1);
+    }
+
+    @Test
+    void allowsUpdatingTheSecondaryMentorAndThumbnailAfterApproval() {
+        Study study = mock(Study.class);
+        User primaryMentor = mock(User.class);
+        User secondaryMentor = mock(User.class);
+        MultipartFile thumbnail = mock(MultipartFile.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setSecondaryMentorId(20L);
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getPrimaryMentor()).thenReturn(primaryMentor);
+        when(primaryMentor.getId()).thenReturn(10L);
+        when(userRepository.findUserById(20L)).thenReturn(Optional.of(secondaryMentor));
+        when(secondaryMentor.getUserName()).thenReturn("부멘토");
+        when(thumbnail.isEmpty()).thenReturn(false);
+        when(filePort.uploadFile(thumbnail)).thenReturn("studies/thumbnails/new.png");
+        when(filePort.generatePresignedViewUrl("studies/thumbnails/new.png"))
+                .thenReturn(new FileInfo("studies/thumbnails/new.png", "https://example.com/new.png"));
+
+        studyService.updateStudyApplication(1, 10L, request, thumbnail, null);
+
+        verify(study).setSecondaryMentor(secondaryMentor);
+        verify(study).setSecondaryMentorName("부멘토");
+        verify(study).setThumbnailImage("studies/thumbnails/new.png");
+    }
+
+    @Test
+    void allowsChangingAllApplicationFieldsAfterApprovalExceptPrimaryMentor() {
+        Study study = mock(Study.class);
+        UpdateStudyRequest request = new UpdateStudyRequest();
+        request.setStudyName("수정된 스터디명");
+        request.setOneLiner("수정된 한 줄 소개");
+        request.setGoal("수정된 목표");
+        request.setCapacity(20);
+        request.setSelectionCriteria("수정된 선발 기준");
+        request.setReferences(List.of());
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+
+        studyService.updateStudyApplication(1, 10L, request, null, List.of());
+
+        verify(study).setStudyName("수정된 스터디명");
+        verify(study).setOneLiner("수정된 한 줄 소개");
+        verify(study).setGoal("수정된 목표");
+        verify(study).setCapacity(20);
+        verify(study).setSelectionCriteria("수정된 선발 기준");
+        verify(studyRepository).findStudyReferencesByStudyId(1);
+    }
+
+    @Test
+    void excludesAutonomousStudiesFromApplicationEndpoints() {
+        Study study = mock(Study.class);
+        when(study.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+
+        assertThat(studyService.getMyStudyApplications(10L)).isEmpty();
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.isMentor(10L)).thenReturn(true);
+        assertThatThrownBy(() -> studyService.getMyStudyApplication(10L, 1))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION));
+
+        assertThatThrownBy(() -> studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest(), null, null))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_NOT_ALLOWED));
+    }
+
+    @Test
     void keepsApprovedApplicationCancellationBlockedBeforeCheckingPeriod() {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(1)).thenReturn(Optional.of(study));
