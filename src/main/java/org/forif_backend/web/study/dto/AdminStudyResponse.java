@@ -19,7 +19,8 @@ public record AdminStudyResponse(
         String difficulty,
         String studyStatus,
         String rejectReason,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
     public static AdminStudyResponse from(AdminStudyDto dto) {
         List<String> tagNames = dto.getTags().stream()
@@ -51,7 +52,8 @@ public record AdminStudyResponse(
                 difficultyValue,
                 studyStatusValue,
                 dto.getRejectReason(),
-                dto.getCreatedAt()
+                dto.getCreatedAt(),
+                dto.getUpdatedAt()
         );
     }
 }

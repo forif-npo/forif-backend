@@ -145,6 +145,93 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void doesNotExposeRejectedApplicationAsModifiableAfterMentorReviewEnds() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
+        when(study.getActYear()).thenReturn(2026);
+        when(study.getActSemester()).thenReturn(1);
+        when(study.getTags()).thenReturn(List.of());
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+        when(semesterPhaseGuard.isBeforeStart(
+                org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT, 2026, 1))
+                .thenReturn(true);
+        when(semesterPhaseGuard.isOpen(
+                org.forif_backend.domain.semester.SemesterPhase.MENTOR_REVIEW, 2026, 1))
+                .thenReturn(false);
+
+        boolean canModify = studyService.getMyStudyApplications(10L).get(0).isCanModify();
+
+        assertThat(canModify).isFalse();
+    }
+
+    @Test
+    void blocksReapplyingRejectedApplicationAfterMentorReviewEnds() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
+        doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
+                .when(semesterPhaseGuard)
+                .requireOpen(org.forif_backend.domain.semester.SemesterPhase.MENTOR_REVIEW);
+
+        assertThatThrownBy(() -> studyService.updateStudyApplication(
+                1, 10L, new UpdateStudyRequest(), null, null))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
+
+        verify(study, never()).reApply();
+    }
+
+    @Test
+    void keepsApprovedApplicationBlockedDuringExtendedModificationPeriod() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+
+        assertThatThrownBy(() -> studyService.updateStudyApplication(
+                1, 10L, new UpdateStudyRequest(), null, null))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.STUDY_ALREADY_APPROVED));
+    }
+
+    @Test
+    void keepsApprovedApplicationCancellationBlockedBeforeCheckingPeriod() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyById(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+
+        assertThatThrownBy(() -> studyService.cancelStudyApplication(1, 10L))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.STUDY_ALREADY_APPROVED));
+
+        verify(semesterPhaseGuard, never())
+                .requireOpen(org.forif_backend.domain.semester.SemesterPhase.MENTOR_RECRUIT);
+    }
+
+    @Test
+    void doesNotExposeCancellationWhenApplicationHasDependents() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
+        when(study.getActYear()).thenReturn(2026);
+        when(study.getActSemester()).thenReturn(1);
+        when(study.getTags()).thenReturn(List.of());
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+        when(semesterPhaseGuard.isOpen(
+                org.forif_backend.domain.semester.SemesterPhase.MENTOR_RECRUIT, 2026, 1))
+                .thenReturn(true);
+        when(userApplyRepository.existsByStudyId(0)).thenReturn(true);
+
+        boolean canCancel = studyService.getMyStudyApplications(10L).get(0).isCanCancel();
+
+        assertThat(canCancel).isFalse();
+        verify(userApplyRepository).existsByStudyId(0);
+    }
+
+    @Test
     void keepsExistingPlansWhenTheUpdateRequestOmitsStudyPlanList() {
         Study study = mock(Study.class);
         StudyTag tag = mock(StudyTag.class);
@@ -341,6 +428,7 @@ class StudyServiceApplicationUpdateTest {
 
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getPrimaryMentor()).thenReturn(primaryMentor);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
         when(primaryMentor.getId()).thenReturn(10L);
         when(study.getThumbnailImage()).thenReturn("studies/thumbnails/rejected.png");
         when(studyRepository.findStudyReferencesByStudyId(1)).thenReturn(List.of(existingFileReference));

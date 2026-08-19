@@ -28,6 +28,7 @@ public class AdminStudyDto {
     private final StudyStatus studyStatus;
     private final String rejectReason;
     private final LocalDateTime createdAt;
+    private final LocalDateTime updatedAt;
 
     public static AdminStudyDto of(Study study, long menteeCount) {
         return AdminStudyDto.builder()
@@ -44,6 +45,7 @@ public class AdminStudyDto {
                 .studyStatus(study.getStudyStatus())
                 .rejectReason(study.getRejectReason())
                 .createdAt(study.getCreatedAt())
+                .updatedAt(study.getUpdatedAt())
                 .build();
     }
 }
