@@ -44,6 +44,8 @@ public class StudyRecruitStatusScheduler {
 
         int updatedCount = studyRepository.updateRecruitStatusForApprovedStudies(
                 activeSemester.actYear(), activeSemester.actSemester(), targetStatus);
+        updatedCount += studyRepository.closeRecruitmentForNonActiveApprovedStudies(
+                activeSemester.actYear(), activeSemester.actSemester());
 
         if (updatedCount > 0) {
             log.info("스터디 모집 상태 동기화: {}년 {}학기 {} → {}건 변경",

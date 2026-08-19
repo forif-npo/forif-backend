@@ -13,8 +13,8 @@ import java.time.LocalDateTime;
  *
  * 스케줄러와 스터디 승인이 같은 규칙을 각자 구현하면 어긋나기 때문에 여기로 모았다.
  *
- * 멘티 모집 일정이 없는 학기는 APPLICABLE 이다. 신청을 실제로 막는 SemesterPhaseGuard 가
- * 일정 행이 없으면 통과시키므로(fail-open), 화면만 마감이라고 표시하면 거짓말이 된다.
+ * 멘티 모집 일정이 없거나 기간 밖이면 모집을 닫는다. 모집 기간을 명시적으로 설정해야만
+ * 화면과 신청 API가 멘티 모집을 열 수 있다.
  */
 @Component
 @RequiredArgsConstructor
@@ -26,6 +26,6 @@ public class StudyRecruitStatusPolicy {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, SemesterPhase.MENTEE_RECRUIT)
                 .map(schedule -> schedule.contains(now) ? RecruitStatus.APPLICABLE : RecruitStatus.CLOSED)
-                .orElse(RecruitStatus.APPLICABLE);
+                .orElse(RecruitStatus.CLOSED);
     }
 }

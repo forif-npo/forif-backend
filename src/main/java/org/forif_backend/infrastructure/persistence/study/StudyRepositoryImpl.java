@@ -166,6 +166,12 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
+    public int closeRecruitmentForNonActiveApprovedStudies(int activeYear, int activeSemester) {
+        return studyJpaRepository.closeRecruitmentForNonActiveApprovedStudies(
+                activeYear, activeSemester, RecruitStatus.CLOSED, StudyStatus.APPROVED);
+    }
+
+    @Override
     public List<Study> findAllStudiesByMentorId(Long mentorId) {
         return studyQueryRepository.findAllStudiesByMentorId(mentorId);
     }
