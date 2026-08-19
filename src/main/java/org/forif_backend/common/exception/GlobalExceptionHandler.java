@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -31,6 +32,14 @@ public class GlobalExceptionHandler {
             response = ApiResponse.error(errorCode);
         }
         return new ResponseEntity<>(response, errorCode.getHttpStatus());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<?>> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException e) {
+        log.warn("동시 수정 충돌: {}", e.getMessage());
+        ErrorCode errorCode = ErrorCode.STUDY_APPLICATION_UPDATE_CONFLICT;
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
     }
 
     /**

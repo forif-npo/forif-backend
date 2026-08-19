@@ -22,8 +22,9 @@ public class StudyApplicationDto {
     private final String rejectReason;
     private final LocalDateTime createdAt;
     private final boolean canModify;
+    private final boolean canCancel;
 
-    public static StudyApplicationDto from(Study study, boolean canModify) {
+    public static StudyApplicationDto from(Study study, boolean canModify, boolean canCancel) {
         return StudyApplicationDto.builder()
                 .id(study.getId())
                 .studyName(study.getStudyName())
@@ -33,6 +34,7 @@ public class StudyApplicationDto {
                 .rejectReason(study.getRejectReason())
                 .createdAt(study.getCreatedAt())
                 .canModify(canModify)
+                .canCancel(canCancel)
                 .build();
     }
 }

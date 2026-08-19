@@ -43,6 +43,11 @@ public class Study extends BaseTimeEntity {
     @Column(name = "study_id")
     private Integer id;
 
+    /** 신청서 수정과 승인 요청이 경합할 때 마지막 저장이 상태를 되돌리지 않도록 보호한다. */
+    @Version
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long version;
+
     @Column(nullable = false)
     private int actYear;
 
@@ -112,7 +117,7 @@ public class Study extends BaseTimeEntity {
 
     private Boolean isOnline;
 
-    @Column(length = 500)
+    @Column(length = 3000)
     private String goal;
 
     @Column(length = 50)

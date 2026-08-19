@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.validation.constraints.NotBlank;
 import org.forif_backend.domain.study.ReferenceType;
+import org.hibernate.validator.constraints.Length;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,7 +22,10 @@ public class UpdateStudyRequest {
     @JsonAlias("title")
     private String studyName;
     private String oneLiner;
+    @Length(max = 3000, message = "스터디 소개는 최대 3000자 이내로 작성해주세요.")
     private String explanation;
+
+    @Length(max = 3000, message = "스터디 목표는 최대 3000자 이내로 작성해주세요.")
     private String goal;
 
     private String startTime;

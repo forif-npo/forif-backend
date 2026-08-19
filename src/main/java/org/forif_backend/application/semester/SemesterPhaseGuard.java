@@ -83,6 +83,42 @@ public class SemesterPhaseGuard {
     }
 
     /**
+     * 해당 단계의 시작 전까지만 허용한다. 일정이 없으면 기존 fail-open 정책을 따른다.
+     */
+    @Transactional(readOnly = true)
+    public void requireBeforeStart(SemesterPhase phase) {
+        SemesterInfo active = semesterService.getActive();
+        requireBeforeStart(phase, active.actYear(), active.actSemester());
+    }
+
+    @Transactional(readOnly = true)
+    public void requireBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
+        Optional<SemesterSchedule> schedule =
+                semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
+        if (schedule.isEmpty() || schedule.get().notStartedAt(LocalDateTime.now())) {
+            return;
+        }
+
+        SemesterSchedule window = schedule.get();
+        throw new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED, List.of(new ApiErrorData(
+                phase.name(),
+                "%s 시작 전까지만 가능합니다. 시작 시각은 %s입니다.".formatted(
+                        phase.getLabel(),
+                        window.getStartsAt().format(DISPLAY)),
+                null
+        )));
+    }
+
+    /** 일정이 없으면 상시 허용으로 간주해 수정 가능 여부 응답에도 동일하게 반영한다. */
+    @Transactional(readOnly = true)
+    public boolean isBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
+        return semesterScheduleRepository
+                .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
+                .map(schedule -> schedule.notStartedAt(LocalDateTime.now()))
+                .orElse(true);
+    }
+
+    /**
      * 모집 시작 전에는 허용하되, 해당 모집 단계가 끝난 뒤에는 새 대상을 만들지 못하게 한다.
      * 일정이 없는 학기는 기존 fail-open 정책을 따른다.
      */

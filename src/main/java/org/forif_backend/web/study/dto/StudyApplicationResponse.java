@@ -13,7 +13,8 @@ public record StudyApplicationResponse(
         String studyStatus,
         String rejectReason,
         LocalDateTime createdAt,
-        boolean canModify
+        boolean canModify,
+        boolean canCancel
 ) {
     public static StudyApplicationResponse from(StudyApplicationDto dto) {
         return new StudyApplicationResponse(
@@ -24,7 +25,8 @@ public record StudyApplicationResponse(
                 dto.getStudyStatus().getValue(),
                 dto.getRejectReason(),
                 dto.getCreatedAt(),
-                dto.isCanModify()
+                dto.isCanModify(),
+                dto.isCanCancel()
         );
     }
 }

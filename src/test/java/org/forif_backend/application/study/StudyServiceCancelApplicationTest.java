@@ -102,7 +102,7 @@ class StudyServiceCancelApplicationTest {
 
         assertThatThrownBy(() -> studyService.cancelStudyApplication(STUDY_ID, MENTOR_ID))
                 .isInstanceOf(ForifException.class)
-                .extracting("errorCode").isEqualTo(ErrorCode.BAD_REQUEST);
+                .extracting("errorCode").isEqualTo(ErrorCode.STUDY_ALREADY_APPROVED);
         verify(studyRepository, never()).deleteStudyById(STUDY_ID);
     }
 

@@ -13,4 +13,5 @@ public class StudyApplicationDetailDto {
     private final StudyStatus studyStatus;
     private final String rejectReason;
     private final boolean canModify;
+    private final boolean canCancel;
 }

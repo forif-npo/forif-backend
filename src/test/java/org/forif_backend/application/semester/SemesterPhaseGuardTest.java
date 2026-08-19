@@ -54,4 +54,39 @@ class SemesterPhaseGuardTest {
                         ((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
     }
+
+    @Test
+    void allowsUpdatingAnApplicationBeforeMenteeRecruitmentStarts() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_RECRUIT))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_RECRUIT,
+                        LocalDateTime.now().plusDays(1),
+                        LocalDateTime.now().plusDays(7),
+                        1L
+                )));
+
+        assertThatCode(() -> guard.requireBeforeStart(SemesterPhase.MENTEE_RECRUIT, 2026, 2))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void blocksUpdatingAnApplicationWhenMenteeRecruitmentHasStarted() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_RECRUIT))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_RECRUIT,
+                        LocalDateTime.now().minusSeconds(1),
+                        LocalDateTime.now().plusDays(7),
+                        1L
+                )));
+
+        assertThatThrownBy(() -> guard.requireBeforeStart(SemesterPhase.MENTEE_RECRUIT, 2026, 2))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
+    }
 }

@@ -99,7 +99,11 @@ public class StudyService {
     public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
         return studyRepository.findStudyApplicationsByMentorId(mentorId)
                 .stream()
-                .map(study -> StudyApplicationDto.from(study, canModifyStudyApplication(study)))
+                .map(study -> StudyApplicationDto.from(
+                        study,
+                        canModifyStudyApplication(study),
+                        canCancelStudyApplication(study)
+                ))
                 .toList();
     }
 
@@ -117,6 +121,7 @@ public class StudyService {
                 .studyStatus(study.getStudyStatus())
                 .rejectReason(study.getRejectReason())
                 .canModify(canModifyStudyApplication(study))
+                .canCancel(canCancelStudyApplication(study))
                 .build();
     }
 
@@ -328,17 +333,14 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
-
         if (study.getStudyStatus() == StudyStatus.APPROVED) {
-            throw new ForifException(ErrorCode.BAD_REQUEST);
+            throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
         }
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
 
         // 승인 전 스터디에는 지원서·수강생·출석이 없어야 정상이다. 있는데 조용히 지우면
         // 멘티 기록이 소리 없이 사라지므로, 취소를 막고 운영진 확인을 거치게 한다.
-        if (userApplyRepository.existsByStudyId(studyId)
-                || !studyUserRepository.findAllByStudyId(studyId).isEmpty()
-                || !studyAttendanceRepository.findAllByStudyId(studyId).isEmpty()) {
+        if (hasStudyApplicationCancellationDependencies(studyId)) {
             throw new ForifException(ErrorCode.STUDY_CANCEL_HAS_DEPENDENTS);
         }
 
@@ -684,19 +686,57 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
+        StudyStatus studyStatus = study.getStudyStatus();
 
-        if (rejectedOnly || study.getStudyStatus() == StudyStatus.REJECTED) {
-            study.reApply();
-        } else if (study.getStudyStatus() != StudyStatus.PENDING
-                && study.getStudyStatus() != StudyStatus.RE_APPLIED) {
+        if (studyStatus == StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
+        }
+        if (rejectedOnly && studyStatus != StudyStatus.REJECTED) {
+            throw new ForifException(ErrorCode.REAPPLY_ONLY_FOR_REJECTED);
+        }
+        if (studyStatus != StudyStatus.PENDING
+                && studyStatus != StudyStatus.RE_APPLIED
+                && studyStatus != StudyStatus.REJECTED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+
+        semesterPhaseGuard.requireBeforeStart(SemesterPhase.MENTEE_RECRUIT);
+
+        if (studyStatus == StudyStatus.REJECTED) {
+            // 반려 건을 수정하면 재신청 상태가 되므로, 심사 창이 닫힌 뒤에는
+            // 처리할 수 없는 RE_APPLIED 신청서가 생기지 않게 재신청을 막는다.
+            semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_REVIEW);
+            study.reApply();
         }
 
         return study;
     }
 
     private boolean canModifyStudyApplication(Study study) {
+        SemesterInfo active = semesterService.getActive();
+        if (study.getActYear() != active.actYear()
+                || study.getActSemester() != active.actSemester()
+                || !semesterPhaseGuard.isBeforeStart(
+                SemesterPhase.MENTEE_RECRUIT,
+                study.getActYear(),
+                study.getActSemester()
+        )) {
+            return false;
+        }
+
+        if (study.getStudyStatus() == StudyStatus.REJECTED) {
+            return semesterPhaseGuard.isOpen(
+                    SemesterPhase.MENTOR_REVIEW,
+                    study.getActYear(),
+                    study.getActSemester()
+            );
+        }
+
+        return study.getStudyStatus() == StudyStatus.PENDING
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED;
+    }
+
+    private boolean canCancelStudyApplication(Study study) {
         SemesterInfo active = semesterService.getActive();
         return study.getStudyStatus() != StudyStatus.APPROVED
                 && study.getActYear() == active.actYear()
@@ -705,7 +745,14 @@ public class StudyService {
                 SemesterPhase.MENTOR_RECRUIT,
                 study.getActYear(),
                 study.getActSemester()
-        );
+        )
+                && !hasStudyApplicationCancellationDependencies(study.getId());
+    }
+
+    private boolean hasStudyApplicationCancellationDependencies(Integer studyId) {
+        return userApplyRepository.existsByStudyId(studyId)
+                || !studyUserRepository.findAllByStudyId(studyId).isEmpty()
+                || !studyAttendanceRepository.findAllByStudyId(studyId).isEmpty();
     }
 
     /**
