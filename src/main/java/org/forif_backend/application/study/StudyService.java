@@ -97,7 +97,12 @@ public class StudyService {
 
     @Transactional(readOnly = true)
     public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
-        return studyRepository.findStudyApplicationsByMentorId(mentorId)
+        SemesterInfo activeSemester = semesterService.getActive();
+        return studyRepository.findStudyApplicationsByMentorId(
+                        mentorId,
+                        activeSemester.actYear(),
+                        activeSemester.actSemester()
+                )
                 .stream()
                 .map(study -> StudyApplicationDto.from(
                         study,
@@ -112,7 +117,11 @@ public class StudyService {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        if (!study.isMentor(mentorId) || study.getStudyStatus() == StudyStatus.APPROVED) {
+        SemesterInfo activeSemester = semesterService.getActive();
+        boolean isApprovedOutsideActiveSemester = study.getStudyStatus() == StudyStatus.APPROVED
+                && (study.getActYear() != activeSemester.actYear()
+                || study.getActSemester() != activeSemester.actSemester());
+        if (!study.isMentor(mentorId) || isApprovedOutsideActiveSemester) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -688,15 +697,13 @@ public class StudyService {
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         StudyStatus studyStatus = study.getStudyStatus();
 
-        if (studyStatus == StudyStatus.APPROVED) {
-            throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
-        }
         if (rejectedOnly && studyStatus != StudyStatus.REJECTED) {
             throw new ForifException(ErrorCode.REAPPLY_ONLY_FOR_REJECTED);
         }
         if (studyStatus != StudyStatus.PENDING
                 && studyStatus != StudyStatus.RE_APPLIED
-                && studyStatus != StudyStatus.REJECTED) {
+                && studyStatus != StudyStatus.REJECTED
+                && studyStatus != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
@@ -733,7 +740,8 @@ public class StudyService {
         }
 
         return study.getStudyStatus() == StudyStatus.PENDING
-                || study.getStudyStatus() == StudyStatus.RE_APPLIED;
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.APPROVED;
     }
 
     private boolean canCancelStudyApplication(Study study) {

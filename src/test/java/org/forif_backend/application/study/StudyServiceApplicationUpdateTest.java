@@ -109,7 +109,7 @@ class StudyServiceApplicationUpdateTest {
     @Test
     void marksPastSemesterApplicationsAsNotModifiable() {
         Study study = mock(Study.class);
-        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
         when(study.getActYear()).thenReturn(2024);
         when(study.getTags()).thenReturn(List.of());
@@ -125,7 +125,7 @@ class StudyServiceApplicationUpdateTest {
     @Test
     void allowsModificationButNotCancellationBetweenRecruitmentPeriods() {
         Study study = mock(Study.class);
-        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
@@ -147,7 +147,7 @@ class StudyServiceApplicationUpdateTest {
     @Test
     void doesNotExposeRejectedApplicationAsModifiableAfterMentorReviewEnds() {
         Study study = mock(Study.class);
-        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
@@ -184,16 +184,16 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
-    void keepsApprovedApplicationBlockedDuringExtendedModificationPeriod() {
+    void allowsApprovedApplicationModificationBeforeMenteeRecruitmentStarts() {
         Study study = mock(Study.class);
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
 
-        assertThatThrownBy(() -> studyService.updateStudyApplication(
-                1, 10L, new UpdateStudyRequest(), null, null))
-                .isInstanceOf(ForifException.class)
-                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
-                        .isEqualTo(ErrorCode.STUDY_ALREADY_APPROVED));
+        studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest(), null, null);
+
+        verify(semesterPhaseGuard).requireBeforeStart(
+                org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT);
+        verify(study, never()).reApply();
     }
 
     @Test
@@ -214,7 +214,7 @@ class StudyServiceApplicationUpdateTest {
     @Test
     void doesNotExposeCancellationWhenApplicationHasDependents() {
         Study study = mock(Study.class);
-        when(studyRepository.findStudyApplicationsByMentorId(10L)).thenReturn(List.of(study));
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
@@ -229,6 +229,25 @@ class StudyServiceApplicationUpdateTest {
 
         assertThat(canCancel).isFalse();
         verify(userApplyRepository).existsByStudyId(0);
+    }
+
+    @Test
+    void exposesCurrentSemesterApprovedApplicationAsModifiableBeforeMenteeRecruitmentStarts() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getActYear()).thenReturn(2026);
+        when(study.getActSemester()).thenReturn(1);
+        when(study.getTags()).thenReturn(List.of());
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+        when(semesterPhaseGuard.isBeforeStart(
+                org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT, 2026, 1))
+                .thenReturn(true);
+
+        var application = studyService.getMyStudyApplications(10L).get(0);
+
+        assertThat(application.isCanModify()).isTrue();
+        assertThat(application.isCanCancel()).isFalse();
     }
 
     @Test
