@@ -98,8 +98,14 @@ public class StudyService {
 
     @Transactional(readOnly = true)
     public List<StudyApplicationDto> getMyStudyApplications(Long mentorId) {
-        return studyRepository.findStudyApplicationsByMentorId(mentorId)
+        SemesterInfo activeSemester = semesterService.getActive();
+        return studyRepository.findStudyApplicationsByMentorId(
+                        mentorId,
+                        activeSemester.actYear(),
+                        activeSemester.actSemester()
+                )
                 .stream()
+                .filter(study -> !study.isAutonomousStudy())
                 .map(study -> StudyApplicationDto.from(
                         study,
                         canModifyStudyApplication(study),
@@ -113,7 +119,13 @@ public class StudyService {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
-        if (!study.isMentor(mentorId) || study.getStudyStatus() == StudyStatus.APPROVED) {
+        SemesterInfo activeSemester = semesterService.getActive();
+        boolean isApprovedOutsideActiveSemester = study.getStudyStatus() == StudyStatus.APPROVED
+                && (study.getActYear() != activeSemester.actYear()
+                || study.getActSemester() != activeSemester.actSemester());
+        if (!study.isMentor(mentorId)
+                || study.isAutonomousStudy()
+                || isApprovedOutsideActiveSemester) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -687,17 +699,18 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_NOT_ALLOWED);
+        }
         StudyStatus studyStatus = study.getStudyStatus();
 
-        if (studyStatus == StudyStatus.APPROVED) {
-            throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
-        }
         if (rejectedOnly && studyStatus != StudyStatus.REJECTED) {
             throw new ForifException(ErrorCode.REAPPLY_ONLY_FOR_REJECTED);
         }
         if (studyStatus != StudyStatus.PENDING
                 && studyStatus != StudyStatus.RE_APPLIED
-                && studyStatus != StudyStatus.REJECTED) {
+                && studyStatus != StudyStatus.REJECTED
+                && studyStatus != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
 
@@ -714,6 +727,10 @@ public class StudyService {
     }
 
     private boolean canModifyStudyApplication(Study study) {
+        if (study.isAutonomousStudy()) {
+            return false;
+        }
+
         SemesterInfo active = semesterService.getActive();
         if (study.getActYear() != active.actYear()
                 || study.getActSemester() != active.actSemester()
@@ -734,7 +751,8 @@ public class StudyService {
         }
 
         return study.getStudyStatus() == StudyStatus.PENDING
-                || study.getStudyStatus() == StudyStatus.RE_APPLIED;
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.APPROVED;
     }
 
     private boolean canCancelStudyApplication(Study study) {

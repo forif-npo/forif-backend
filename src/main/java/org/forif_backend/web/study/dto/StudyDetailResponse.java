@@ -54,10 +54,16 @@ public record StudyDetailResponse(
     public record ReferenceResponse(
             UUID id,
             String referenceType,
-            String content
+            String content,
+            String fileName
     ) {
         public static ReferenceResponse from(StudyReferenceDto dto) {
-            return new ReferenceResponse(dto.getId(), dto.getReferenceType().name(), dto.getContent());
+            return new ReferenceResponse(
+                    dto.getId(),
+                    dto.getReferenceType().name(),
+                    dto.getContent(),
+                    dto.getFileName()
+            );
         }
     }
 

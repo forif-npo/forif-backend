@@ -263,8 +263,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
-        return studyQueryRepository.findStudyApplicationsByMentorId(mentorId);
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester) {
+        return studyQueryRepository.findStudyApplicationsByMentorId(mentorId, actYear, actSemester);
     }
 
 }
