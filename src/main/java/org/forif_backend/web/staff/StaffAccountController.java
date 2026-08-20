@@ -16,6 +16,7 @@ import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.web.staff.dto.*;
@@ -28,6 +29,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @Tag(name = "스태프", description = "멘토 및 운영진 계정 관리 API")
 @Slf4j
@@ -197,9 +199,13 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. 복수 입력 시 입력한 순서대로 적용") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(cursor, page, size, search);
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
+                cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "name"))
+        );
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
@@ -226,9 +232,13 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. 복수 입력 시 입력한 순서대로 적용") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(year, semester, cursor, page, size, search);
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
+                year, semester, cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "name"))
+        );
 
         List<MentorResponse> content = result.content().stream()
                 .map(MentorResponse::from)
@@ -295,9 +305,13 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. 복수 입력 시 입력한 순서대로 적용") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(cursor, page, size, search)));
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(
+                cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
+        )));
     }
 
     /**
@@ -317,9 +331,13 @@ public class StaffAccountController {
             @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. 복수 입력 시 입력한 순서대로 적용") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(year, semester, cursor, page, size, search)));
+        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(
+                year, semester, cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
+        )));
     }
 
     /**

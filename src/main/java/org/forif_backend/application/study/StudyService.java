@@ -7,6 +7,7 @@ import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
@@ -203,14 +204,14 @@ public class StudyService {
     }
 
     @Transactional(readOnly = true)
-    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, Integer page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
+    public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, Integer page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting) {
         List<StudyStatus> statusFilter = studyStatuses == null || studyStatuses.isEmpty()
                 ? List.of(StudyStatus.APPROVED)
                 : studyStatuses;
         long totalElements = studyRepository.countStudies(year, semester, search, statusFilter);
 
         if (page != null) {
-            List<Study> studies = studyRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, statusFilter);
+            List<Study> studies = studyRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, statusFilter, sorting);
             List<Integer> studyIds = studies.stream().map(Study::getId).toList();
             Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
             List<AdminStudyDto> dtos = studies.stream()

@@ -10,6 +10,7 @@ import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudySearchCond;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.user.User;
 import org.springframework.stereotype.Repository;
 
@@ -84,8 +85,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<User> searchMentorsWithOffset(int page, int size, String search) {
-        return studyQueryRepository.searchMentorsWithOffset(page, size, search);
+    public List<User> searchMentorsWithOffset(int page, int size, String search, List<SortCriteria> sorting) {
+        return studyQueryRepository.searchMentorsWithOffset(page, size, search, sorting);
     }
 
     @Override
@@ -110,9 +111,10 @@ public class StudyRepositoryImpl implements StudyRepository {
             int semester,
             int page,
             int size,
-            String search
+            String search,
+            List<SortCriteria> sorting
     ) {
-        return studyQueryRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
+        return studyQueryRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search, sorting);
     }
 
     @Override
@@ -176,8 +178,8 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
-        return studyQueryRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, studyStatuses);
+    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting) {
+        return studyQueryRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, studyStatuses, sorting);
     }
 
     @Override
