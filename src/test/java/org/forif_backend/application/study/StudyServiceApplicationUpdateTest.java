@@ -247,7 +247,7 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
-    void allowsChangingAllApplicationFieldsAfterApprovalExceptPrimaryMentor() {
+    void ignoresDeprecatedGoalWhenUpdatingApplication() {
         Study study = mock(Study.class);
         UpdateStudyRequest request = new UpdateStudyRequest();
         request.setStudyName("수정된 스터디명");
@@ -264,7 +264,7 @@ class StudyServiceApplicationUpdateTest {
 
         verify(study).setStudyName("수정된 스터디명");
         verify(study).setOneLiner("수정된 한 줄 소개");
-        verify(study).setGoal("수정된 목표");
+        verify(study, never()).setGoal("수정된 목표");
         verify(study).setCapacity(20);
         verify(study).setSelectionCriteria("수정된 선발 기준");
         verify(studyRepository).findStudyReferencesByStudyId(1);
