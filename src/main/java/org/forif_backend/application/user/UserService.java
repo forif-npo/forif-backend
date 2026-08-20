@@ -12,6 +12,7 @@ import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.*;
@@ -402,14 +403,14 @@ public class UserService {
      * 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search) {
+    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsers(search);
         SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
 
         if (page != null) {
-            List<User> users = userRepository.searchUsersWithOffset(page, size, search);
+            List<User> users = userRepository.searchUsersWithOffset(page, size, search, sorting);
             List<MemberResponse> responses = buildMemberResponses(users, currentYear, currentSemester);
             boolean hasNext = (long) (page + 1) * size < totalElements;
             return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
@@ -427,11 +428,11 @@ public class UserService {
      * 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search) {
+    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
 
         if (page != null) {
-            List<User> users = userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search);
+            List<User> users = userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search, sorting);
             List<MemberResponse> responses = buildMemberResponses(users, year, semester);
             boolean hasNext = (long) (page + 1) * size < totalElements;
             return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);

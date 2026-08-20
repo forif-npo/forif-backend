@@ -11,6 +11,7 @@ import org.forif_backend.application.study.dto.StudyDetailDto;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.StudyStatus;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 @Tag(name = "스터디", description = "스터디 조회 및 어드민 관리 API")
 @RestController
@@ -82,9 +84,14 @@ public class StudyController {
             @Parameter(description = "조회 연도") @RequestParam(required = false) Integer year,
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
             @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search,
-            @Parameter(description = "스터디 승인 상태 필터") @RequestParam(value = "study_status", required = false) List<StudyStatus> studyStatuses
+            @Parameter(description = "스터디 승인 상태 필터") @RequestParam(value = "study_status", required = false) List<StudyStatus> studyStatuses,
+            @Parameter(description = "정렬 조건. 복수 입력 시 입력한 순서대로 적용 (예: sort=study_name:asc&sort=mentee_count:desc)") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search, studyStatuses);
+        List<SortCriteria> sorting = SortCriteria.parse(sort, Set.of(
+                "recruit_status", "study_name", "primary_mentor_name", "tags",
+                "difficulty", "week_day", "mentee_count", "study_status"
+        ));
+        CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search, studyStatuses, sorting);
 
         List<AdminStudyResponse> content = result.content().stream()
                 .map(AdminStudyResponse::from)

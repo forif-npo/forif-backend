@@ -10,6 +10,7 @@ import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
@@ -169,10 +170,15 @@ public class StaffAccountService {
      */
     @Transactional(readOnly = true)
     public CursorPageResponse<MentorSummary> getMentors(Long cursor, Integer page, int size, String search) {
+        return getMentors(cursor, page, size, search, List.of());
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MentorSummary> getMentors(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = studyRepository.countMentors(search);
 
         if (page != null) {
-            List<User> mentors = studyRepository.searchMentorsWithOffset(page, size, search);
+            List<User> mentors = studyRepository.searchMentorsWithOffset(page, size, search, sorting);
             boolean hasNext = (long) (page + 1) * size < totalElements;
             return toMentorPage(
                     CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
@@ -192,11 +198,11 @@ public class StaffAccountService {
      * 학기별 멘토 목록 조회 (운영진 전용, 커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MentorSummary> getMentors(int year, int semester, Long cursor, Integer page, int size, String search) {
+    public CursorPageResponse<MentorSummary> getMentors(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = studyRepository.countMentorsByYearSemester(year, semester, search);
 
         if (page != null) {
-            List<User> mentors = studyRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
+            List<User> mentors = studyRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search, sorting);
             boolean hasNext = (long) (page + 1) * size < totalElements;
             return toMentorPage(
                     CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
