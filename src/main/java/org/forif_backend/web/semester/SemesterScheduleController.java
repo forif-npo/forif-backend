@@ -34,7 +34,7 @@ public class SemesterScheduleController {
     private final StaffAccountService staffAccountService;
 
     @Operation(summary = "현재 학기 모집 일정 조회",
-            description = "활동 학기의 모집 단계 기간을 조회합니다. 설정되지 않은 단계는 목록에 없으며, 상시 개방을 뜻합니다.")
+            description = "활동 학기의 모집 단계 기간을 조회합니다. 설정되지 않은 멘티 모집 단계는 닫힌 상태이며, 그 외 단계는 상시 개방입니다.")
     @GetMapping("/api/v1/semester-schedules/current")
     public ResponseEntity<ApiResponse<List<SemesterScheduleResponse>>> getCurrentSchedules() {
         SemesterInfo active = semesterService.getActive();
@@ -55,7 +55,7 @@ public class SemesterScheduleController {
     @Operation(summary = "모집 일정 저장 (회장단 전용)",
             description = """
                     한 학기의 모집 단계 기간을 통째로 저장합니다. 부분 수정이 아니라 전체 교체이므로,
-                    목록에서 빠진 단계는 삭제되어 상시 개방으로 되돌아갑니다.
+                    목록에서 빠진 멘티 모집 단계는 닫힌 상태가 되고, 그 외 단계는 상시 개방으로 돌아갑니다.
 
                     단계는 멘토 모집 → 멘토 수락/거절 → 멘티 모집 → 멘티 수락/거절 순서여야 하며,
                     앞 단계가 끝난 뒤에 다음 단계가 시작되어야 합니다. 겹치면 거부됩니다.

@@ -54,7 +54,7 @@ public class SemesterScheduleService {
         Map<SemesterPhase, SemesterSchedule> existingByPhase = new EnumMap<>(SemesterPhase.class);
         existing.forEach(schedule -> existingByPhase.put(schedule.getPhase(), schedule));
 
-        // 요청에서 빠진 단계는 제거한다 (해당 단계를 상시 개방으로 되돌리는 수단)
+        // 요청에서 빠진 단계는 제거한다. 멘티 모집은 닫히고, 그 외 단계는 상시 개방 정책을 따른다.
         existingByPhase.forEach((phase, schedule) -> {
             if (!requested.containsKey(phase)) {
                 semesterScheduleRepository.delete(schedule);
