@@ -21,6 +21,18 @@ class SemesterPhaseGuardTest {
             scheduleRepository, mock(SemesterService.class));
 
     @Test
+    void blocksMenteeRecruitmentWhenScheduleIsMissing() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_RECRUIT))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> guard.requireOpen(SemesterPhase.MENTEE_RECRUIT, 2026, 2))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_NOT_STARTED));
+    }
+
+    @Test
     void allowsCreatingAStudyBeforeMenteeRecruitmentStarts() {
         when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_RECRUIT))
                 .thenReturn(Optional.of(SemesterSchedule.create(

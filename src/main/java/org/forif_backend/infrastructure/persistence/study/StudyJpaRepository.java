@@ -37,4 +37,20 @@ public interface StudyJpaRepository extends JpaRepository<Study, Integer> {
             @Param("actSemester") int actSemester,
             @Param("recruitStatus") RecruitStatus recruitStatus,
             @Param("studyStatus") StudyStatus studyStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Study s
+            SET s.recruitStatus = :closedStatus,
+                s.updatedAt = CURRENT_TIMESTAMP
+            WHERE (s.actYear <> :activeYear OR s.actSemester <> :activeSemester)
+              AND s.studyStatus = :studyStatus
+              AND (s.recruitStatus IS NULL
+                   OR s.recruitStatus <> :closedStatus)
+            """)
+    int closeRecruitmentForNonActiveApprovedStudies(
+            @Param("activeYear") int activeYear,
+            @Param("activeSemester") int activeSemester,
+            @Param("closedStatus") RecruitStatus closedStatus,
+            @Param("studyStatus") StudyStatus studyStatus);
 }

@@ -40,6 +40,7 @@ class StudyRecruitStatusSchedulerTest {
         scheduler.synchronizeRecruitStatuses(NOW);
 
         verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.APPLICABLE);
+        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
     }
 
     @Test
@@ -50,20 +51,20 @@ class StudyRecruitStatusSchedulerTest {
         scheduler.synchronizeRecruitStatuses(NOW);
 
         verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.CLOSED);
+        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
     }
 
     /**
-     * 예전에는 일정이 없는 학기를 건너뛰어 모집 상태가 NULL로 남았고,
-     * 프론트가 NULL을 "마감"으로 그려서 실제 신청 가능 여부와 어긋났다.
-     * 이제는 정책이 돌려주는 값으로 반드시 동기화한다.
+     * 멘티 모집 일정이 없는 학기는 상시 모집이 아니라 모집 마감으로 동기화한다.
      */
     @Test
-    void 일정이_없는_학기도_건너뛰지_않는다() {
+    void 일정이_없는_학기는_CLOSED로_동기화한다() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
-        when(recruitStatusPolicy.resolve(2026, 2, NOW)).thenReturn(RecruitStatus.APPLICABLE);
+        when(recruitStatusPolicy.resolve(2026, 2, NOW)).thenReturn(RecruitStatus.CLOSED);
 
         scheduler.synchronizeRecruitStatuses(NOW);
 
-        verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.APPLICABLE);
+        verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.CLOSED);
+        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
     }
 }

@@ -61,12 +61,12 @@ class StudyRecruitStatusPolicyTest {
         assertThat(policy.resolve(2026, 2, NOW)).isEqualTo(RecruitStatus.CLOSED);
     }
 
-    /** SemesterPhaseGuard가 일정 없는 학기의 신청을 통과시키므로 화면도 열려 있어야 한다 */
+    /** 멘티 모집 일정을 설정하지 않은 학기에는 모집을 열지 않는다. */
     @Test
-    void 일정이_없으면_APPLICABLE() {
+    void 일정이_없으면_CLOSED() {
         when(semesterScheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_RECRUIT))
                 .thenReturn(Optional.empty());
 
-        assertThat(policy.resolve(2026, 2, NOW)).isEqualTo(RecruitStatus.APPLICABLE);
+        assertThat(policy.resolve(2026, 2, NOW)).isEqualTo(RecruitStatus.CLOSED);
     }
 }

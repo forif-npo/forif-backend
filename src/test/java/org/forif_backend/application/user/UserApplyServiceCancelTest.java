@@ -69,7 +69,7 @@ class UserApplyServiceCancelTest {
 
         userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID);
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_RECRUIT);
+        verify(semesterPhaseGuard).requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 1);
         verify(userRepository).deleteUserApply(application);
     }
 
@@ -131,15 +131,16 @@ class UserApplyServiceCancelTest {
     }
 
     @Test
-    void doesNotLookUpOrDeleteApplicationWhenRecruitmentIsClosed() {
+    void doesNotDeleteApplicationWhenRecruitmentHasEnded() {
+        UserApply application = pendingApplication(applicant());
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
         doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
                 .when(semesterPhaseGuard)
-                .requireOpen(SemesterPhase.MENTEE_RECRUIT);
+                .requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 1);
 
         assertError(ErrorCode.SEMESTER_PHASE_CLOSED,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
 
-        verify(userRepository, never()).findUserApplyById(APPLICATION_ID);
         verify(userRepository, never()).deleteUserApply(any());
     }
 

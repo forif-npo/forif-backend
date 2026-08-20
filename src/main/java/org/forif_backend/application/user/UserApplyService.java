@@ -15,6 +15,8 @@ import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyStatus;
+import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
@@ -64,6 +66,7 @@ public class UserApplyService {
         SemesterInfo active = semesterService.getActive();
         int year = active.actYear();
         int semester = active.actSemester();
+        requireApplicableStudy(study, year, semester);
 
         if (request.priority() == 1) {
             if (userRepository.existUserApply(year, semester, user)) {
@@ -87,20 +90,21 @@ public class UserApplyService {
 
     /**
      * 스터디 수강 신청서 수정 메서드
-     * PENDING 상태인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.
+     * PENDING 상태이면서 멘티 모집 종료 전인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.
      * @param userId 유저 id
      * @param applyId 신청서 id
      * @param request 수정 요청 dto
      */
     @Transactional
     public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
-
         UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
+        requireActiveSemesterApplication(apply);
+        semesterPhaseGuard.requireNotEnded(
+                SemesterPhase.MENTEE_RECRUIT, apply.getApplyYear(), apply.getApplySemester());
 
         Study study = studyRepository.findStudyById(request.studyId())
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
@@ -118,13 +122,11 @@ public class UserApplyService {
     }
 
     /**
-     * 본인의 활동 학기 대기 중 스터디 신청서를 취소합니다.
+     * 본인의 활동 학기 대기 중 스터디 신청서를 멘티 모집 종료 전까지 취소합니다.
      * 신청서 행을 삭제하므로, 1·2순위가 모두 대기 상태일 때만 허용합니다.
      */
     @Transactional
     public void cancelApplication(Long userId, Long applyId) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
-
         UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
@@ -132,6 +134,8 @@ public class UserApplyService {
         }
 
         requireActiveSemesterApplication(apply);
+        semesterPhaseGuard.requireNotEnded(
+                SemesterPhase.MENTEE_RECRUIT, apply.getApplyYear(), apply.getApplySemester());
 
         boolean hasReviewedPrimary = apply.getPrimaryStatus() != UserApplyStatus.PENDING;
         boolean hasReviewedSecondary = apply.getSecondaryStatus() != null
@@ -255,12 +259,14 @@ public class UserApplyService {
         SemesterInfo active = semesterService.getActive();
         int year = active.actYear();
         int semester = active.actSemester();
+        boolean menteeRecruitmentOpen = semesterPhaseGuard.isOpen(
+                SemesterPhase.MENTEE_RECRUIT, year, semester);
 
         Optional<UserApply> applyOpt = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user);
 
         if (applyOpt.isEmpty()) {
             return ApplyStatusResponse.builder()
-                    .canApplyPrimary(true)
+                    .canApplyPrimary(menteeRecruitmentOpen)
                     .canApplySecondary(false)
                     .build();
         }
@@ -280,7 +286,7 @@ public class UserApplyService {
 
         return ApplyStatusResponse.builder()
                 .canApplyPrimary(false)
-                .canApplySecondary(!hasSecondary)
+                .canApplySecondary(menteeRecruitmentOpen && !hasSecondary)
                 .primaryStudy(primaryStudyResponse)
                 .secondaryStudy(secondaryStudyResponse)
                 .build();
@@ -359,6 +365,17 @@ public class UserApplyService {
         SemesterInfo active = semesterService.getActive();
         if (apply.getApplyYear() != active.actYear() || apply.getApplySemester() != active.actSemester()) {
             throw new ForifException(ErrorCode.STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER);
+        }
+    }
+
+    /** 모집 목록의 표시 상태와 실제 지원 가능 조건을 동일하게 유지한다. */
+    private void requireApplicableStudy(Study study, int activeYear, int activeSemester) {
+        boolean isActiveApprovedStudy = study.getActYear() == activeYear
+                && study.getActSemester() == activeSemester
+                && study.getStudyStatus() == StudyStatus.APPROVED;
+
+        if (!isActiveApprovedStudy || study.getRecruitStatus() != RecruitStatus.APPLICABLE) {
+            throw new ForifException(ErrorCode.STUDY_APPLICATION_PERIOD_ENDED);
         }
     }
 

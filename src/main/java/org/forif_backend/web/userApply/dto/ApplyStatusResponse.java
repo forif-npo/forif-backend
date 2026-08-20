@@ -7,10 +7,10 @@ import org.forif_backend.web.study.dto.StudyResponse;
 @Schema(description = "지원 상태 응답")
 @Builder
 public record ApplyStatusResponse(
-        @Schema(description = "1순위 지원 가능 여부", example = "true")
+        @Schema(description = "멘티 모집 기간이 열려 있고 1순위 지원 이력이 없을 때의 1순위 지원 가능 여부", example = "true")
         boolean canApplyPrimary,
 
-        @Schema(description = "2순위 지원 가능 여부", example = "true")
+        @Schema(description = "멘티 모집 기간이 열려 있고 2순위 지원 이력이 없을 때의 2순위 지원 가능 여부", example = "true")
         boolean canApplySecondary,
 
         @Schema(description = "이미 지원한 1순위 스터디 정보")

@@ -19,9 +19,8 @@ import java.util.Optional;
 /**
  * 모집 단계 기간 검사.
  *
- * 기간이 설정되지 않은 학기는 통과시킨다. 설정을 잊었다고 동아리 운영이
- * 통째로 멈추는 편이 더 위험하다고 보고 이렇게 정했다. 대신 어드민 화면에서
- * "이번 학기 일정 미설정"을 상시로 알린다.
+ * 멘티 모집은 기간을 설정하지 않으면 닫는다. 그 외 단계는 설정을 잊었다고 동아리 운영이
+ * 통째로 멈추지 않도록 기존 상시 개방 정책을 유지한다.
  *
  * AOP가 아니라 서비스 계층에서 명시적으로 호출한다. 이 코드베이스에 애스펙트가
  * 하나도 없어 실행 경로를 소스에서 추적할 수 없게 되고, 자기호출 시 게이트가
@@ -48,8 +47,11 @@ public class SemesterPhaseGuard {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
 
-        // 기간 미설정 = 상시 개방
+        // 멘티 모집은 일정을 명시적으로 설정해야만 연다. 그 외 단계는 기존 상시 개방 정책을 유지한다.
         if (schedule.isEmpty()) {
+            if (phase == SemesterPhase.MENTEE_RECRUIT) {
+                throw new ForifException(ErrorCode.SEMESTER_PHASE_NOT_STARTED);
+            }
             return;
         }
 
@@ -73,13 +75,13 @@ public class SemesterPhaseGuard {
         )));
     }
 
-    /** 일정이 없으면 상시 개방으로 간주하는 동일한 정책을 조회 응답에도 적용한다. */
+    /** 멘티 모집은 일정이 없으면 닫고, 그 외 단계는 기존 상시 개방 정책을 적용한다. */
     @Transactional(readOnly = true)
     public boolean isOpen(SemesterPhase phase, int actYear, int actSemester) {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
                 .map(schedule -> schedule.contains(LocalDateTime.now()))
-                .orElse(true);
+                .orElse(phase != SemesterPhase.MENTEE_RECRUIT);
     }
 
     /**
