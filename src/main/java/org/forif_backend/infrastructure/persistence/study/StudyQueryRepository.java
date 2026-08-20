@@ -599,7 +599,8 @@ public class StudyQueryRepository {
                 case "tags" -> orders.add(order(criterion, studyTag.name.min()));
                 case "difficulty" -> addNullableOrder(
                         orders, criterion, difficultyOrder(), study.difficulty.isNull());
-                case "week_day" -> orders.add(order(criterion, study.weekDay));
+                case "week_day" -> addNullableOrder(
+                        orders, criterion, weekDayOrder(), study.weekDay.isNull());
                 case "mentee_count" -> orders.add(order(criterion, studyUser.countDistinct()));
                 case "study_status" -> addNullableOrder(
                         orders, criterion, studyStatusOrder(), study.studyStatus.isNull());
@@ -647,6 +648,18 @@ public class StudyQueryRepository {
                 .when(study.difficulty.eq(StudyDifficulty.NORMAL)).then(3)
                 .when(study.difficulty.eq(StudyDifficulty.SEMI_HARD)).then(4)
                 .when(study.difficulty.eq(StudyDifficulty.HARD)).then(5)
+                .otherwise(99);
+    }
+
+    private NumberExpression<Integer> weekDayOrder() {
+        return new CaseBuilder()
+                .when(study.weekDay.eq(1)).then(1)
+                .when(study.weekDay.eq(2)).then(2)
+                .when(study.weekDay.eq(3)).then(3)
+                .when(study.weekDay.eq(4)).then(4)
+                .when(study.weekDay.eq(5)).then(5)
+                .when(study.weekDay.eq(6)).then(6)
+                .when(study.weekDay.eq(0)).then(7)
                 .otherwise(99);
     }
 

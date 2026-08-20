@@ -50,16 +50,44 @@ class StudyQueryRepositoryAdminSortTest {
                 .containsExactly("다람쥐");
     }
 
+    @Test
+    void ordersWeekDaysFromMondayThroughSundayAndPutsNullLast() {
+        User mentor = persistUser(900011L, "요일 정렬 멘토");
+        Study sunday = persistApprovedStudy(mentor, "일요일");
+        Study monday = persistApprovedStudy(mentor, "월요일");
+        Study saturday = persistApprovedStudy(mentor, "토요일");
+        persistApprovedStudy(mentor, "요일 미정");
+        sunday.setWeekDay(0);
+        monday.setWeekDay(1);
+        saturday.setWeekDay(6);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Study> studies = studyQueryRepository.searchAdminStudiesWithOffset(
+                0,
+                10,
+                YEAR,
+                SEMESTER,
+                null,
+                List.of(StudyStatus.APPROVED),
+                List.of(new SortCriteria("week_day", SortDirection.ASC))
+        );
+
+        assertThat(studies).extracting(Study::getStudyName)
+                .containsExactly("월요일", "토요일", "일요일", "요일 미정");
+    }
+
     private User persistUser(Long id, String name) {
         User user = User.createUser(id, name, id + "@forif.org", "010-0000-0000", "컴퓨터공학과");
         entityManager.persist(user);
         return user;
     }
 
-    private void persistApprovedStudy(User mentor, String name) {
+    private Study persistApprovedStudy(User mentor, String name) {
         Study study = Study.createPendingStudy(mentor, YEAR, SEMESTER);
         study.setStudyName(name);
         study.approve();
         entityManager.persist(study);
+        return study;
     }
 }
