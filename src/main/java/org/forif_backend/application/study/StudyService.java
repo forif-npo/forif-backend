@@ -278,7 +278,6 @@ public class StudyService {
         if (request.getStudyName() != null) study.setStudyName(request.getStudyName());
         if (request.getOneLiner() != null) study.setOneLiner(request.getOneLiner());
         if (request.getExplanation() != null) study.setExplanation(request.getExplanation());
-        if (request.getGoal() != null) study.setGoal(request.getGoal());
         if (request.getStartTime() != null) study.setStartTime(request.getStartTime());
         if (request.getEndTime() != null) study.setEndTime(request.getEndTime());
         if (request.getWeekDay() != null) study.setWeekDay(request.getWeekDay());
