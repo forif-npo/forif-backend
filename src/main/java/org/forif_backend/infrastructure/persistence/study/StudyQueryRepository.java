@@ -549,7 +549,7 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
@@ -557,11 +557,15 @@ public class StudyQueryRepository {
                 .where(
                         study.primaryMentor.id.eq(mentorId)
                                 .or(secondaryMentor.id.eq(mentorId)),
+                        study.autonomousFlag.isNull().or(study.autonomousFlag.isFalse()),
                         study.studyStatus.in(
-                                StudyStatus.PENDING,
-                                StudyStatus.RE_APPLIED,
-                                StudyStatus.REJECTED
-                        )
+                                        StudyStatus.PENDING,
+                                        StudyStatus.RE_APPLIED,
+                                        StudyStatus.REJECTED
+                                )
+                                .or(study.studyStatus.eq(StudyStatus.APPROVED)
+                                        .and(study.actYear.eq(actYear))
+                                        .and(study.actSemester.eq(actSemester)))
                 )
                 .orderBy(study.createdAt.desc())
                 .fetch();

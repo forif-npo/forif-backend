@@ -83,17 +83,42 @@ class StudyQueryRepositoryMentorTest {
         assertThat(studyNames).containsExactly(Map.entry(approvedMentor.getId(), "운영체제 심화 스터디"));
     }
 
+    @Test
+    void returnsCurrentSemesterApprovedApplicationsButExcludesPastApprovedApplications() {
+        User mentor = persistUser(900004L, "신청 멘토");
+        Study currentApproved = persistApprovedStudy(mentor, YEAR, SEMESTER, "현재 학기 승인 스터디");
+        Study pastApproved = persistApprovedStudy(mentor, 2025, 2, "지난 학기 승인 스터디");
+        Study rejected = persistRejectedStudy(mentor, null, "반려 신청서");
+        Study autonomous = Study.createAutonomousStudy(mentor, YEAR, SEMESTER);
+        entityManager.persist(autonomous);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Study> applications = studyQueryRepository.findStudyApplicationsByMentorId(
+                mentor.getId(), YEAR, SEMESTER);
+
+        assertThat(applications)
+                .extracting(Study::getId)
+                .contains(currentApproved.getId(), rejected.getId())
+                .doesNotContain(pastApproved.getId(), autonomous.getId());
+    }
+
     private User persistUser(Long id, String name) {
         User user = User.createUser(id, name, id + "@forif.org", "010-0000-0000", "컴퓨터공학과");
         entityManager.persist(user);
         return user;
     }
 
-    private void persistApprovedStudy(User mentor, String name) {
-        Study study = Study.createPendingStudy(mentor, YEAR, SEMESTER);
+    private Study persistApprovedStudy(User mentor, String name) {
+        return persistApprovedStudy(mentor, YEAR, SEMESTER, name);
+    }
+
+    private Study persistApprovedStudy(User mentor, int year, int semester, String name) {
+        Study study = Study.createPendingStudy(mentor, year, semester);
         study.setStudyName(name);
         study.approve();
         entityManager.persist(study);
+        return study;
     }
 
     private void persistPendingStudy(User mentor, String name) {
@@ -102,12 +127,15 @@ class StudyQueryRepositoryMentorTest {
         entityManager.persist(study);
     }
 
-    private void persistRejectedStudy(User primaryMentor, User secondaryMentor, String name) {
+    private Study persistRejectedStudy(User primaryMentor, User secondaryMentor, String name) {
         Study study = Study.createPendingStudy(primaryMentor, YEAR, SEMESTER);
         study.setStudyName(name);
-        study.setSecondaryMentor(secondaryMentor);
-        study.setSecondaryMentorName(secondaryMentor.getUserName());
+        if (secondaryMentor != null) {
+            study.setSecondaryMentor(secondaryMentor);
+            study.setSecondaryMentorName(secondaryMentor.getUserName());
+        }
         study.reject("반려 사유");
         entityManager.persist(study);
+        return study;
     }
 }
