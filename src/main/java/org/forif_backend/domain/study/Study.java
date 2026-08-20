@@ -202,7 +202,6 @@ public class Study extends BaseTimeEntity {
         this.studyName = request.getTitle();
         this.subTitle = null;
         this.oneLiner = request.getOneLiner();
-        this.goal = request.getGoal();
         this.explanation = request.getExplanation();
         this.isOnline = request.getIsOnline();
         this.location = request.getStudyLocation();
