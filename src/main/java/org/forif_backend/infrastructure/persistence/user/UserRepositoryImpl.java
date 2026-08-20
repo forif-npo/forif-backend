@@ -6,6 +6,7 @@ import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.common.type.SortDirection;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
@@ -162,11 +163,11 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public List<User> searchUsersWithOffset(int page, int size, String search) {
+    public List<User> searchUsersWithOffset(int page, int size, String search, List<SortCriteria> sorting) {
         return queryFactory
                 .selectFrom(user)
                 .where(userSearchKeyword(search))
-                .orderBy(user.id.desc())
+                .orderBy(userOrders(sorting))
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
@@ -200,7 +201,7 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public List<User> searchUsersByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
+    public List<User> searchUsersByYearSemesterWithOffset(int year, int semester, int page, int size, String search, List<SortCriteria> sorting) {
         return queryFactory
                 .selectFrom(user).distinct()
                 .join(studyUser).on(studyUser.user.id.eq(user.id))
@@ -210,10 +211,37 @@ public class UserRepositoryImpl implements UserRepository {
                         study.actSemester.eq(semester),
                         userSearchKeyword(search)
                 )
-                .orderBy(user.id.desc())
+                .orderBy(userOrders(sorting))
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
+    }
+
+    private OrderSpecifier<?>[] userOrders(List<SortCriteria> sorting) {
+        List<OrderSpecifier<?>> orders = new java.util.ArrayList<>();
+
+        for (SortCriteria criterion : sorting) {
+            switch (criterion.field()) {
+                case "userId" -> orders.add(order(criterion, user.id));
+                case "department" -> orders.add(order(criterion, user.department));
+                case "userName" -> orders.add(order(criterion, user.userName));
+                default -> throw new IllegalStateException("Unsupported member sort field: " + criterion.field());
+            }
+        }
+
+        orders.add(user.id.desc());
+        return orders.toArray(OrderSpecifier[]::new);
+    }
+
+    private <T extends Comparable<?>> OrderSpecifier<T> order(
+            SortCriteria criterion,
+            com.querydsl.core.types.Expression<T> expression
+    ) {
+        return new OrderSpecifier<>(
+                criterion.direction().toOrder(),
+                expression,
+                OrderSpecifier.NullHandling.NullsLast
+        );
     }
 
     @Override

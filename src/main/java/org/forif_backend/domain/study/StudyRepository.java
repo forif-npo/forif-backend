@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.user.User;
 
 public interface StudyRepository {
@@ -26,10 +27,10 @@ public interface StudyRepository {
 
     /** 주·부멘토 관계를 기준으로 멘토를 조회한다. */
     List<User> searchMentors(Long cursor, int size, String search);
-    List<User> searchMentorsWithOffset(int page, int size, String search);
+    List<User> searchMentorsWithOffset(int page, int size, String search, List<SortCriteria> sorting);
     long countMentors(String search);
     List<User> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search);
-    List<User> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search);
+    List<User> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search, List<SortCriteria> sorting);
     long countMentorsByYearSemester(int year, int semester, String search);
 
     /**
@@ -84,7 +85,7 @@ public interface StudyRepository {
      * 커서 기반 스터디 목록 조회 (Admin용)
      */
     List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
-    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
+    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting);
 
     /**
      * 조건에 맞는 스터디 총 건수
@@ -156,5 +157,5 @@ public interface StudyRepository {
      * @return 스터디 리스트
      */
     List<Study> findStudiesByMentorId(Long mentorId);
-    List<Study> findStudyApplicationsByMentorId(Long mentorId);
+    List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester);
 }

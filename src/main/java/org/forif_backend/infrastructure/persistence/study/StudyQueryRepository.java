@@ -7,10 +7,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import com.querydsl.core.Tuple;
+import com.querydsl.core.types.OrderSpecifier;
+import com.querydsl.core.types.dsl.CaseBuilder;
+import com.querydsl.core.types.dsl.NumberExpression;
 import com.querydsl.jpa.JPAExpressions;
 import jakarta.persistence.EntityManager;
 
 import org.forif_backend.domain.study.*;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.QUser;
 import org.springframework.stereotype.Repository;
@@ -240,14 +244,18 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<User> searchMentorsWithOffset(int page, int size, String search) {
+    public List<User> searchMentorsWithOffset(int page, int size, String search, List<SortCriteria> sorting) {
         return queryFactory
                 .selectFrom(mentorUser)
                 .where(mentorStudyExists(null, null), mentorSearchKeyword(search, null, null))
-                .orderBy(mentorUser.id.desc())
+                .orderBy(mentorOrders(sorting))
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
+    }
+
+    public List<User> searchMentorsWithOffset(int page, int size, String search) {
+        return searchMentorsWithOffset(page, size, search, List.of());
     }
 
     public long countMentors(String search) {
@@ -283,15 +291,42 @@ public class StudyQueryRepository {
             int semester,
             int page,
             int size,
-            String search
+            String search,
+            List<SortCriteria> sorting
     ) {
         return queryFactory
                 .selectFrom(mentorUser)
                 .where(mentorStudyExists(year, semester), mentorSearchKeyword(search, year, semester))
-                .orderBy(mentorUser.id.desc())
+                .orderBy(mentorOrders(sorting))
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
+    }
+
+    public List<User> searchMentorsByYearSemesterWithOffset(
+            int year,
+            int semester,
+            int page,
+            int size,
+            String search
+    ) {
+        return searchMentorsByYearSemesterWithOffset(year, semester, page, size, search, List.of());
+    }
+
+    private OrderSpecifier<?>[] mentorOrders(List<SortCriteria> sorting) {
+        List<OrderSpecifier<?>> orders = new java.util.ArrayList<>();
+
+        for (SortCriteria criterion : sorting) {
+            switch (criterion.field()) {
+                case "userId" -> orders.add(order(criterion, mentorUser.id));
+                case "department" -> orders.add(order(criterion, mentorUser.department));
+                case "name" -> orders.add(order(criterion, mentorUser.userName));
+                default -> throw new IllegalStateException("Unsupported mentor sort field: " + criterion.field());
+            }
+        }
+
+        orders.add(mentorUser.id.desc());
+        return orders.toArray(OrderSpecifier[]::new);
     }
 
     public long countMentorsByYearSemester(int year, int semester, String search) {
@@ -496,20 +531,145 @@ public class StudyQueryRepository {
         return findStudiesWithTags(studyIds);
     }
 
-    public List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses) {
-        return queryFactory
-                .selectFrom(study).distinct()
-                .leftJoin(study.tags, studyTag).fetchJoin()
+    public List<Study> searchAdminStudiesWithOffset(
+            int page,
+            int size,
+            Integer year,
+            Integer semester,
+            String search,
+            List<StudyStatus> studyStatuses,
+            List<SortCriteria> sorting
+    ) {
+        List<Integer> studyIds = queryFactory
+                .select(study.id)
+                .from(study)
+                .leftJoin(study.tags, studyTag)
+                .leftJoin(studyUser).on(studyUser.study.id.eq(study.id))
                 .where(
                         studyStatusesIn(studyStatuses),
                         yearEq(year),
                         semesterEq(semester),
                         searchKeywordEq(search)
                 )
-                .orderBy(study.id.desc())
+                .groupBy(
+                        study.id,
+                        study.recruitStatus,
+                        study.studyName,
+                        study.primaryMentorName,
+                        study.secondaryMentorName,
+                        study.difficulty,
+                        study.weekDay,
+                        study.studyStatus
+                )
+                .orderBy(adminStudyOrders(sorting))
                 .offset((long) page * size)
                 .limit(size)
                 .fetch();
+
+        if (studyIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Integer, Study> studiesById = queryFactory
+                .selectFrom(study).distinct()
+                .leftJoin(study.tags, studyTag).fetchJoin()
+                .where(study.id.in(studyIds))
+                .fetch()
+                .stream()
+                .collect(Collectors.toMap(Study::getId, item -> item));
+
+        return studyIds.stream()
+                .map(studiesById::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
+    private OrderSpecifier<?>[] adminStudyOrders(List<SortCriteria> sorting) {
+        List<OrderSpecifier<?>> orders = new java.util.ArrayList<>();
+
+        for (SortCriteria criterion : sorting) {
+            switch (criterion.field()) {
+                case "recruit_status" -> addNullableOrder(
+                        orders, criterion, recruitStatusOrder(), study.recruitStatus.isNull());
+                case "study_name" -> orders.add(order(criterion, study.studyName));
+                case "primary_mentor_name" -> {
+                    orders.add(order(criterion, study.primaryMentorName));
+                    orders.add(order(criterion, study.secondaryMentorName));
+                }
+                case "tags" -> orders.add(order(criterion, studyTag.name.min()));
+                case "difficulty" -> addNullableOrder(
+                        orders, criterion, difficultyOrder(), study.difficulty.isNull());
+                case "week_day" -> addNullableOrder(
+                        orders, criterion, weekDayOrder(), study.weekDay.isNull());
+                case "mentee_count" -> orders.add(order(criterion, studyUser.countDistinct()));
+                case "study_status" -> addNullableOrder(
+                        orders, criterion, studyStatusOrder(), study.studyStatus.isNull());
+                default -> throw new IllegalStateException("Unsupported study sort field: " + criterion.field());
+            }
+        }
+
+        // 페이지 사이에서 동률 행이 흔들리지 않도록 기본 식별자 정렬을 끝에 고정한다.
+        orders.add(study.id.desc());
+        return orders.toArray(OrderSpecifier[]::new);
+    }
+
+    private <T extends Comparable<?>> OrderSpecifier<T> order(
+            SortCriteria criterion,
+            com.querydsl.core.types.Expression<T> expression
+    ) {
+        return new OrderSpecifier<>(
+                criterion.direction().toOrder(),
+                expression,
+                OrderSpecifier.NullHandling.NullsLast
+        );
+    }
+
+    private <T extends Comparable<?>> void addNullableOrder(
+            List<OrderSpecifier<?>> orders,
+            SortCriteria criterion,
+            com.querydsl.core.types.Expression<T> expression,
+            BooleanExpression isNull
+    ) {
+        orders.add(new CaseBuilder().when(isNull).then(1).otherwise(0).asc());
+        orders.add(order(criterion, expression));
+    }
+
+    private NumberExpression<Integer> recruitStatusOrder() {
+        return new CaseBuilder()
+                .when(study.recruitStatus.eq(RecruitStatus.APPLICABLE)).then(1)
+                .when(study.recruitStatus.eq(RecruitStatus.CLOSED)).then(2)
+                .otherwise(99);
+    }
+
+    private NumberExpression<Integer> difficultyOrder() {
+        return new CaseBuilder()
+                .when(study.difficulty.eq(StudyDifficulty.EASY)).then(1)
+                .when(study.difficulty.eq(StudyDifficulty.SEMI_EASY)).then(2)
+                .when(study.difficulty.eq(StudyDifficulty.NORMAL)).then(3)
+                .when(study.difficulty.eq(StudyDifficulty.SEMI_HARD)).then(4)
+                .when(study.difficulty.eq(StudyDifficulty.HARD)).then(5)
+                .otherwise(99);
+    }
+
+    private NumberExpression<Integer> weekDayOrder() {
+        return new CaseBuilder()
+                .when(study.weekDay.eq(1)).then(1)
+                .when(study.weekDay.eq(2)).then(2)
+                .when(study.weekDay.eq(3)).then(3)
+                .when(study.weekDay.eq(4)).then(4)
+                .when(study.weekDay.eq(5)).then(5)
+                .when(study.weekDay.eq(6)).then(6)
+                .when(study.weekDay.eq(0)).then(7)
+                .otherwise(99);
+    }
+
+    private NumberExpression<Integer> studyStatusOrder() {
+        return new CaseBuilder()
+                .when(study.studyStatus.eq(StudyStatus.PENDING)).then(1)
+                .when(study.studyStatus.eq(StudyStatus.RE_APPLIED)).then(2)
+                .when(study.studyStatus.eq(StudyStatus.REJECTED)).then(3)
+                .when(study.studyStatus.eq(StudyStatus.APPROVED)).then(4)
+                .otherwise(99);
     }
 
     public Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds) {
@@ -549,7 +709,7 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
-    public List<Study> findStudyApplicationsByMentorId(Long mentorId) {
+    public List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester) {
         return queryFactory
                 .selectFrom(study).distinct()
                 .leftJoin(study.tags, studyTag).fetchJoin()
@@ -557,11 +717,15 @@ public class StudyQueryRepository {
                 .where(
                         study.primaryMentor.id.eq(mentorId)
                                 .or(secondaryMentor.id.eq(mentorId)),
+                        study.autonomousFlag.isNull().or(study.autonomousFlag.isFalse()),
                         study.studyStatus.in(
-                                StudyStatus.PENDING,
-                                StudyStatus.RE_APPLIED,
-                                StudyStatus.REJECTED
-                        )
+                                        StudyStatus.PENDING,
+                                        StudyStatus.RE_APPLIED,
+                                        StudyStatus.REJECTED
+                                )
+                                .or(study.studyStatus.eq(StudyStatus.APPROVED)
+                                        .and(study.actYear.eq(actYear))
+                                        .and(study.actSemester.eq(actSemester)))
                 )
                 .orderBy(study.createdAt.desc())
                 .fetch();
