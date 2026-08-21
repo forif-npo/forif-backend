@@ -109,6 +109,44 @@ public class ProductService {
                 .toList();
     }
 
+    /** 검토 대기 중인 본인 서비스 신청서를 수정한다. */
+    @Transactional
+    public ProductInfo updateMyPendingApplication(Long userId, Integer productId,
+                                                   CreateProductApplicationCommand command,
+                                                   boolean removeThumbnail, MultipartFile thumbnail) {
+        Product product = getPendingApplicationForApplicant(userId, productId);
+        String slug = command.slug() == null ? "" : command.slug().trim().toLowerCase();
+        validateSlugForUpdate(product, slug);
+
+        product.updatePendingApplication(
+                slug,
+                command.name().trim(),
+                command.oneLiner().trim(),
+                command.description().trim(),
+                command.sourceType(),
+                joinCsv(command.techStack(), 300),
+                requireHttpUrl(command.serviceUrl()),
+                requireHttpUrl(command.githubUrl())
+        );
+
+        if (removeThumbnail) {
+            product.updateThumbnail(null);
+        }
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            validateImageFile(thumbnail);
+            String objectKey = filePort.uploadFile(thumbnail, THUMBNAIL_DIRECTORY);
+            product.updateThumbnail(objectKey);
+            deleteUploadOnRollback(objectKey);
+        }
+        return toInfo(product);
+    }
+
+    /** 검토 대기 중인 본인 서비스 신청서를 삭제한다. */
+    @Transactional
+    public void deleteMyPendingApplication(Long userId, Integer productId) {
+        productRepository.delete(getPendingApplicationForApplicant(userId, productId));
+    }
+
     // ── 운영진 ──────────────────────────────────────────────────────
 
     public List<ProductInfo> getAllProducts() {
@@ -179,11 +217,31 @@ public class ProductService {
                 .orElseThrow(() -> new ForifException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
+    private Product getPendingApplicationForApplicant(Long userId, Integer productId) {
+        Product product = getProductById(productId);
+        if (!product.getApplicant().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        if (product.getStatus() != ProductStatus.PENDING) {
+            throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+        return product;
+    }
+
     private void validateSlug(String slug) {
         if (!SLUG_PATTERN.matcher(slug).matches() || RESERVED_SLUGS.contains(slug)) {
             throw new ForifException(ErrorCode.PRODUCT_SLUG_INVALID);
         }
         if (productRepository.existsBySlug(slug)) {
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
+        }
+    }
+
+    private void validateSlugForUpdate(Product product, String slug) {
+        if (!SLUG_PATTERN.matcher(slug).matches() || RESERVED_SLUGS.contains(slug)) {
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_INVALID);
+        }
+        if (!slug.equals(product.getSlug()) && productRepository.existsBySlug(slug)) {
             throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
         }
     }

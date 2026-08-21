@@ -137,6 +137,23 @@ public class Product extends BaseTimeEntity {
         this.thumbnailObjectKey = thumbnailObjectKey;
     }
 
+    /** 신청자가 검토 대기 중인 등록 신청서를 수정한다. */
+    public void updatePendingApplication(String slug, String name, String oneLiner,
+                                         String description, ProductSourceType sourceType,
+                                         String techStack, String serviceUrl, String githubUrl) {
+        if (status != ProductStatus.PENDING) {
+            throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+        this.slug = slug;
+        this.name = name;
+        this.oneLiner = oneLiner;
+        this.description = description;
+        this.sourceType = sourceType;
+        this.techStack = techStack;
+        this.serviceUrl = serviceUrl;
+        this.githubUrl = githubUrl;
+    }
+
     /**
      * 운영진의 서비스 정보 수정. null인 인자는 변경하지 않는다.
      * slug(서브도메인)와 상태는 별도 경로로만 변경할 수 있다.

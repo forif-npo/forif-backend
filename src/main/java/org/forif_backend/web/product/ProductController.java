@@ -66,6 +66,29 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
     }
 
+    @Operation(summary = "내 서비스 등록 신청 수정", description = "검토 대기 중인 본인 신청서만 수정할 수 있습니다. request(JSON)와 선택 썸네일 이미지를 multipart/form-data로 전송합니다.")
+    @PatchMapping(value = "/applications/{productId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<ProductApplicationResponse>> updateMyApplication(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "서비스 신청 ID") @PathVariable Integer productId,
+            @Valid @RequestPart("request") CreateProductApplicationRequest request,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail
+    ) {
+        ProductInfo info = productService.updateMyPendingApplication(
+                userId, productId, request.toCommand(), request.isRemoveThumbnail(), thumbnail);
+        return ResponseEntity.ok(ApiResponse.success(ProductApplicationResponse.from(info)));
+    }
+
+    @Operation(summary = "내 서비스 등록 신청 삭제", description = "검토 대기 중인 본인 신청서만 삭제할 수 있으며, 삭제 후 복구할 수 없습니다.")
+    @DeleteMapping("/applications/{productId}")
+    public ResponseEntity<ApiResponse<Void>> deleteMyApplication(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "서비스 신청 ID") @PathVariable Integer productId
+    ) {
+        productService.deleteMyPendingApplication(userId, productId);
+        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+    }
+
     @Operation(summary = "서비스 상세 조회", description = "게시된 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProduct(
