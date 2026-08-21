@@ -21,8 +21,18 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
+    public void flush() {
+        productJpaRepository.flush();
+    }
+
+    @Override
     public Optional<Product> findById(Integer productId) {
         return productJpaRepository.findById(productId);
+    }
+
+    @Override
+    public Optional<Product> findByIdForUpdate(Integer productId) {
+        return productJpaRepository.findByIdForUpdate(productId);
     }
 
     @Override
