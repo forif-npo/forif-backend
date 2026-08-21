@@ -42,7 +42,7 @@ public class StudyQueryRepository {
                 .distinct()
                 .from(study)
                 .leftJoin(study.tags, studyTag)
-                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                .where(study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                         cursorLt(cursor),
                         yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
@@ -79,7 +79,7 @@ public class StudyQueryRepository {
                 .select(study.countDistinct())
                 .from(study)
                 .leftJoin(study.tags, studyTag)
-                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                .where(study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                         yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
                         difficultiesIn(cond.getDifficulties()),
@@ -160,7 +160,7 @@ public class StudyQueryRepository {
                 .where(
                         study.actYear.eq(year),
                         study.actSemester.eq(semester),
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                         study.primaryMentor.id.in(userIds).or(study.secondaryMentor.id.in(userIds))
                 )
                 .fetch();
@@ -352,7 +352,7 @@ public class StudyQueryRepository {
                         mentorId.in(userIds),
                         yearEq(year),
                         semesterEq(semester),
-                        study.studyStatus.eq(StudyStatus.APPROVED)
+                        study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED)
                 )
                 .orderBy(study.studyName.asc())
                 .fetch()
@@ -374,7 +374,7 @@ public class StudyQueryRepository {
                 .where(
                         yearEq(year),
                         semesterEq(semester),
-                        study.studyStatus.eq(StudyStatus.APPROVED),
+                        study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                         study.primaryMentor.id.eq(mentorUser.id)
                                 .or(study.secondaryMentor.id.eq(mentorUser.id))
                 )
@@ -396,7 +396,7 @@ public class StudyQueryRepository {
                         .where(
                                 year == null ? null : mentorSearchStudy.actYear.eq(year),
                                 semester == null ? null : mentorSearchStudy.actSemester.eq(semester),
-                                mentorSearchStudy.studyStatus.eq(StudyStatus.APPROVED),
+                                mentorSearchStudy.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                                 mentorSearchStudy.studyName.containsIgnoreCase(search),
                                 mentorSearchStudy.primaryMentor.id.eq(mentorUser.id)
                                         .or(mentorSearchStudy.secondaryMentor.id.eq(mentorUser.id))
@@ -474,7 +474,11 @@ public class StudyQueryRepository {
                 .where(
                         study.primaryMentor.id.eq(mentorId) // FK 직접 비교 (효율적)
                                 .or(secondaryMentor.id.eq(mentorId)), // 별칭으로 비교 (안전함)
-                        study.studyStatus.ne(StudyStatus.APPROVED)
+                        study.studyStatus.in(
+                                StudyStatus.PENDING,
+                                StudyStatus.RE_APPLIED,
+                                StudyStatus.REJECTED
+                        )
                 )
                 .orderBy(study.id.desc())
                 .fetch();
@@ -516,7 +520,7 @@ public class StudyQueryRepository {
                 .distinct()
                 .from(study)
                 .leftJoin(study.tags, studyTag)
-                .where(study.studyStatus.eq(StudyStatus.APPROVED),
+                .where(study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED),
                         yearEq(cond.getYear()),
                         semesterEq(cond.getSemester()),
                         difficultiesIn(cond.getDifficulties()),
@@ -669,6 +673,7 @@ public class StudyQueryRepository {
                 .when(study.studyStatus.eq(StudyStatus.RE_APPLIED)).then(2)
                 .when(study.studyStatus.eq(StudyStatus.REJECTED)).then(3)
                 .when(study.studyStatus.eq(StudyStatus.APPROVED)).then(4)
+                .when(study.studyStatus.eq(StudyStatus.STARTED)).then(5)
                 .otherwise(99);
     }
 
@@ -700,10 +705,10 @@ public class StudyQueryRepository {
                 .leftJoin(study.tags, studyTag).fetchJoin() // 태그 N+1 방어
                 .leftJoin(study.secondaryMentor, secondaryMentor) // 부멘토 null 방어
                 .where(
-                        // 주멘토 혹은 부멘토가 나이면서 + 승인 완료된 스터디만
+                        // 주멘토 혹은 부멘토가 나이면서 + 실제 개설된 스터디만
                         study.primaryMentor.id.eq(mentorId)
                                 .or(secondaryMentor.id.eq(mentorId)),
-                        study.studyStatus.eq(StudyStatus.APPROVED)
+                        study.studyStatus.eq(StudyStatus.STARTED)
                 )
                 .orderBy(study.createdAt.desc())
                 .fetch();

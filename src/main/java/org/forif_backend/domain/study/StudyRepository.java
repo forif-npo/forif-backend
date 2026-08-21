@@ -73,8 +73,14 @@ public interface StudyRepository {
     /** 승인된 스터디의 모집 상태를 학기 단위로 일괄 변경한다. */
     int updateRecruitStatusForApprovedStudies(int actYear, int actSemester, RecruitStatus recruitStatus);
 
-    /** 활동 학기가 아닌 승인 스터디의 모집을 모두 마감한다. */
-    int closeRecruitmentForNonActiveApprovedStudies(int activeYear, int activeSemester);
+    /** 활동 학기가 아닌 실제 스터디의 모집을 모두 마감한다. */
+    int closeRecruitmentForNonActiveStudies(int activeYear, int activeSemester);
+
+    /** 현재 학기의 승인 스터디를 실제 개설 상태로 일괄 전환한다. */
+    int startApprovedStudies(int actYear, int actSemester);
+
+    /** 기존 데이터와 미전환 학기를 위해 과거 학기의 승인 스터디를 일괄 전환한다. */
+    int startPastApprovedStudies(int activeYear, int activeSemester);
 
     /**
      * 멘토 ID로 스터디 신청 목록 조회

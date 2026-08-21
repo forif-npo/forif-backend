@@ -95,6 +95,17 @@ class UserApplyServiceApplyTest {
     }
 
     @Test
+    void blocksApplicantDecisionsForAStartedStudy() {
+        Study study = applicableStudy(2026, 2, StudyStatus.STARTED, RecruitStatus.CLOSED);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
+
+        assertThatThrownBy(() -> userApplyService.acceptApplications(99L, STUDY_ID, java.util.List.of()))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.BAD_REQUEST));
+    }
+
+    @Test
     void updatesAnExistingApplicationWithOnlyTheRecruitmentEndGate() {
         Study originalStudy = org.mockito.Mockito.mock(Study.class);
         when(originalStudy.getId()).thenReturn(10);

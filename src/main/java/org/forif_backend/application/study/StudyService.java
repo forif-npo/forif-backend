@@ -120,12 +120,15 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         SemesterInfo activeSemester = semesterService.getActive();
-        boolean isApprovedOutsideActiveSemester = study.getStudyStatus() == StudyStatus.APPROVED
-                && (study.getActYear() != activeSemester.actYear()
-                || study.getActSemester() != activeSemester.actSemester());
+        boolean isApplicationStatus = study.getStudyStatus() == StudyStatus.PENDING
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.REJECTED
+                || (study.getStudyStatus() == StudyStatus.APPROVED
+                && study.getActYear() == activeSemester.actYear()
+                && study.getActSemester() == activeSemester.actSemester());
         if (!study.isMentor(mentorId)
                 || study.isAutonomousStudy()
-                || isApprovedOutsideActiveSemester) {
+                || !isApplicationStatus) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -218,7 +221,7 @@ public class StudyService {
     @Transactional(readOnly = true)
     public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, Integer page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting) {
         List<StudyStatus> statusFilter = studyStatuses == null || studyStatuses.isEmpty()
-                ? List.of(StudyStatus.APPROVED)
+                ? List.of(StudyStatus.APPROVED, StudyStatus.STARTED)
                 : studyStatuses;
         long totalElements = studyRepository.countStudies(year, semester, search, statusFilter);
 
@@ -345,7 +348,8 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        if (study.getStudyStatus() == StudyStatus.APPROVED) {
+        if (study.getStudyStatus() == StudyStatus.APPROVED
+                || study.getStudyStatus() == StudyStatus.STARTED) {
             throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
         }
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
@@ -756,7 +760,9 @@ public class StudyService {
 
     private boolean canCancelStudyApplication(Study study) {
         SemesterInfo active = semesterService.getActive();
-        return study.getStudyStatus() != StudyStatus.APPROVED
+        return (study.getStudyStatus() == StudyStatus.PENDING
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.REJECTED)
                 && study.getActYear() == active.actYear()
                 && study.getActSemester() == active.actSemester()
                 && semesterPhaseGuard.isOpen(
@@ -870,6 +876,7 @@ public class StudyService {
 
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        requireActiveSemesterStudy(study);
 
         study.approve();
         // 스케줄러가 30초마다 맞춰주지만 그 사이 모집 상태가 NULL로 남아 화면에서 "마감"으로
@@ -881,7 +888,7 @@ public class StudyService {
     }
 
     /**
-     * [어드민 전용] 현재 활동 학기의 자율스터디를 즉시 개설한다.
+     * [어드민 전용] 현재 활동 학기의 자율스터디를 승인 상태로 생성한다.
      * 자율스터디도 일반 스터디와 같은 엔티티와 수강 신청 흐름을 사용하지만,
      * 멘토 개설 신청 및 심사 과정은 거치지 않으며, 개설한 운영진이 대표 멘토가 된다.
      */
@@ -929,7 +936,17 @@ public class StudyService {
 
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        requireActiveSemesterStudy(study);
 
         study.reject(reason); // 도메인 메서드 호출 (상태 변경 및 사유 저장)
+    }
+
+    /** 승인·반려는 현재 활동 학기의 개설 신청서에만 할 수 있다. */
+    private void requireActiveSemesterStudy(Study study) {
+        SemesterInfo active = semesterService.getActive();
+        if (study.getActYear() != active.actYear()
+                || study.getActSemester() != active.actSemester()) {
+            throw new ForifException(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER);
+        }
     }
 }

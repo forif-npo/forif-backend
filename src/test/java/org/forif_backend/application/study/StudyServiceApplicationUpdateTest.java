@@ -107,6 +107,21 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
+    void blocksApprovingAStudyOutsideTheActiveSemester() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyById(1)).thenReturn(Optional.of(study));
+        when(study.getActYear()).thenReturn(2025);
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 1));
+
+        assertThatThrownBy(() -> studyService.approveStudy(1))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER));
+
+        verify(study, never()).approve();
+    }
+
+    @Test
     void marksPastSemesterApplicationsAsNotModifiable() {
         Study study = mock(Study.class);
         when(studyRepository.findStudyApplicationsByMentorId(10L, 2026, 1)).thenReturn(List.of(study));

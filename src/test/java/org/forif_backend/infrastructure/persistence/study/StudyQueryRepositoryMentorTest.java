@@ -84,9 +84,10 @@ class StudyQueryRepositoryMentorTest {
     }
 
     @Test
-    void returnsCurrentSemesterApprovedApplicationsButExcludesPastApprovedApplications() {
+    void returnsCurrentSemesterApprovedApplicationsButExcludesStartedStudies() {
         User mentor = persistUser(900004L, "신청 멘토");
         Study currentApproved = persistApprovedStudy(mentor, YEAR, SEMESTER, "현재 학기 승인 스터디");
+        Study currentStarted = persistStartedStudy(mentor, YEAR, SEMESTER, "현재 학기 개설 스터디");
         Study pastApproved = persistApprovedStudy(mentor, 2025, 2, "지난 학기 승인 스터디");
         Study rejected = persistRejectedStudy(mentor, null, "반려 신청서");
         Study autonomous = Study.createAutonomousStudy(mentor, YEAR, SEMESTER);
@@ -100,7 +101,11 @@ class StudyQueryRepositoryMentorTest {
         assertThat(applications)
                 .extracting(Study::getId)
                 .contains(currentApproved.getId(), rejected.getId())
-                .doesNotContain(pastApproved.getId(), autonomous.getId());
+                .doesNotContain(currentStarted.getId(), pastApproved.getId(), autonomous.getId());
+
+        assertThat(studyQueryRepository.findStudiesByMentorId(mentor.getId()))
+                .extracting(Study::getId)
+                .containsExactly(currentStarted.getId());
     }
 
     private User persistUser(Long id, String name) {
@@ -118,6 +123,12 @@ class StudyQueryRepositoryMentorTest {
         study.setStudyName(name);
         study.approve();
         entityManager.persist(study);
+        return study;
+    }
+
+    private Study persistStartedStudy(User mentor, int year, int semester, String name) {
+        Study study = persistApprovedStudy(mentor, year, semester, name);
+        study.start();
         return study;
     }
 
