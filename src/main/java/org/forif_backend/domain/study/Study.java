@@ -229,6 +229,10 @@ public class Study extends BaseTimeEntity {
         if (reason == null || reason.isBlank()) {
             throw new ForifException(ErrorCode.REJECT_REASON_REQUIRED);
         }
+        if (this.studyStatus != StudyStatus.PENDING
+                && this.studyStatus != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
         this.studyStatus = StudyStatus.REJECTED;
         this.rejectReason = reason;
     }
@@ -237,6 +241,10 @@ public class Study extends BaseTimeEntity {
      * 승인 처리: 상태를 APPROVED로 변경하고 이전 거절 사유는 초기화합니다.
      */
     public void approve() {
+        if (this.studyStatus != StudyStatus.PENDING
+                && this.studyStatus != StudyStatus.RE_APPLIED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
         this.studyStatus = StudyStatus.APPROVED;
         this.rejectReason = null;
     }

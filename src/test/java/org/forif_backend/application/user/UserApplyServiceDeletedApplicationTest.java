@@ -8,6 +8,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
@@ -56,6 +57,7 @@ class UserApplyServiceDeletedApplicationTest {
         UserApply remainingApplication = mock(UserApply.class);
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(null);
         when(userRepository.findUserApplyById(101L)).thenReturn(remainingApplication);
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
@@ -69,6 +71,7 @@ class UserApplyServiceDeletedApplicationTest {
     void returnsNotFoundWhenMentorViewsDeletedApplication() {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(null);
 
         assertError(() -> userApplyService.getApplyDetailInfo(99L, 10, 100L));
@@ -78,6 +81,7 @@ class UserApplyServiceDeletedApplicationTest {
     void returnsNotFoundWhenMentorUpdatesDeletedApplication() {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(null);
 
         assertError(() -> userApplyService.updateApplyStatus(

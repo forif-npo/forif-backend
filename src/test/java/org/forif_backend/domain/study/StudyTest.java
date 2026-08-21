@@ -49,5 +49,7 @@ class StudyTest {
 
         assertThat(study.getStudyStatus()).isEqualTo(StudyStatus.STARTED);
         assertThatThrownBy(study::start).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(study::approve).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> study.reject("사유")).isInstanceOf(RuntimeException.class);
     }
 }
