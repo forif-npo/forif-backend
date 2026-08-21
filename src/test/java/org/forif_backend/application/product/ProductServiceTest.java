@@ -21,6 +21,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -65,6 +66,14 @@ class ProductServiceTest {
                 APPLICANT_ID, 1, updateCommand(), true, null);
 
         verify(filePort).deleteFile("products/thumbnails/old.png");
+    }
+
+    @Test
+    void updatesTagsWhenApplicantEditsAPendingApplication() {
+        productService.updateMyPendingApplication(
+                APPLICANT_ID, 1, updateCommand(), false, null);
+
+        assertThat(pendingProduct.getTags()).isEqualTo("Next.js,TypeScript");
     }
 
     @Test
@@ -137,6 +146,6 @@ class ProductServiceTest {
         return new CreateProductApplicationCommand(
                 "수정된 서비스", "updated-service", "수정된 한 줄 소개", "수정된 상세 소개",
                 ProductSourceType.SIDE, "https://updated.example.com", "https://github.com/forif/updated",
-                List.of("Next.js"), List.of());
+                List.of("Next.js"), List.of("Next.js", "TypeScript"));
     }
 }

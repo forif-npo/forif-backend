@@ -140,7 +140,7 @@ public class Product extends BaseTimeEntity {
     /** 신청자가 검토 대기 중인 등록 신청서를 수정한다. */
     public void updatePendingApplication(String slug, String name, String oneLiner,
                                          String description, ProductSourceType sourceType,
-                                         String techStack, String serviceUrl, String githubUrl) {
+                                         String tags, String techStack, String serviceUrl, String githubUrl) {
         if (status != ProductStatus.PENDING) {
             throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
         }
@@ -149,6 +149,7 @@ public class Product extends BaseTimeEntity {
         this.oneLiner = oneLiner;
         this.description = description;
         this.sourceType = sourceType;
+        this.tags = tags;
         this.techStack = techStack;
         this.serviceUrl = serviceUrl;
         this.githubUrl = githubUrl;

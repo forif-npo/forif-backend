@@ -126,6 +126,7 @@ public class ProductService {
                 command.oneLiner().trim(),
                 command.description().trim(),
                 command.sourceType(),
+                joinCsv(command.tags(), 200),
                 joinCsv(command.techStack(), 300),
                 requireHttpUrl(command.serviceUrl()),
                 requireHttpUrl(command.githubUrl())
