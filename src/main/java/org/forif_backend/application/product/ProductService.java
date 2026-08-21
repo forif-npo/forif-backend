@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -115,6 +116,7 @@ public class ProductService {
                                                    CreateProductApplicationCommand command,
                                                    boolean removeThumbnail, MultipartFile thumbnail) {
         Product product = getPendingApplicationForApplicant(userId, productId);
+        String previousThumbnailObjectKey = product.getThumbnailObjectKey();
         String slug = command.slug() == null ? "" : command.slug().trim().toLowerCase();
         validateSlugForUpdate(product, slug);
 
@@ -138,13 +140,19 @@ public class ProductService {
             product.updateThumbnail(objectKey);
             deleteUploadOnRollback(objectKey);
         }
+        if (!Objects.equals(previousThumbnailObjectKey, product.getThumbnailObjectKey())) {
+            deleteFileAfterCommit(previousThumbnailObjectKey);
+        }
         return toInfo(product);
     }
 
     /** 검토 대기 중인 본인 서비스 신청서를 삭제한다. */
     @Transactional
     public void deleteMyPendingApplication(Long userId, Integer productId) {
-        productRepository.delete(getPendingApplicationForApplicant(userId, productId));
+        Product product = getPendingApplicationForApplicant(userId, productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        productRepository.delete(product);
+        deleteFileAfterCommit(thumbnailObjectKey);
     }
 
     // ── 운영진 ──────────────────────────────────────────────────────
@@ -191,10 +199,14 @@ public class ProductService {
     @Transactional
     public String updateThumbnail(Integer productId, MultipartFile file) {
         Product product = getProductById(productId);
+        String previousThumbnailObjectKey = product.getThumbnailObjectKey();
         validateImageFile(file);
 
         String objectKey = filePort.uploadFile(file, THUMBNAIL_DIRECTORY);
         product.updateThumbnail(objectKey);
+        if (!Objects.equals(previousThumbnailObjectKey, objectKey)) {
+            deleteFileAfterCommit(previousThumbnailObjectKey);
+        }
 
         return toFileViewUrl(objectKey);
     }
@@ -202,12 +214,18 @@ public class ProductService {
     /** 썸네일 제거 (운영진) */
     @Transactional
     public void deleteThumbnail(Integer productId) {
-        getProductById(productId).updateThumbnail(null);
+        Product product = getProductById(productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        product.updateThumbnail(null);
+        deleteFileAfterCommit(thumbnailObjectKey);
     }
 
     @Transactional
     public void deleteProduct(Integer productId) {
-        productRepository.delete(getProductById(productId));
+        Product product = getProductById(productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        productRepository.delete(product);
+        deleteFileAfterCommit(thumbnailObjectKey);
     }
 
     // ── 내부 유틸 ────────────────────────────────────────────────────
@@ -338,5 +356,31 @@ public class ProductService {
                 }
             }
         });
+    }
+
+    /** DB 반영이 끝난 뒤에만 더 이상 참조되지 않는 기존 파일을 삭제한다. */
+    private void deleteFileAfterCommit(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteFileSafely(objectKey);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteFileSafely(objectKey);
+            }
+        });
+    }
+
+    private void deleteFileSafely(String objectKey) {
+        try {
+            filePort.deleteFile(objectKey);
+        } catch (Exception e) {
+            // DB 커밋 뒤의 파일 삭제 실패가 이미 성공한 서비스 수정 요청을 실패시키지 않게 한다.
+            log.warn("기존 서비스 썸네일 삭제 실패: {}", objectKey, e);
+        }
     }
 }
