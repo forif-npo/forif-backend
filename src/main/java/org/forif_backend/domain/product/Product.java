@@ -27,6 +27,11 @@ public class Product extends BaseTimeEntity {
     @Column(name = "product_id")
     private Integer id;
 
+    /** 신청자 수정과 운영진 승인 요청이 경합할 때 마지막 저장이 상태를 되돌리지 않도록 보호한다. */
+    @Version
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long version;
+
     /** 서브도메인으로 쓰이는 식별자 ({slug}.forif.org) */
     @Column(nullable = false, unique = true, length = 30)
     private String slug;
@@ -135,6 +140,24 @@ public class Product extends BaseTimeEntity {
 
     public void updateThumbnail(String thumbnailObjectKey) {
         this.thumbnailObjectKey = thumbnailObjectKey;
+    }
+
+    /** 신청자가 검토 대기 중인 등록 신청서를 수정한다. */
+    public void updatePendingApplication(String slug, String name, String oneLiner,
+                                         String description, ProductSourceType sourceType,
+                                         String tags, String techStack, String serviceUrl, String githubUrl) {
+        if (status != ProductStatus.PENDING) {
+            throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+        this.slug = slug;
+        this.name = name;
+        this.oneLiner = oneLiner;
+        this.description = description;
+        this.sourceType = sourceType;
+        this.tags = tags;
+        this.techStack = techStack;
+        this.serviceUrl = serviceUrl;
+        this.githubUrl = githubUrl;
     }
 
     /**

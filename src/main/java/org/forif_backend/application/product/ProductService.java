@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -109,6 +110,52 @@ public class ProductService {
                 .toList();
     }
 
+    /** 검토 대기 중인 본인 서비스 신청서를 수정한다. */
+    @Transactional
+    public ProductInfo updateMyPendingApplication(Long userId, Integer productId,
+                                                   CreateProductApplicationCommand command,
+                                                   boolean removeThumbnail, MultipartFile thumbnail) {
+        Product product = getPendingApplicationForApplicant(userId, productId);
+        String previousThumbnailObjectKey = product.getThumbnailObjectKey();
+        String slug = command.slug() == null ? "" : command.slug().trim().toLowerCase();
+        validateSlugForUpdate(product, slug);
+
+        product.updatePendingApplication(
+                slug,
+                command.name().trim(),
+                command.oneLiner().trim(),
+                command.description().trim(),
+                command.sourceType(),
+                joinCsv(command.tags(), 200),
+                joinCsv(command.techStack(), 300),
+                requireHttpUrl(command.serviceUrl()),
+                requireHttpUrl(command.githubUrl())
+        );
+
+        if (removeThumbnail) {
+            product.updateThumbnail(null);
+        }
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            validateImageFile(thumbnail);
+            String objectKey = filePort.uploadFile(thumbnail, THUMBNAIL_DIRECTORY);
+            product.updateThumbnail(objectKey);
+            deleteUploadOnRollback(objectKey);
+        }
+        if (!Objects.equals(previousThumbnailObjectKey, product.getThumbnailObjectKey())) {
+            deleteFileAfterCommit(previousThumbnailObjectKey);
+        }
+        return toInfo(product);
+    }
+
+    /** 검토 대기 중인 본인 서비스 신청서를 삭제한다. */
+    @Transactional
+    public void deleteMyPendingApplication(Long userId, Integer productId) {
+        Product product = getPendingApplicationForApplicant(userId, productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        productRepository.delete(product);
+        deleteFileAfterCommit(thumbnailObjectKey);
+    }
+
     // ── 운영진 ──────────────────────────────────────────────────────
 
     public List<ProductInfo> getAllProducts() {
@@ -153,10 +200,14 @@ public class ProductService {
     @Transactional
     public String updateThumbnail(Integer productId, MultipartFile file) {
         Product product = getProductById(productId);
+        String previousThumbnailObjectKey = product.getThumbnailObjectKey();
         validateImageFile(file);
 
         String objectKey = filePort.uploadFile(file, THUMBNAIL_DIRECTORY);
         product.updateThumbnail(objectKey);
+        if (!Objects.equals(previousThumbnailObjectKey, objectKey)) {
+            deleteFileAfterCommit(previousThumbnailObjectKey);
+        }
 
         return toFileViewUrl(objectKey);
     }
@@ -164,12 +215,18 @@ public class ProductService {
     /** 썸네일 제거 (운영진) */
     @Transactional
     public void deleteThumbnail(Integer productId) {
-        getProductById(productId).updateThumbnail(null);
+        Product product = getProductById(productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        product.updateThumbnail(null);
+        deleteFileAfterCommit(thumbnailObjectKey);
     }
 
     @Transactional
     public void deleteProduct(Integer productId) {
-        productRepository.delete(getProductById(productId));
+        Product product = getProductById(productId);
+        String thumbnailObjectKey = product.getThumbnailObjectKey();
+        productRepository.delete(product);
+        deleteFileAfterCommit(thumbnailObjectKey);
     }
 
     // ── 내부 유틸 ────────────────────────────────────────────────────
@@ -179,11 +236,31 @@ public class ProductService {
                 .orElseThrow(() -> new ForifException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 
+    private Product getPendingApplicationForApplicant(Long userId, Integer productId) {
+        Product product = getProductById(productId);
+        if (!product.getApplicant().getId().equals(userId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+        if (product.getStatus() != ProductStatus.PENDING) {
+            throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
+        }
+        return product;
+    }
+
     private void validateSlug(String slug) {
         if (!SLUG_PATTERN.matcher(slug).matches() || RESERVED_SLUGS.contains(slug)) {
             throw new ForifException(ErrorCode.PRODUCT_SLUG_INVALID);
         }
         if (productRepository.existsBySlug(slug)) {
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
+        }
+    }
+
+    private void validateSlugForUpdate(Product product, String slug) {
+        if (!SLUG_PATTERN.matcher(slug).matches() || RESERVED_SLUGS.contains(slug)) {
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_INVALID);
+        }
+        if (!slug.equals(product.getSlug()) && productRepository.existsBySlug(slug)) {
             throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
         }
     }
@@ -280,5 +357,31 @@ public class ProductService {
                 }
             }
         });
+    }
+
+    /** DB 반영이 끝난 뒤에만 더 이상 참조되지 않는 기존 파일을 삭제한다. */
+    private void deleteFileAfterCommit(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteFileSafely(objectKey);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteFileSafely(objectKey);
+            }
+        });
+    }
+
+    private void deleteFileSafely(String objectKey) {
+        try {
+            filePort.deleteFile(objectKey);
+        } catch (Exception e) {
+            // DB 커밋 뒤의 파일 삭제 실패가 이미 성공한 서비스 수정 요청을 실패시키지 않게 한다.
+            log.warn("기존 서비스 썸네일 삭제 실패: {}", objectKey, e);
+        }
     }
 }

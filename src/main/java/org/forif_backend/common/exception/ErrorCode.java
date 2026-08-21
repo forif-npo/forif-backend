@@ -118,6 +118,7 @@ public enum ErrorCode {
     PRODUCT_URL_INVALID(HttpStatus.BAD_REQUEST, "FOR115-400", "URL은 http:// 또는 https:// 로 시작해야 합니다."),
     PRODUCT_PENDING_LIMIT(HttpStatus.BAD_REQUEST, "FOR116-400", "검토 대기 중인 신청이 너무 많습니다. 검토 완료 후 다시 신청해주세요."),
     PRODUCT_INPUT_TOO_LONG(HttpStatus.BAD_REQUEST, "FOR117-400", "태그 또는 기술 스택이 너무 깁니다."),
+    PRODUCT_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR118-409", "서비스 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
 
     // Semester (활동 학기)
     SEMESTER_INVALID(HttpStatus.BAD_REQUEST, "FOR120-400", "유효하지 않은 학기입니다."),

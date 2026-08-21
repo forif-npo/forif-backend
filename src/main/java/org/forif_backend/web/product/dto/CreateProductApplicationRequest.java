@@ -48,6 +48,9 @@ public class CreateProductApplicationRequest {
     @Size(max = 10)
     private List<String> tags;
 
+    /** 수정 시 기존 썸네일을 제거할지 여부. 신규 신청에서는 사용하지 않는다. */
+    private boolean removeThumbnail;
+
     public CreateProductApplicationCommand toCommand() {
         return new CreateProductApplicationCommand(
                 name, slug, oneLiner, description, sourceType,
