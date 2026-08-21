@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.List;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -55,7 +57,7 @@ class ProductServiceTest {
         pendingProduct = Product.createPending(
                 "before-service", "수정 전 서비스", "한 줄 소개", "상세 소개", ProductSourceType.STUDY,
                 null, "Spring", "https://before.example.com", "https://github.com/forif/before", 2026, applicant);
-        when(productRepository.findById(anyInt())).thenReturn(Optional.of(pendingProduct));
+        when(productRepository.findByIdForUpdate(anyInt())).thenReturn(Optional.of(pendingProduct));
     }
 
     @Test
@@ -74,6 +76,20 @@ class ProductServiceTest {
                 APPLICANT_ID, 1, updateCommand(), false, null);
 
         assertThat(pendingProduct.getTags()).isEqualTo("Next.js,TypeScript");
+        verify(productRepository).findByIdForUpdate(1);
+        verify(productRepository, never()).findById(anyInt());
+    }
+
+    @Test
+    void mapsConcurrentSlugConflictToBusinessError() {
+        doThrow(new DataIntegrityViolationException("duplicate slug"))
+                .when(productRepository).flush();
+
+        assertThatThrownBy(() -> productService.updateMyPendingApplication(
+                APPLICANT_ID, 1, updateCommand(), false, null))
+                .isInstanceOf(ForifException.class)
+                .extracting(error -> ((ForifException) error).getErrorCode())
+                .isEqualTo(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
     }
 
     @Test

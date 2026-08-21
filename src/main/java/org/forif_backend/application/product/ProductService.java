@@ -131,6 +131,12 @@ public class ProductService {
                 requireHttpUrl(command.serviceUrl()),
                 requireHttpUrl(command.githubUrl())
         );
+        try {
+            // 다른 신청서가 같은 slug로 먼저 수정한 경우를 여기서 409로 변환한다.
+            productRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new ForifException(ErrorCode.PRODUCT_SLUG_ALREADY_EXISTS);
+        }
 
         if (removeThumbnail) {
             product.updateThumbnail(null);
@@ -232,7 +238,7 @@ public class ProductService {
     // ── 내부 유틸 ────────────────────────────────────────────────────
 
     private Product getProductById(Integer productId) {
-        return productRepository.findById(productId)
+        return productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new ForifException(ErrorCode.PRODUCT_NOT_FOUND));
     }
 

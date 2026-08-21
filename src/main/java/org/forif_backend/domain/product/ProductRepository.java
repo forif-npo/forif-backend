@@ -7,7 +7,13 @@ public interface ProductRepository {
 
     Product save(Product product);
 
+    /** 유니크 제약 위반을 서비스 계층에서 즉시 처리할 수 있도록 변경을 DB에 반영한다. */
+    void flush();
+
     Optional<Product> findById(Integer productId);
+
+    /** 수정·삭제·승인처럼 상태를 바꾸는 작업에서 행을 잠근 채 조회한다. */
+    Optional<Product> findByIdForUpdate(Integer productId);
 
     Optional<Product> findBySlug(String slug);
 
