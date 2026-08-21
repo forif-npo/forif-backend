@@ -286,6 +286,8 @@ public class UserApplyService {
             return ApplyStatusResponse.builder()
                     .canApplyPrimary(menteeRecruitmentOpen)
                     .canApplySecondary(false)
+                    .canApplyAutonomousStudy(menteeRecruitmentOpen)
+                    .hasAutonomousStudyApplication(false)
                     .build();
         }
 
@@ -308,6 +310,8 @@ public class UserApplyService {
         return ApplyStatusResponse.builder()
                 .canApplyPrimary(false)
                 .canApplySecondary(menteeRecruitmentOpen && !hasSecondary && !isAutonomousApplication)
+                .canApplyAutonomousStudy(false)
+                .hasAutonomousStudyApplication(isAutonomousApplication)
                 .primaryStudy(primaryStudyResponse)
                 .secondaryStudy(secondaryStudyResponse)
                 .build();

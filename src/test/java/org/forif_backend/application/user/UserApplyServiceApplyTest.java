@@ -124,6 +124,33 @@ class UserApplyServiceApplyTest {
 
         assertThat(response.canApplyPrimary()).isFalse();
         assertThat(response.canApplySecondary()).isFalse();
+        assertThat(response.canApplyAutonomousStudy()).isFalse();
+        assertThat(response.hasAutonomousStudyApplication()).isFalse();
+    }
+
+    @Test
+    void reportsAutonomousStudyApplicationAsUnavailableForBothStudyTypes() {
+        when(semesterPhaseGuard.isOpen(SemesterPhase.MENTEE_RECRUIT, 2026, 2)).thenReturn(true);
+
+        UserApply application = mock(UserApply.class);
+        when(application.getPrimaryStudy()).thenReturn(999);
+        when(application.getSecondaryStudy()).thenReturn(null);
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.of(application));
+
+        Study autonomousStudy = mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getTags()).thenReturn(java.util.List.of());
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyByIdWithTags(999))
+                .thenReturn(java.util.Optional.of(autonomousStudy));
+
+        ApplyStatusResponse response = userApplyService.getApplyStatus(USER_ID);
+
+        assertThat(response.canApplyPrimary()).isFalse();
+        assertThat(response.canApplySecondary()).isFalse();
+        assertThat(response.canApplyAutonomousStudy()).isFalse();
+        assertThat(response.hasAutonomousStudyApplication()).isTrue();
     }
 
     @Test
