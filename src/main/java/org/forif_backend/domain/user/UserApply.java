@@ -87,6 +87,7 @@ public class UserApply extends BaseTimeEntity {
     }
 
     public void addSecondaryStudy(Integer studyId, String studyName, String intro) {
+        requireDifferentFromPrimary(studyId);
         this.secondaryStudy = studyId;
         this.secondaryStudyName = studyName;
         this.secondaryIntro = intro;
@@ -97,6 +98,7 @@ public class UserApply extends BaseTimeEntity {
         if (this.primaryStatus != UserApplyStatus.PENDING) {
             throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
         }
+        requireDifferentFromSecondary(studyId);
         this.primaryStudy = studyId;
         this.primaryStudyName = studyName;
         this.primaryIntro = applyReason;
@@ -106,9 +108,22 @@ public class UserApply extends BaseTimeEntity {
         if (this.secondaryStatus != UserApplyStatus.PENDING) {
             throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
         }
+        requireDifferentFromPrimary(studyId);
         this.secondaryStudy = studyId;
         this.secondaryStudyName = studyName;
         this.secondaryIntro = applyReason;
+    }
+
+    private void requireDifferentFromPrimary(Integer studyId) {
+        if (studyId.equals(this.primaryStudy)) {
+            throw new ForifException(ErrorCode.DUPLICATE_STUDY_PRIORITY);
+        }
+    }
+
+    private void requireDifferentFromSecondary(int studyId) {
+        if (this.secondaryStudy != null && this.secondaryStudy == studyId) {
+            throw new ForifException(ErrorCode.DUPLICATE_STUDY_PRIORITY);
+        }
     }
 
     public static UserApply applyStudy(User applier, Study primaryStudy, String applyReason,

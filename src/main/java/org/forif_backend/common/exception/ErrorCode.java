@@ -20,6 +20,7 @@ public enum ErrorCode {
     STUDY_APPLICATION_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "FOR009-400", "스터디 지원 기간이 아닙니다."),
     ALREADY_APPLIED_PRIMARY(HttpStatus.BAD_REQUEST, "FOR010-400", "이미 1순위 스터디에 지원했습니다."),
     ALREADY_APPLIED_SECONDARY(HttpStatus.BAD_REQUEST, "FOR011-400", "이미 2순위 스터디에 지원했습니다."),
+    DUPLICATE_STUDY_PRIORITY(HttpStatus.BAD_REQUEST, "FOR141-400", "1순위와 2순위에 동일한 스터디를 지원할 수 없습니다."),
     PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR037-400", "1순위 스터디에 먼저 지원해야 합니다."),
     AUTONOMOUS_STUDY_APPLY_CONFLICT(HttpStatus.BAD_REQUEST, "FOR140-400", "자율스터디는 정규스터디와 중복 신청할 수 없습니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "FOR012-400", "거절 사유는 필수입니다."),
