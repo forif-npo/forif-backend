@@ -18,6 +18,7 @@ public record StudyInfoDto(
         String location,
         Integer difficulty,
         String imgUrl,
-        String thumbnailImage
+        String thumbnailImage,
+        boolean autonomousStudy
 ) {
 }

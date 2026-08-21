@@ -275,7 +275,8 @@ public class UserService {
                 study.getLocation(),
                 study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
                 study.getImgUrl(),
-                resolveThumbnailImage(study)
+                resolveThumbnailImage(study),
+                study.isAutonomousStudy()
         );
 
         Integer statusValue = status != null ? status.ordinal() : null;

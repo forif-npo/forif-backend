@@ -30,6 +30,7 @@ public class StudyDto {
     private final StudyDifficulty difficulty;
     private final String imgUrl;
     private final String thumbnailImage;
+    private final boolean autonomousStudy;
 
     public static StudyDto from(Study studyEntity) {
         return from(studyEntity, null);
@@ -54,6 +55,7 @@ public class StudyDto {
                 .difficulty(studyEntity.getDifficulty())
                 .imgUrl(studyEntity.getImgUrl())
                 .thumbnailImage(thumbnailImage)
+                .autonomousStudy(studyEntity.isAutonomousStudy())
                 .build();
     }
 }
