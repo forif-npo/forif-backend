@@ -125,7 +125,11 @@ public class UserApplyService {
 
         requireApplicableStudy(study, apply.getApplyYear(), apply.getApplySemester());
 
-        if (study.isAutonomousStudy() || isAutonomousStudyApplication(apply)) {
+        if (isAutonomousStudyApplication(apply)) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED);
+        }
+
+        if (study.isAutonomousStudy()) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
         }
 

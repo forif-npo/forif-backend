@@ -183,6 +183,28 @@ class UserApplyServiceApplyTest {
     }
 
     @Test
+    void rejectsUpdatingAnAutonomousStudyApplicationWithItsDedicatedError() {
+        Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
+
+        Study regularStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(regularStudy));
+
+        assertThatThrownBy(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정할 지원 사유", 1)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
+
+        verify(studyRepository).findStudyById(STUDY_ID);
+    }
+
+    @Test
     void rejectsUpdatingAnApplicationToAStudyThatIsNotApplicable() {
         Study originalStudy = org.mockito.Mockito.mock(Study.class);
         when(originalStudy.getId()).thenReturn(10);
