@@ -16,7 +16,7 @@ import org.forif_backend.common.BaseTimeEntity;
 import java.time.LocalDateTime;
 
 /**
- * 학기별 모집 단계 기간.
+ * 학기별 일정 기간.
  *
  * 학기·단계당 한 행이며, 행이 없으면 그 단계는 상시 개방이다(fail-open).
  * 설정을 잊었다고 해서 동아리 운영이 멈추는 편이 더 위험하다고 보고 이렇게 정했다.

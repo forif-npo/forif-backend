@@ -40,7 +40,7 @@ class StudyRecruitStatusSchedulerTest {
         scheduler.synchronizeRecruitStatuses(NOW);
 
         verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.APPLICABLE);
-        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
+        verify(studyRepository).closeRecruitmentForNonActiveStudies(2026, 2);
     }
 
     @Test
@@ -51,7 +51,7 @@ class StudyRecruitStatusSchedulerTest {
         scheduler.synchronizeRecruitStatuses(NOW);
 
         verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.CLOSED);
-        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
+        verify(studyRepository).closeRecruitmentForNonActiveStudies(2026, 2);
     }
 
     /**
@@ -65,6 +65,6 @@ class StudyRecruitStatusSchedulerTest {
         scheduler.synchronizeRecruitStatuses(NOW);
 
         verify(studyRepository).updateRecruitStatusForApprovedStudies(2026, 2, RecruitStatus.CLOSED);
-        verify(studyRepository).closeRecruitmentForNonActiveApprovedStudies(2026, 2);
+        verify(studyRepository).closeRecruitmentForNonActiveStudies(2026, 2);
     }
 }

@@ -241,6 +241,14 @@ public class Study extends BaseTimeEntity {
         this.rejectReason = null;
     }
 
+    /** 학기 공통 시작일이 되면 승인된 스터디를 실제 개설 상태로 전환한다. */
+    public void start() {
+        if (this.studyStatus != StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+        this.studyStatus = StudyStatus.STARTED;
+    }
+
     /**
      * 재요청 처리: 거절된 상태에서만 재요청(신청자가 수정 후 제출)이 가능합니다.
      */

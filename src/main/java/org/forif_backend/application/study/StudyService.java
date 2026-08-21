@@ -120,12 +120,15 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         SemesterInfo activeSemester = semesterService.getActive();
-        boolean isApprovedOutsideActiveSemester = study.getStudyStatus() == StudyStatus.APPROVED
-                && (study.getActYear() != activeSemester.actYear()
-                || study.getActSemester() != activeSemester.actSemester());
+        boolean isApplicationStatus = study.getStudyStatus() == StudyStatus.PENDING
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.REJECTED
+                || (study.getStudyStatus() == StudyStatus.APPROVED
+                && study.getActYear() == activeSemester.actYear()
+                && study.getActSemester() == activeSemester.actSemester());
         if (!study.isMentor(mentorId)
                 || study.isAutonomousStudy()
-                || isApprovedOutsideActiveSemester) {
+                || !isApplicationStatus) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -218,7 +221,7 @@ public class StudyService {
     @Transactional(readOnly = true)
     public CursorPageResponse<AdminStudyDto> getAdminStudies(Integer cursor, Integer page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting) {
         List<StudyStatus> statusFilter = studyStatuses == null || studyStatuses.isEmpty()
-                ? List.of(StudyStatus.APPROVED)
+                ? List.of(StudyStatus.APPROVED, StudyStatus.STARTED)
                 : studyStatuses;
         long totalElements = studyRepository.countStudies(year, semester, search, statusFilter);
 
@@ -345,7 +348,8 @@ public class StudyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
-        if (study.getStudyStatus() == StudyStatus.APPROVED) {
+        if (study.getStudyStatus() == StudyStatus.APPROVED
+                || study.getStudyStatus() == StudyStatus.STARTED) {
             throw new ForifException(ErrorCode.STUDY_ALREADY_APPROVED);
         }
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
@@ -756,7 +760,9 @@ public class StudyService {
 
     private boolean canCancelStudyApplication(Study study) {
         SemesterInfo active = semesterService.getActive();
-        return study.getStudyStatus() != StudyStatus.APPROVED
+        return (study.getStudyStatus() == StudyStatus.PENDING
+                || study.getStudyStatus() == StudyStatus.RE_APPLIED
+                || study.getStudyStatus() == StudyStatus.REJECTED)
                 && study.getActYear() == active.actYear()
                 && study.getActSemester() == active.actSemester()
                 && semesterPhaseGuard.isOpen(
