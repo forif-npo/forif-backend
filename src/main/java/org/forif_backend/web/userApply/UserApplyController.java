@@ -46,7 +46,7 @@ public class UserApplyController {
     @PatchMapping("/{applyId}")
     public ResponseEntity<ApiResponse<Void>> updateApplication(@AuthenticationPrincipal Long userId,
                                                                @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
-                                                               @Valid @RequestBody UserApplyUpdateRequest request) {
+                                                               @RequestBody UserApplyUpdateRequest request) {
         userApplyService.updateApplication(userId, applyId, request);
         return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }

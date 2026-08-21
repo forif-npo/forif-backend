@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.validation.Validator;
 import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
@@ -47,6 +48,7 @@ class UserApplyServiceApplyTest {
     @Mock private UserRepository userRepository;
     @Mock private StudyRepository studyRepository;
     @Mock private StudyUserRepository studyUserRepository;
+    @Mock private Validator validator;
 
     @InjectMocks private UserApplyService userApplyService;
 
@@ -56,6 +58,8 @@ class UserApplyServiceApplyTest {
     void setUp() {
         lenient().when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         lenient().when(userRepository.findUserById(USER_ID)).thenReturn(java.util.Optional.of(user));
+        lenient().when(validator.validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class)))
+                .thenReturn(java.util.Set.of());
     }
 
     @Test
@@ -115,6 +119,7 @@ class UserApplyServiceApplyTest {
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("변경 스터디");
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
         userApplyService.updateApplication(
@@ -154,6 +159,7 @@ class UserApplyServiceApplyTest {
         when(secondaryStudy.getId()).thenReturn(STUDY_ID);
         when(secondaryStudy.getStudyName()).thenReturn("기존 2순위 스터디");
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(primaryStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(secondaryStudy));
 
         assertDuplicatePriority(() -> userApplyService.updateApplication(
@@ -192,16 +198,32 @@ class UserApplyServiceApplyTest {
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
         when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
 
-        Study regularStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
-        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(regularStudy));
-
         assertThatThrownBy(() -> userApplyService.updateApplication(
                 USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정할 지원 사유", 1)))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
 
-        verify(studyRepository).findStudyById(STUDY_ID);
+        verify(studyRepository, never()).findStudyById(STUDY_ID);
+    }
+
+    @Test
+    void rejectsAnAutonomousStudyApplicationBeforeValidatingItsEmptyApplyReason() {
+        Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
+
+        assertThatThrownBy(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(null, null, null)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
+
+        verify(validator, never()).validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class));
     }
 
     @Test
@@ -211,6 +233,7 @@ class UserApplyServiceApplyTest {
         when(originalStudy.getStudyName()).thenReturn("기존 스터디");
         UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
         Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
 
