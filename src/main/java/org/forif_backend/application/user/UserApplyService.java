@@ -123,6 +123,8 @@ public class UserApplyService {
         Study study = studyRepository.findStudyById(request.studyId())
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
+        requireApplicableStudy(study, apply.getApplyYear(), apply.getApplySemester());
+
         if (study.isAutonomousStudy() || isAutonomousStudyApplication(apply)) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
         }

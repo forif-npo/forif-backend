@@ -111,7 +111,7 @@ class UserApplyServiceApplyTest {
         when(originalStudy.getId()).thenReturn(10);
         when(originalStudy.getStudyName()).thenReturn("기존 스터디");
         UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
-        Study replacementStudy = org.mockito.Mockito.mock(Study.class);
+        Study replacementStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("변경 스터디");
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
@@ -123,6 +123,22 @@ class UserApplyServiceApplyTest {
         verify(semesterPhaseGuard).requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 2);
         verify(semesterPhaseGuard, never()).requireOpen(SemesterPhase.MENTEE_RECRUIT);
         assertThat(application.getPrimaryStudy()).isEqualTo(STUDY_ID);
+    }
+
+    @Test
+    void rejectsUpdatingAnApplicationToAStudyThatIsNotApplicable() {
+        Study originalStudy = org.mockito.Mockito.mock(Study.class);
+        when(originalStudy.getId()).thenReturn(10);
+        when(originalStudy.getStudyName()).thenReturn("기존 스터디");
+        UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
+        Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+
+        assertPeriodEnded(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 지원 동기", 1)));
+
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
     }
 
     @Test
