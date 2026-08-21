@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import org.forif_backend.common.dto.response.ApiErrorData;
 import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.domain.product.Product;
 
 @Slf4j
 @RestControllerAdvice
@@ -38,7 +39,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<?>> handleOptimisticLockingFailure(
             ObjectOptimisticLockingFailureException e) {
         log.warn("동시 수정 충돌: {}", e.getMessage());
-        ErrorCode errorCode = ErrorCode.STUDY_APPLICATION_UPDATE_CONFLICT;
+        ErrorCode errorCode = Product.class.equals(e.getPersistentClass())
+                ? ErrorCode.PRODUCT_APPLICATION_UPDATE_CONFLICT
+                : ErrorCode.STUDY_APPLICATION_UPDATE_CONFLICT;
         return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
     }
 

@@ -27,6 +27,11 @@ public class Product extends BaseTimeEntity {
     @Column(name = "product_id")
     private Integer id;
 
+    /** 신청자 수정과 운영진 승인 요청이 경합할 때 마지막 저장이 상태를 되돌리지 않도록 보호한다. */
+    @Version
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private Long version;
+
     /** 서브도메인으로 쓰이는 식별자 ({slug}.forif.org) */
     @Column(nullable = false, unique = true, length = 30)
     private String slug;
