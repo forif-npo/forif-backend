@@ -21,6 +21,7 @@ public record StudyResponse(
         String difficulty,
         String imgUrl,
         String thumbnailImage,
+        boolean autonomousStudy,
         Integer actYear,
         Integer actSemester
 ) {
@@ -53,6 +54,7 @@ public record StudyResponse(
                 difficultyValue,
                 study.getImgUrl(),
                 study.getThumbnailImage(),
+                study.isAutonomousStudy(),
                 study.getActYear(),
                 study.getActSemester()
         );

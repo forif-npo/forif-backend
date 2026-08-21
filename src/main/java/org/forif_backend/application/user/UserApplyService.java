@@ -68,21 +68,35 @@ public class UserApplyService {
         int semester = active.actSemester();
         requireApplicableStudy(study, year, semester);
 
+        Optional<UserApply> existingApply = userRepository
+                .findUserApplyByYearAndSemesterAndUser(year, semester, user);
+
+        if (study.isAutonomousStudy()) {
+            applyAutonomousStudy(user, study, request, year, semester, existingApply);
+            return;
+        }
+
+        requireRegularStudyApplicationInput(request);
+
+        if (existingApply.filter(this::isAutonomousStudyApplication).isPresent()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
+        }
+
         if (request.priority() == 1) {
-            if (userRepository.existUserApply(year, semester, user)) {
+            if (existingApply.isPresent()) {
                 throw new ForifException(ErrorCode.ALREADY_APPLIED_PRIMARY);
             }
             UserApply userApply = UserApply.applyStudy(user, study, request.applyReason(), year, semester);
             userRepository.createUserApply(userApply);
         } else if (request.priority() == 2) {
-            UserApply existingApply = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user)
+            UserApply primaryApplication = existingApply
                     .orElseThrow(() -> new ForifException(ErrorCode.PRIMARY_NOT_APPLIED));
 
-            if (existingApply.getSecondaryStudy() != null) {
+            if (primaryApplication.getSecondaryStudy() != null) {
                 throw new ForifException(ErrorCode.ALREADY_APPLIED_SECONDARY);
             }
 
-            existingApply.addSecondaryStudy(study.getId(), study.getStudyName(), request.applyReason());
+            primaryApplication.addSecondaryStudy(study.getId(), study.getStudyName(), request.applyReason());
         } else {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
@@ -108,6 +122,12 @@ public class UserApplyService {
 
         Study study = studyRepository.findStudyById(request.studyId())
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        requireApplicableStudy(study, apply.getApplyYear(), apply.getApplySemester());
+
+        if (study.isAutonomousStudy() || isAutonomousStudyApplication(apply)) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
+        }
 
         if (request.priority() == 1) {
             apply.updatePrimaryApplication(study.getId(), study.getStudyName(), request.applyReason());
@@ -164,9 +184,8 @@ public class UserApplyService {
      */
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         Study study = getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -216,9 +235,8 @@ public class UserApplyService {
      */
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -268,15 +286,20 @@ public class UserApplyService {
             return ApplyStatusResponse.builder()
                     .canApplyPrimary(menteeRecruitmentOpen)
                     .canApplySecondary(false)
+                    .canApplyAutonomousStudy(menteeRecruitmentOpen)
+                    .hasAutonomousStudyApplication(false)
                     .build();
         }
 
         UserApply apply = applyOpt.get();
         boolean hasSecondary = apply.getSecondaryStudy() != null;
 
-        StudyResponse primaryStudyResponse = studyRepository.findStudyByIdWithTags(apply.getPrimaryStudy())
-                .map(s -> StudyResponse.from(StudyDto.from(s)))
+        Study primaryStudy = studyRepository.findStudyByIdWithTags(apply.getPrimaryStudy())
                 .orElse(null);
+        StudyResponse primaryStudyResponse = primaryStudy == null
+                ? null
+                : StudyResponse.from(StudyDto.from(primaryStudy));
+        boolean isAutonomousApplication = primaryStudy != null && primaryStudy.isAutonomousStudy();
 
         StudyResponse secondaryStudyResponse = hasSecondary
                 ? studyRepository.findStudyByIdWithTags(apply.getSecondaryStudy())
@@ -286,7 +309,9 @@ public class UserApplyService {
 
         return ApplyStatusResponse.builder()
                 .canApplyPrimary(false)
-                .canApplySecondary(menteeRecruitmentOpen && !hasSecondary)
+                .canApplySecondary(menteeRecruitmentOpen && !hasSecondary && !isAutonomousApplication)
+                .canApplyAutonomousStudy(false)
+                .hasAutonomousStudyApplication(isAutonomousApplication)
                 .primaryStudy(primaryStudyResponse)
                 .secondaryStudy(secondaryStudyResponse)
                 .build();
@@ -325,9 +350,8 @@ public class UserApplyService {
      */
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         Study study = getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
         UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
@@ -349,6 +373,7 @@ public class UserApplyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentor(study, userId);
+        requireApplicantManagementTarget(study);
         return study;
     }
 
@@ -358,7 +383,18 @@ public class UserApplyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        if (study.getStudyStatus() != StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
         return study;
+    }
+
+    /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */
+    private void requireApplicantManagementTarget(Study study) {
+        if (study.getStudyStatus() != StudyStatus.APPROVED
+                && study.getStudyStatus() != StudyStatus.STARTED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private void requireActiveSemesterApplication(UserApply apply) {
@@ -377,6 +413,41 @@ public class UserApplyService {
         if (!isActiveApprovedStudy || study.getRecruitStatus() != RecruitStatus.APPLICABLE) {
             throw new ForifException(ErrorCode.STUDY_APPLICATION_PERIOD_ENDED);
         }
+    }
+
+    private void applyAutonomousStudy(
+            User user,
+            Study study,
+            UserApplyRequest request,
+            int year,
+            int semester,
+            Optional<UserApply> existingApply
+    ) {
+        if (existingApply.isPresent()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
+        }
+
+        if (request.priority() != null
+                || (request.applyReason() != null && !request.applyReason().isBlank())) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+
+        UserApply userApply = UserApply.applyStudy(user, study, null, year, semester);
+        userRepository.createUserApply(userApply);
+    }
+
+    private void requireRegularStudyApplicationInput(UserApplyRequest request) {
+        if (request.priority() == null
+                || request.applyReason() == null
+                || request.applyReason().isBlank()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+    }
+
+    private boolean isAutonomousStudyApplication(UserApply apply) {
+        return studyRepository.findStudyById(apply.getPrimaryStudy())
+                .map(Study::isAutonomousStudy)
+                .orElse(false);
     }
 
     private String getApplicationContentForStudy(UserApply userApply, Integer studyId) {

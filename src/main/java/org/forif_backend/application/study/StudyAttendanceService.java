@@ -10,6 +10,7 @@ import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyAttendance;
 import org.forif_backend.domain.study.StudyAttendanceRepository;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.springframework.stereotype.Service;
@@ -137,6 +138,9 @@ public class StudyAttendanceService {
     private void requireAttendanceTarget(Study study) {
         if (study.isAutonomousStudy()) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
+        }
+        if (study.getStudyStatus() != StudyStatus.STARTED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
         }
     }
 }

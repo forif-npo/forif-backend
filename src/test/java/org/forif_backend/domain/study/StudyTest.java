@@ -1,6 +1,7 @@
 package org.forif_backend.domain.study;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 
 import org.forif_backend.domain.user.User;
@@ -35,5 +36,20 @@ class StudyTest {
         Study regularStudy = Study.createPendingStudy(mentor, 2026, 2);
 
         assertThat(regularStudy.isAutonomousStudy()).isFalse();
+    }
+
+    @Test
+    void startsAnApprovedStudyOnlyOnce() {
+        User mentor = Mockito.mock(User.class);
+        given(mentor.getUserName()).willReturn("멘토");
+        Study study = Study.createPendingStudy(mentor, 2026, 2);
+        study.approve();
+
+        study.start();
+
+        assertThat(study.getStudyStatus()).isEqualTo(StudyStatus.STARTED);
+        assertThatThrownBy(study::start).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(study::approve).isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> study.reject("사유")).isInstanceOf(RuntimeException.class);
     }
 }

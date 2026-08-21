@@ -168,9 +168,22 @@ public class StudyRepositoryImpl implements StudyRepository {
     }
 
     @Override
-    public int closeRecruitmentForNonActiveApprovedStudies(int activeYear, int activeSemester) {
-        return studyJpaRepository.closeRecruitmentForNonActiveApprovedStudies(
-                activeYear, activeSemester, RecruitStatus.CLOSED, StudyStatus.APPROVED);
+    public int closeRecruitmentForNonActiveStudies(int activeYear, int activeSemester) {
+        return studyJpaRepository.closeRecruitmentForNonActiveStudies(
+                activeYear, activeSemester, RecruitStatus.CLOSED,
+                List.of(StudyStatus.APPROVED, StudyStatus.STARTED));
+    }
+
+    @Override
+    public int startApprovedStudies(int actYear, int actSemester) {
+        return studyJpaRepository.startApprovedStudies(
+                actYear, actSemester, StudyStatus.APPROVED, StudyStatus.STARTED);
+    }
+
+    @Override
+    public int startPastApprovedStudies(int activeYear, int activeSemester) {
+        return studyJpaRepository.startPastApprovedStudies(
+                activeYear, activeSemester, StudyStatus.APPROVED, StudyStatus.STARTED);
     }
 
     @Override
