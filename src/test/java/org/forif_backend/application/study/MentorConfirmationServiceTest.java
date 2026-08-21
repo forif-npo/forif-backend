@@ -44,7 +44,7 @@ class MentorConfirmationServiceTest {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
-        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.STARTED);
 
         assertThatThrownBy(() -> service.issueConfirmations(
                 1, List.of(), "2026.08.15.~2026.02.01."))
@@ -70,7 +70,7 @@ class MentorConfirmationServiceTest {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
-        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.STARTED);
 
         assertThatThrownBy(() -> service.issueConfirmations(1, List.of(), "2026-02-01~2026-08-15"))
                 .isInstanceOf(ForifException.class)
@@ -126,7 +126,7 @@ class MentorConfirmationServiceTest {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
-        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.STARTED);
         when(study.isMentor(100L)).thenReturn(false);
         when(confirmationRepository.findByStudyIdAndMentorId(1, 100L))
                 .thenReturn(Optional.of(confirmation));
@@ -158,7 +158,7 @@ class MentorConfirmationServiceTest {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
-        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.STARTED);
         when(confirmationRepository.findByStudyIdAndMentorId(1, 100L)).thenReturn(Optional.empty());
 
         MentorConfirmationStatusResult result = service.getConfirmationForAdmin(1, 100L);
@@ -191,7 +191,7 @@ class MentorConfirmationServiceTest {
         when(study.getId()).thenReturn(1);
         when(study.getActYear()).thenReturn(2026);
         when(study.getActSemester()).thenReturn(1);
-        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.STARTED);
         when(study.getStudyName()).thenReturn("테스트 스터디");
         when(study.getPrimaryMentor()).thenReturn(mentor);
         when(study.getSecondaryMentor()).thenReturn(null);

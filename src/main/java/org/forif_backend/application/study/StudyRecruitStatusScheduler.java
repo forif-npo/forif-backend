@@ -44,7 +44,7 @@ public class StudyRecruitStatusScheduler {
 
         int activeSemesterUpdatedCount = studyRepository.updateRecruitStatusForApprovedStudies(
                 activeSemester.actYear(), activeSemester.actSemester(), targetStatus);
-        int nonActiveSemesterClosedCount = studyRepository.closeRecruitmentForNonActiveApprovedStudies(
+        int nonActiveSemesterClosedCount = studyRepository.closeRecruitmentForNonActiveStudies(
                 activeSemester.actYear(), activeSemester.actSemester());
 
         if (activeSemesterUpdatedCount > 0) {
@@ -52,7 +52,7 @@ public class StudyRecruitStatusScheduler {
                     activeSemester.actYear(), activeSemester.actSemester(), targetStatus, activeSemesterUpdatedCount);
         }
         if (nonActiveSemesterClosedCount > 0) {
-            log.info("비활동 학기 승인 스터디 모집 마감: {}건 변경", nonActiveSemesterClosedCount);
+            log.info("비활동 학기 스터디 모집 마감: {}건 변경", nonActiveSemesterClosedCount);
         }
     }
 }

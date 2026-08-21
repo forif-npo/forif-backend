@@ -52,7 +52,7 @@ public class MentorConfirmationService {
 
     @Transactional(readOnly = true)
     public MentorConfirmationTargetsResult getTargets(Integer studyId) {
-        Study study = getCompletedApprovedStudy(studyId);
+        Study study = getCompletedStartedStudy(studyId);
         Map<Long, MentorConfirmation> confirmations = confirmationByMentorId(studyId);
 
         List<MentorConfirmationTargetsResult.Target> targets = mentorsOf(study).stream()
@@ -75,7 +75,7 @@ public class MentorConfirmationService {
     @Transactional
     public IssueMentorConfirmationsResult issueConfirmations(Integer studyId, List<Long> userIds,
                                                               String activityPeriod) {
-        Study study = getCompletedApprovedStudy(studyId);
+        Study study = getCompletedStartedStudy(studyId);
         validateActivityPeriod(activityPeriod);
         Map<Long, User> mentors = mentorsOf(study).stream()
                 .collect(java.util.stream.Collectors.toMap(User::getId, mentor -> mentor));
@@ -126,7 +126,7 @@ public class MentorConfirmationService {
 
     @Transactional(readOnly = true)
     public MentorConfirmationStatusResult getMyConfirmation(Integer studyId, Long userId) {
-        Study study = getCompletedApprovedStudy(studyId);
+        Study study = getCompletedStartedStudy(studyId);
         Optional<MentorConfirmation> confirmation = mentorConfirmationRepository
                 .findByStudyIdAndMentorId(studyId, userId);
         // 현재 멘토는 미발급 상태를 조회할 수 있고, 교체된 전 멘토는 자신의 발급 이력으로 조회한다.
@@ -140,7 +140,7 @@ public class MentorConfirmationService {
 
     @Transactional(readOnly = true)
     public MentorConfirmationStatusResult getConfirmationForAdmin(Integer studyId, Long userId) {
-        getCompletedApprovedStudy(studyId);
+        getCompletedStartedStudy(studyId);
         return getConfirmationStatus(studyId, userId);
     }
 
@@ -169,14 +169,14 @@ public class MentorConfirmationService {
         }
     }
 
-    private Study getCompletedApprovedStudy(Integer studyId) {
+    private Study getCompletedStartedStudy(Integer studyId) {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
         SemesterInfo active = semesterService.getActive();
         boolean isCompletedSemester = study.getActYear() < active.actYear()
                 || (study.getActYear() == active.actYear()
                 && study.getActSemester() < active.actSemester());
-        if (study.getStudyStatus() != StudyStatus.APPROVED || !isCompletedSemester) {
+        if (study.getStudyStatus() != StudyStatus.STARTED || !isCompletedSemester) {
             throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_NOT_AVAILABLE);
         }
         return study;

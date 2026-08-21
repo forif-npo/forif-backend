@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import org.forif_backend.common.config.JpaAuditingConfig;
 import org.forif_backend.domain.study.RecruitStatus;
 import org.forif_backend.domain.study.Study;
+import java.util.List;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.user.User;
 import org.junit.jupiter.api.Test;
@@ -21,23 +22,25 @@ class StudyJpaRepositoryRecruitStatusTest {
     @Autowired private StudyJpaRepository studyJpaRepository;
 
     @Test
-    void closesOnlyApprovedStudiesOutsideTheActiveSemester() {
+    void closesOnlyEstablishedStudiesOutsideTheActiveSemester() {
         User mentor = persistUser(900020L);
         Study priorApproved = persistStudy(mentor, 2026, 1, StudyStatus.APPROVED, RecruitStatus.APPLICABLE, "지난 학기");
         Study activeApproved = persistStudy(mentor, 2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE, "활동 학기");
         Study priorPending = persistStudy(mentor, 2025, 2, StudyStatus.PENDING, RecruitStatus.APPLICABLE, "대기 스터디");
+        Study priorStarted = persistStudy(mentor, 2025, 1, StudyStatus.STARTED, RecruitStatus.APPLICABLE, "지난 개설 스터디");
         Study alreadyClosed = persistStudy(mentor, 2025, 1, StudyStatus.APPROVED, RecruitStatus.CLOSED, "이미 마감");
         entityManager.flush();
         entityManager.clear();
 
-        int changed = studyJpaRepository.closeRecruitmentForNonActiveApprovedStudies(
-                2026, 2, RecruitStatus.CLOSED, StudyStatus.APPROVED);
+        int changed = studyJpaRepository.closeRecruitmentForNonActiveStudies(
+                2026, 2, RecruitStatus.CLOSED, List.of(StudyStatus.APPROVED, StudyStatus.STARTED));
 
-        assertThat(changed).isEqualTo(1);
+        assertThat(changed).isEqualTo(2);
         entityManager.clear();
         assertThat(findRecruitStatus(priorApproved)).isEqualTo(RecruitStatus.CLOSED);
         assertThat(findRecruitStatus(activeApproved)).isEqualTo(RecruitStatus.APPLICABLE);
         assertThat(findRecruitStatus(priorPending)).isEqualTo(RecruitStatus.APPLICABLE);
+        assertThat(findRecruitStatus(priorStarted)).isEqualTo(RecruitStatus.CLOSED);
         assertThat(findRecruitStatus(alreadyClosed)).isEqualTo(RecruitStatus.CLOSED);
     }
 
@@ -52,8 +55,11 @@ class StudyJpaRepositoryRecruitStatusTest {
         Study study = Study.createPendingStudy(mentor, year, semester);
         study.setStudyName(name);
         study.setRecruitStatus(recruitStatus);
-        if (status == StudyStatus.APPROVED) {
+        if (status == StudyStatus.APPROVED || status == StudyStatus.STARTED) {
             study.approve();
+        }
+        if (status == StudyStatus.STARTED) {
+            study.start();
         }
         entityManager.persist(study);
         return study;

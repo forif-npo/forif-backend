@@ -44,13 +44,43 @@ public interface StudyJpaRepository extends JpaRepository<Study, Integer> {
             SET s.recruitStatus = :closedStatus,
                 s.updatedAt = CURRENT_TIMESTAMP
             WHERE (s.actYear <> :activeYear OR s.actSemester <> :activeSemester)
-              AND s.studyStatus = :studyStatus
+              AND s.studyStatus IN :studyStatuses
               AND (s.recruitStatus IS NULL
                    OR s.recruitStatus <> :closedStatus)
             """)
-    int closeRecruitmentForNonActiveApprovedStudies(
+    int closeRecruitmentForNonActiveStudies(
             @Param("activeYear") int activeYear,
             @Param("activeSemester") int activeSemester,
             @Param("closedStatus") RecruitStatus closedStatus,
-            @Param("studyStatus") StudyStatus studyStatus);
+            @Param("studyStatuses") List<StudyStatus> studyStatuses);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Study s
+            SET s.studyStatus = :startedStatus,
+                s.updatedAt = CURRENT_TIMESTAMP
+            WHERE s.actYear = :actYear
+              AND s.actSemester = :actSemester
+              AND s.studyStatus = :approvedStatus
+            """)
+    int startApprovedStudies(
+            @Param("actYear") int actYear,
+            @Param("actSemester") int actSemester,
+            @Param("approvedStatus") StudyStatus approvedStatus,
+            @Param("startedStatus") StudyStatus startedStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE Study s
+            SET s.studyStatus = :startedStatus,
+                s.updatedAt = CURRENT_TIMESTAMP
+            WHERE (s.actYear < :activeYear
+                   OR (s.actYear = :activeYear AND s.actSemester < :activeSemester))
+              AND s.studyStatus = :approvedStatus
+            """)
+    int startPastApprovedStudies(
+            @Param("activeYear") int activeYear,
+            @Param("activeSemester") int activeSemester,
+            @Param("approvedStatus") StudyStatus approvedStatus,
+            @Param("startedStatus") StudyStatus startedStatus);
 }

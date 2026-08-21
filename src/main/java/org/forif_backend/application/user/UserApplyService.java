@@ -182,9 +182,8 @@ public class UserApplyService {
      */
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         Study study = getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -234,9 +233,8 @@ public class UserApplyService {
      */
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -350,9 +348,8 @@ public class UserApplyService {
      */
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
-
         Study study = getStudyIfActiveMentor(userId, studyId);
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
         UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
@@ -374,6 +371,7 @@ public class UserApplyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentor(study, userId);
+        requireApplicantManagementTarget(study);
         return study;
     }
 
@@ -383,7 +381,18 @@ public class UserApplyService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
+        if (study.getStudyStatus() != StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
         return study;
+    }
+
+    /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */
+    private void requireApplicantManagementTarget(Study study) {
+        if (study.getStudyStatus() != StudyStatus.APPROVED
+                && study.getStudyStatus() != StudyStatus.STARTED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
     }
 
     private void requireActiveSemesterApplication(UserApply apply) {

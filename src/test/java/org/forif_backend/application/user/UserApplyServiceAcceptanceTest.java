@@ -6,6 +6,7 @@ import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.study.StudyMentorAccess;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
@@ -52,6 +53,7 @@ class UserApplyServiceAcceptanceTest {
         UserApply application = mock(UserApply.class);
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(application);
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getApplier()).thenReturn(applicant);
@@ -71,6 +73,7 @@ class UserApplyServiceAcceptanceTest {
         UserApply remainingApplication = mock(UserApply.class);
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(null);
         when(userRepository.findUserApplyById(101L)).thenReturn(remainingApplication);
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);

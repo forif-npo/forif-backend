@@ -10,6 +10,7 @@ import org.forif_backend.common.exception.ForifException;
 public enum StudyStatus {
     PENDING("PENDING", "대기"),
     APPROVED("APPROVED", "승인"),
+    STARTED("STARTED", "개설됨"),
     REJECTED("REJECTED", "거절"),
     RE_APPLIED("RE_APPLIED", "재요청");
 

@@ -15,6 +15,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyAttendanceRepository;
 import org.forif_backend.domain.study.StudyRepository;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.junit.jupiter.api.Test;
 
@@ -43,6 +44,27 @@ class AutonomousStudyOperationTest {
 
         verify(studyUserRepository, never()).findAllByStudyId(1);
         verify(attendanceRepository, never()).findAllByStudyId(1);
+    }
+
+    @Test
+    void blocksAttendanceUntilTheStudyHasStarted() {
+        StudyRepository studyRepository = mock(StudyRepository.class);
+        Study study = mock(Study.class);
+        StudyAttendanceService service = new StudyAttendanceService(
+                studyRepository,
+                mock(StudyMentorAccess.class),
+                mock(StudyUserRepository.class),
+                mock(StudyAttendanceRepository.class)
+        );
+        when(studyRepository.findStudyById(1)).thenReturn(Optional.of(study));
+        when(study.isAutonomousStudy()).thenReturn(false);
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+
+        assertThatThrownBy(() -> service.getAttendance(10L, 1))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.BAD_REQUEST));
     }
 
     @Test
