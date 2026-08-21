@@ -32,6 +32,7 @@ public class StudyDetailDto {
     private final StudyDifficulty difficulty;
     private final String imgUrl;
     private final String thumbnailImage;
+    private final boolean autonomousStudy;
     private final Boolean isOnline;
     private final String goal;
     private final String selectionCriteria;
@@ -79,6 +80,7 @@ public class StudyDetailDto {
                 .difficulty(study.getDifficulty())
                 .imgUrl(study.getImgUrl())
                 .thumbnailImage(thumbnailImage)
+                .autonomousStudy(study.isAutonomousStudy())
                 .isOnline(study.getIsOnline())
                 .goal(study.getGoal())
                 .selectionCriteria(study.getSelectionCriteria())

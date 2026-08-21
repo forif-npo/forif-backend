@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -63,7 +64,6 @@ class UserApplyServiceApplyTest {
         when(study.getId()).thenReturn(STUDY_ID);
         when(study.getStudyName()).thenReturn("테스트 스터디");
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
-        when(userRepository.existUserApply(2026, 2, user)).thenReturn(false);
 
         userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, "지원 동기", 1));
 
@@ -111,7 +111,7 @@ class UserApplyServiceApplyTest {
         when(originalStudy.getId()).thenReturn(10);
         when(originalStudy.getStudyName()).thenReturn("기존 스터디");
         UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
-        Study replacementStudy = org.mockito.Mockito.mock(Study.class);
+        Study replacementStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("변경 스터디");
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
@@ -126,6 +126,22 @@ class UserApplyServiceApplyTest {
     }
 
     @Test
+    void rejectsUpdatingAnApplicationToAStudyThatIsNotApplicable() {
+        Study originalStudy = org.mockito.Mockito.mock(Study.class);
+        when(originalStudy.getId()).thenReturn(10);
+        when(originalStudy.getStudyName()).thenReturn("기존 스터디");
+        UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
+        Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+
+        assertPeriodEnded(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 지원 동기", 1)));
+
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
+    }
+
+    @Test
     void returnsNoNewApplicationAvailabilityWhenMenteeRecruitmentIsClosed() {
         when(semesterPhaseGuard.isOpen(SemesterPhase.MENTEE_RECRUIT, 2026, 2)).thenReturn(false);
         when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
@@ -135,6 +151,89 @@ class UserApplyServiceApplyTest {
 
         assertThat(response.canApplyPrimary()).isFalse();
         assertThat(response.canApplySecondary()).isFalse();
+        assertThat(response.canApplyAutonomousStudy()).isFalse();
+        assertThat(response.hasAutonomousStudyApplication()).isFalse();
+    }
+
+    @Test
+    void reportsAutonomousStudyApplicationAsUnavailableForBothStudyTypes() {
+        when(semesterPhaseGuard.isOpen(SemesterPhase.MENTEE_RECRUIT, 2026, 2)).thenReturn(true);
+
+        UserApply application = mock(UserApply.class);
+        when(application.getPrimaryStudy()).thenReturn(999);
+        when(application.getSecondaryStudy()).thenReturn(null);
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.of(application));
+
+        Study autonomousStudy = mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getTags()).thenReturn(java.util.List.of());
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyByIdWithTags(999))
+                .thenReturn(java.util.Optional.of(autonomousStudy));
+
+        ApplyStatusResponse response = userApplyService.getApplyStatus(USER_ID);
+
+        assertThat(response.canApplyPrimary()).isFalse();
+        assertThat(response.canApplySecondary()).isFalse();
+        assertThat(response.canApplyAutonomousStudy()).isFalse();
+        assertThat(response.hasAutonomousStudyApplication()).isTrue();
+    }
+
+    @Test
+    void appliesToAnAutonomousStudyWithoutPriorityOrApplyReason() {
+        Study study = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(study.getId()).thenReturn(STUDY_ID);
+        when(study.getStudyName()).thenReturn("자율스터디");
+        when(study.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.empty());
+
+        userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, null, null));
+
+        verify(userRepository).createUserApply(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void rejectsAutonomousStudyWhenTheUserAlreadyAppliedToARegularStudy() {
+        Study study = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(study.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.of(mock(UserApply.class)));
+
+        assertThatThrownBy(() ->
+                userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, null, null))
+        ).isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT));
+    }
+
+    @Test
+    void rejectsRegularStudyWhenTheUserAlreadyAppliedToAnAutonomousStudy() {
+        Study regularStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(regularStudy));
+
+        UserApply autonomousApplication = mock(UserApply.class);
+        when(autonomousApplication.getPrimaryStudy()).thenReturn(999);
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.of(autonomousApplication));
+
+        Study autonomousStudy = mock(Study.class);
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
+
+        assertThatThrownBy(() -> userApplyService.applyStudy(
+                USER_ID,
+                new UserApplyRequest(
+                        STUDY_ID,
+                        "정규스터디에서 체계적인 커리큘럼을 따라 학습하고 동료들과 함께 성장하고 싶어 지원합니다.",
+                        2
+                )
+        )).isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT));
     }
 
     private Study applicableStudy(int year, int semester, StudyStatus status, RecruitStatus recruitStatus) {

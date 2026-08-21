@@ -13,6 +13,12 @@ public record ApplyStatusResponse(
         @Schema(description = "멘티 모집 기간이 열려 있고 2순위 지원 이력이 없을 때의 2순위 지원 가능 여부", example = "true")
         boolean canApplySecondary,
 
+        @Schema(description = "멘티 모집 기간이 열려 있고 이번 학기 스터디 신청 이력이 없을 때의 자율스터디 신청 가능 여부", example = "true")
+        boolean canApplyAutonomousStudy,
+
+        @Schema(description = "이번 학기 자율스터디 신청 이력 보유 여부", example = "false")
+        boolean hasAutonomousStudyApplication,
+
         @Schema(description = "이미 지원한 1순위 스터디 정보")
         StudyResponse primaryStudy,
 
