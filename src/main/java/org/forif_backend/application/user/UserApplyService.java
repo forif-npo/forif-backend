@@ -151,11 +151,11 @@ public class UserApplyService {
     }
 
     /**
-     * 본인의 활동 학기 대기 중 스터디 신청서를 멘티 모집 종료 전까지 취소합니다.
-     * 신청서 행을 삭제하므로, 1·2순위가 모두 대기 상태일 때만 허용합니다.
+     * 본인의 활동 학기 대기 중인 특정 우선순위 스터디 신청을 멘티 모집 종료 전까지 취소합니다.
+     * 1순위 취소 시 2순위가 있으면 1순위로 승격하며, 2순위 취소 시 1순위는 유지합니다.
      */
     @Transactional
-    public void cancelApplication(Long userId, Long applyId) {
+    public void cancelApplication(Long userId, Long applyId, int priority) {
         UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
@@ -166,14 +166,32 @@ public class UserApplyService {
         semesterPhaseGuard.requireNotEnded(
                 SemesterPhase.MENTEE_RECRUIT, apply.getApplyYear(), apply.getApplySemester());
 
-        boolean hasReviewedPrimary = apply.getPrimaryStatus() != UserApplyStatus.PENDING;
-        boolean hasReviewedSecondary = apply.getSecondaryStatus() != null
-                && apply.getSecondaryStatus() != UserApplyStatus.PENDING;
-        if (hasReviewedPrimary || hasReviewedSecondary) {
-            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        if (priority == 1) {
+            if (apply.getPrimaryStatus() != UserApplyStatus.PENDING) {
+                throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+            }
+
+            if (apply.getSecondaryStudy() == null) {
+                userRepository.deleteUserApply(apply);
+            } else {
+                apply.promoteSecondaryToPrimary();
+            }
+            return;
         }
 
-        userRepository.deleteUserApply(apply);
+        if (priority == 2) {
+            if (apply.getSecondaryStudy() == null) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            if (apply.getSecondaryStatus() != UserApplyStatus.PENDING) {
+                throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+            }
+
+            apply.cancelSecondaryApplication();
+            return;
+        }
+
+        throw new ForifException(ErrorCode.INVALID_INPUT);
     }
 
     private UserApply getApplication(Long applyId) {

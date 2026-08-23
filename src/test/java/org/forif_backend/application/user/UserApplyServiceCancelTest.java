@@ -62,14 +62,46 @@ class UserApplyServiceCancelTest {
     }
 
     @Test
-    void deletesOwnApplicationWhenAllPrioritiesArePending() {
+    void cancelsOnlySecondaryApplicationWhenBothPrioritiesArePending() {
         UserApply application = pendingApplication(applicant());
         application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
 
-        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID);
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2);
 
         verify(semesterPhaseGuard).requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 1);
+        verify(userRepository, never()).deleteUserApply(application);
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
+        assertThat(application.getSecondaryStudy()).isNull();
+        assertThat(application.getSecondaryStudyName()).isNull();
+        assertThat(application.getSecondaryIntro()).isNull();
+        assertThat(application.getSecondaryStatus()).isNull();
+    }
+
+    @Test
+    void promotesSecondaryApplicationWhenPrimaryApplicationIsCancelled() {
+        UserApply application = pendingApplication(applicant());
+        application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
+        verify(userRepository, never()).deleteUserApply(application);
+        assertThat(application.getPrimaryStudy()).isEqualTo(20);
+        assertThat(application.getPrimaryStudyName()).isEqualTo("2순위 스터디");
+        assertThat(application.getPrimaryIntro()).isEqualTo("2순위 지원 동기");
+        assertThat(application.getPrimaryStatus()).isEqualTo(UserApplyStatus.PENDING);
+        assertThat(application.getSecondaryStudy()).isNull();
+        assertThat(application.getSecondaryStatus()).isNull();
+    }
+
+    @Test
+    void deletesApplicationWhenItsOnlyPrimaryApplicationIsCancelled() {
+        UserApply application = pendingApplication(applicant());
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
         verify(userRepository).deleteUserApply(application);
     }
 
@@ -79,7 +111,7 @@ class UserApplyServiceCancelTest {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
 
         assertError(ErrorCode.INSUFFICIENT_PERMISSION,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
 
         verify(userRepository, never()).deleteUserApply(application);
     }
@@ -91,7 +123,7 @@ class UserApplyServiceCancelTest {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
 
         assertError(ErrorCode.APPLY_NOT_PENDING,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
 
         verify(userRepository, never()).deleteUserApply(application);
     }
@@ -104,7 +136,7 @@ class UserApplyServiceCancelTest {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
 
         assertError(ErrorCode.APPLY_NOT_PENDING,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2));
 
         verify(userRepository, never()).deleteUserApply(application);
     }
@@ -115,7 +147,7 @@ class UserApplyServiceCancelTest {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
 
         assertError(ErrorCode.STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
 
         verify(userRepository, never()).deleteUserApply(application);
     }
@@ -125,7 +157,7 @@ class UserApplyServiceCancelTest {
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(null);
 
         assertError(ErrorCode.STUDY_APPLY_NOT_FOUND,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
 
         verify(userRepository, never()).deleteUserApply(any());
     }
@@ -139,9 +171,31 @@ class UserApplyServiceCancelTest {
                 .requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 1);
 
         assertError(ErrorCode.SEMESTER_PHASE_CLOSED,
-                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID));
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
 
         verify(userRepository, never()).deleteUserApply(any());
+    }
+
+    @Test
+    void doesNotCancelMissingSecondaryApplication() {
+        UserApply application = pendingApplication(applicant());
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+
+        assertError(ErrorCode.INVALID_INPUT,
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2));
+
+        verify(userRepository, never()).deleteUserApply(application);
+    }
+
+    @Test
+    void rejectsInvalidPriority() {
+        UserApply application = pendingApplication(applicant());
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+
+        assertError(ErrorCode.INVALID_INPUT,
+                () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 3));
+
+        verify(userRepository, never()).deleteUserApply(application);
     }
 
     private User applicant() {
