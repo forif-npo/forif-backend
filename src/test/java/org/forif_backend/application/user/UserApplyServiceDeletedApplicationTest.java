@@ -10,6 +10,7 @@ import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
+import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
@@ -27,6 +28,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,6 +68,7 @@ class UserApplyServiceDeletedApplicationTest {
 
         userApplyService.rejectApplications(99L, 10, List.of(100L, 101L));
 
+        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
         verify(remainingApplication).updateStatus(10, UserApplyStatus.REJECT);
     }
 
@@ -86,6 +91,24 @@ class UserApplyServiceDeletedApplicationTest {
 
         assertError(() -> userApplyService.updateApplyStatus(
                 99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));
+
+        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+    }
+
+    @Test
+    void doesNotRejectOrUpdateStatusWhenMenteeReviewIsClosed() {
+        Study study = mock(Study.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
+                .when(semesterPhaseGuard)
+                .requireOpen(SemesterPhase.MENTEE_REVIEW);
+
+        assertPhaseClosed(() -> userApplyService.rejectApplications(99L, 10, List.of(100L)));
+        assertPhaseClosed(() -> userApplyService.updateApplyStatus(
+                99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));
+
+        verify(userRepository, never()).findUserApplyById(anyLong());
     }
 
     private void assertError(Runnable action) {
@@ -93,5 +116,12 @@ class UserApplyServiceDeletedApplicationTest {
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.STUDY_APPLY_NOT_FOUND));
+    }
+
+    private void assertPhaseClosed(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
     }
 }

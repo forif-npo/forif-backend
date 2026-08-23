@@ -1,6 +1,7 @@
 package org.forif_backend.application.semester;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,56 @@ class SemesterPhaseGuardTest {
                 .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
                         ((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_NOT_STARTED));
+    }
+
+    @Test
+    void blocksMenteeReviewWhenScheduleIsMissing() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_REVIEW))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> guard.requireOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_NOT_STARTED));
+        assertThat(guard.isOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2)).isFalse();
+    }
+
+    @Test
+    void blocksMenteeReviewBeforeItsScheduleStarts() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_REVIEW))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_REVIEW,
+                        LocalDateTime.now().plusDays(1),
+                        LocalDateTime.now().plusDays(7),
+                        1L
+                )));
+
+        assertThatThrownBy(() -> guard.requireOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_NOT_STARTED));
+        assertThat(guard.isOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2)).isFalse();
+    }
+
+    @Test
+    void blocksMenteeReviewAfterItsScheduleEnds() {
+        when(scheduleRepository.findByYearAndSemesterAndPhase(2026, 2, SemesterPhase.MENTEE_REVIEW))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_REVIEW,
+                        LocalDateTime.now().minusDays(7),
+                        LocalDateTime.now().minusDays(1),
+                        1L
+                )));
+
+        assertThatThrownBy(() -> guard.requireOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
+        assertThat(guard.isOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2)).isFalse();
     }
 
     @Test
