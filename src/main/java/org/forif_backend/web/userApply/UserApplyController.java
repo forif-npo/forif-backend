@@ -51,13 +51,14 @@ public class UserApplyController {
         return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }
 
-    @Operation(summary = "수강 신청 취소", description = "본인의 대기 중인 스터디 수강 신청서를 취소합니다.")
+    @Operation(summary = "수강 신청 취소", description = "본인의 대기 중인 특정 우선순위 스터디 수강 신청을 취소합니다. 1순위 취소 시 2순위가 1순위로 승격됩니다.")
     @DeleteMapping("/{applyId}")
     public ResponseEntity<ApiResponse<Void>> cancelApplication(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId
+            @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
+            @Parameter(description = "취소할 지원 순위 (1 또는 2)", example = "2") @RequestParam("priority") int priority
     ) {
-        userApplyService.cancelApplication(userId, applyId);
+        userApplyService.cancelApplication(userId, applyId, priority);
         return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
     }
 

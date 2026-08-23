@@ -94,6 +94,27 @@ public class UserApply extends BaseTimeEntity {
         this.secondaryStatus = UserApplyStatus.PENDING;
     }
 
+    /**
+     * 2순위 지원을 취소한다. 1순위 지원 정보는 유지한다.
+     */
+    public void cancelSecondaryApplication() {
+        this.secondaryStudy = null;
+        this.secondaryStudyName = null;
+        this.secondaryIntro = null;
+        this.secondaryStatus = null;
+    }
+
+    /**
+     * 1순위 지원을 취소하면서 2순위가 있으면 그 지원을 1순위로 승격한다.
+     */
+    public void promoteSecondaryToPrimary() {
+        this.primaryStudy = this.secondaryStudy;
+        this.primaryStudyName = this.secondaryStudyName;
+        this.primaryIntro = this.secondaryIntro;
+        this.primaryStatus = this.secondaryStatus;
+        cancelSecondaryApplication();
+    }
+
     public void updatePrimaryApplication(int studyId, String studyName, String applyReason) {
         if (this.primaryStatus != UserApplyStatus.PENDING) {
             throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
