@@ -2,6 +2,8 @@ package org.forif_backend.infrastructure.persistence.study;
 
 import jakarta.persistence.EntityManager;
 import org.forif_backend.common.config.JpaAuditingConfig;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.user.User;
 import org.junit.jupiter.api.Test;
@@ -106,6 +108,43 @@ class StudyQueryRepositoryMentorTest {
         assertThat(studyQueryRepository.findStudiesByMentorId(mentor.getId()))
                 .extracting(Study::getId)
                 .containsExactly(currentStarted.getId());
+    }
+
+    @Test
+    void ordersOnlyTheSelectedSemesterMentorsBeforeApplyingTheOffset() {
+        User 다람 = persistUser(900005L, "다람");
+        User 가람 = persistUser(900006L, "가람");
+        User 나람 = persistUser(900007L, "나람");
+        User 이전학기멘토 = persistUser(900008L, "가장먼저");
+        다람.updateProfile("A학과", null);
+        가람.updateProfile("B학과", null);
+        나람.updateProfile("A학과", null);
+        persistApprovedStudy(다람, YEAR, SEMESTER, "다람 스터디");
+        persistApprovedStudy(가람, YEAR, SEMESTER, "가람 스터디");
+        persistApprovedStudy(나람, YEAR, SEMESTER, "나람 스터디");
+        persistApprovedStudy(이전학기멘토, 2025, 2, "이전 학기 스터디");
+        entityManager.flush();
+        entityManager.clear();
+
+        List<SortCriteria> sorting = List.of(new SortCriteria("name", SortDirection.ASC));
+        List<User> firstPage = studyQueryRepository.searchMentorsByYearSemesterWithOffset(
+                YEAR, SEMESTER, 0, 2, null, sorting);
+        List<User> secondPage = studyQueryRepository.searchMentorsByYearSemesterWithOffset(
+                YEAR, SEMESTER, 1, 2, null, sorting);
+
+        assertThat(firstPage).extracting(User::getUserName).containsExactly("가람", "나람");
+        assertThat(secondPage).extracting(User::getUserName).containsExactly("다람");
+
+        assertThat(studyQueryRepository.searchMentorsByYearSemesterWithOffset(
+                YEAR, SEMESTER, 0, 10, null,
+                List.of(new SortCriteria("department", SortDirection.ASC))))
+                .extracting(User::getUserName)
+                .containsExactly("나람", "다람", "가람");
+        assertThat(studyQueryRepository.searchMentorsByYearSemesterWithOffset(
+                YEAR, SEMESTER, 0, 10, null,
+                List.of(new SortCriteria("userId", SortDirection.ASC))))
+                .extracting(User::getUserName)
+                .containsExactly("다람", "가람", "나람");
     }
 
     private User persistUser(Long id, String name) {

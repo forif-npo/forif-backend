@@ -605,7 +605,10 @@ public class StudyQueryRepository {
                         orders, criterion, difficultyOrder(), study.difficulty.isNull());
                 case "week_day" -> addNullableOrder(
                         orders, criterion, weekDayOrder(), study.weekDay.isNull());
-                case "mentee_count" -> orders.add(order(criterion, studyUser.countDistinct()));
+                // 스터디 안에서 멘티 ID는 유일하므로 복합 키 대신 멘티 ID를 센다.
+                // 복합 키 COUNT(DISTINCT ...)는 DB 방언에 따라 행 값 표현식으로 변환되어
+                // 정렬 결과가 일관되지 않을 수 있다.
+                case "mentee_count" -> orders.add(order(criterion, studyUser.user.id.countDistinct()));
                 case "study_status" -> addNullableOrder(
                         orders, criterion, studyStatusOrder(), study.studyStatus.isNull());
                 default -> throw new IllegalStateException("Unsupported study sort field: " + criterion.field());
