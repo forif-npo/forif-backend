@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.validation.Validator;
 import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
@@ -47,6 +48,7 @@ class UserApplyServiceApplyTest {
     @Mock private UserRepository userRepository;
     @Mock private StudyRepository studyRepository;
     @Mock private StudyUserRepository studyUserRepository;
+    @Mock private Validator validator;
 
     @InjectMocks private UserApplyService userApplyService;
 
@@ -56,6 +58,8 @@ class UserApplyServiceApplyTest {
     void setUp() {
         lenient().when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         lenient().when(userRepository.findUserById(USER_ID)).thenReturn(java.util.Optional.of(user));
+        lenient().when(validator.validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class)))
+                .thenReturn(java.util.Set.of());
     }
 
     @Test
@@ -115,6 +119,7 @@ class UserApplyServiceApplyTest {
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("변경 스터디");
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
         userApplyService.updateApplication(
@@ -126,12 +131,109 @@ class UserApplyServiceApplyTest {
     }
 
     @Test
+    void rejectsApplyingToTheSameStudyAsBothPrimaryAndSecondary() {
+        Study study = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(study.getId()).thenReturn(STUDY_ID);
+        when(study.getStudyName()).thenReturn("테스트 스터디");
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
+
+        UserApply application = UserApply.applyStudy(user, study, "기존 지원 동기", 2026, 2);
+        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
+                .thenReturn(java.util.Optional.of(application));
+
+        assertDuplicatePriority(() -> userApplyService.applyStudy(
+                USER_ID, new UserApplyRequest(STUDY_ID, "2순위도 같은 스터디에 지원하려는 동기", 2)));
+
+        assertThat(application.getSecondaryStudy()).isNull();
+    }
+
+    @Test
+    void rejectsUpdatingPrimaryStudyToTheExistingSecondaryStudy() {
+        Study primaryStudy = org.mockito.Mockito.mock(Study.class);
+        when(primaryStudy.getId()).thenReturn(10);
+        when(primaryStudy.getStudyName()).thenReturn("기존 1순위 스터디");
+        UserApply application = UserApply.applyStudy(user, primaryStudy, "기존 1순위 지원 동기", 2026, 2);
+        application.addSecondaryStudy(STUDY_ID, "기존 2순위 스터디", "기존 2순위 지원 동기");
+
+        Study secondaryStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(secondaryStudy.getId()).thenReturn(STUDY_ID);
+        when(secondaryStudy.getStudyName()).thenReturn("기존 2순위 스터디");
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(primaryStudy));
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(secondaryStudy));
+
+        assertDuplicatePriority(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 1순위 지원 동기", 1)));
+
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
+    }
+
+    @Test
+    void rejectsUpdatingSecondaryStudyToTheExistingPrimaryStudy() {
+        Study primaryStudy = org.mockito.Mockito.mock(Study.class);
+        when(primaryStudy.getId()).thenReturn(STUDY_ID);
+        when(primaryStudy.getStudyName()).thenReturn("기존 1순위 스터디");
+        UserApply application = UserApply.applyStudy(user, primaryStudy, "기존 1순위 지원 동기", 2026, 2);
+        application.addSecondaryStudy(200, "기존 2순위 스터디", "기존 2순위 지원 동기");
+
+        Study replacementStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
+        when(replacementStudy.getId()).thenReturn(STUDY_ID);
+        when(replacementStudy.getStudyName()).thenReturn("기존 1순위 스터디");
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
+
+        assertDuplicatePriority(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 2순위 지원 동기", 2)));
+
+        assertThat(application.getSecondaryStudy()).isEqualTo(200);
+    }
+
+    @Test
+    void rejectsUpdatingAnAutonomousStudyApplicationWithItsDedicatedError() {
+        Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
+
+        assertThatThrownBy(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정할 지원 사유", 1)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
+
+        verify(studyRepository, never()).findStudyById(STUDY_ID);
+    }
+
+    @Test
+    void rejectsAnAutonomousStudyApplicationBeforeValidatingItsEmptyApplyReason() {
+        Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
+        when(autonomousStudy.getId()).thenReturn(999);
+        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
+        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
+
+        assertThatThrownBy(() -> userApplyService.updateApplication(
+                USER_ID, 77L, new UserApplyUpdateRequest(null, null, null)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
+
+        verify(validator, never()).validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class));
+    }
+
+    @Test
     void rejectsUpdatingAnApplicationToAStudyThatIsNotApplicable() {
         Study originalStudy = org.mockito.Mockito.mock(Study.class);
         when(originalStudy.getId()).thenReturn(10);
         when(originalStudy.getStudyName()).thenReturn("기존 스터디");
         UserApply application = UserApply.applyStudy(user, originalStudy, "기존 지원 동기", 2026, 2);
         Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
+        when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
         when(userRepository.findUserApplyById(77L)).thenReturn(application);
 
@@ -250,5 +352,12 @@ class UserApplyServiceApplyTest {
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.STUDY_APPLICATION_PERIOD_ENDED));
+    }
+
+    private void assertDuplicatePriority(Runnable action) {
+        assertThatThrownBy(action::run)
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.DUPLICATE_STUDY_PRIORITY));
     }
 }

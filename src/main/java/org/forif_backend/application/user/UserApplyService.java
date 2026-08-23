@@ -1,6 +1,9 @@
 package org.forif_backend.application.user;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.forif_backend.common.dto.response.ApiErrorData;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
@@ -47,6 +50,7 @@ public class UserApplyService {
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
+    private final Validator validator;
 
     /**
      * 스터디 지원 메서드 (건별 지원)
@@ -116,6 +120,11 @@ public class UserApplyService {
         if (!apply.getApplier().getId().equals(userId)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
+        if (isAutonomousStudyApplication(apply)) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED);
+        }
+
+        validateRegularStudyApplicationUpdateInput(request);
         requireActiveSemesterApplication(apply);
         semesterPhaseGuard.requireNotEnded(
                 SemesterPhase.MENTEE_RECRUIT, apply.getApplyYear(), apply.getApplySemester());
@@ -125,7 +134,7 @@ public class UserApplyService {
 
         requireApplicableStudy(study, apply.getApplyYear(), apply.getApplySemester());
 
-        if (study.isAutonomousStudy() || isAutonomousStudyApplication(apply)) {
+        if (study.isAutonomousStudy()) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT);
         }
 
@@ -442,6 +451,24 @@ public class UserApplyService {
                 || request.applyReason().isBlank()) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    private void validateRegularStudyApplicationUpdateInput(UserApplyUpdateRequest request) {
+        List<ApiErrorData> errors = validator.validate(request).stream()
+                .map(this::toApiErrorData)
+                .toList();
+
+        if (!errors.isEmpty()) {
+            throw new ForifException(ErrorCode.VALIDATION_FAILED, errors);
+        }
+    }
+
+    private ApiErrorData toApiErrorData(ConstraintViolation<UserApplyUpdateRequest> violation) {
+        return new ApiErrorData(
+                violation.getPropertyPath().toString(),
+                violation.getMessage(),
+                violation.getInvalidValue()
+        );
     }
 
     private boolean isAutonomousStudyApplication(UserApply apply) {
