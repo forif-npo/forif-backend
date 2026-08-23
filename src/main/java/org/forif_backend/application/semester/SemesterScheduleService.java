@@ -84,6 +84,12 @@ public class SemesterScheduleService {
         Map<SemesterPhase, PhaseWindow> map = new EnumMap<>(SemesterPhase.class);
 
         for (PhaseWindow window : windows) {
+            if (!isMinutePrecision(window.startsAt()) || !isMinutePrecision(window.endsAt())) {
+                throw new ForifException(ErrorCode.SEMESTER_SCHEDULE_INVALID_RANGE, List.of(new ApiErrorData(
+                        window.phase().name(),
+                        "%s 기간의 시각은 분(HH:mm) 단위까지만 입력할 수 있습니다.".formatted(window.phase().getLabel()),
+                        null)));
+            }
             if (!window.endsAt().isAfter(window.startsAt())) {
                 throw new ForifException(ErrorCode.SEMESTER_SCHEDULE_INVALID_RANGE, List.of(new ApiErrorData(
                         window.phase().name(),
@@ -98,6 +104,11 @@ public class SemesterScheduleService {
             }
         }
         return map;
+    }
+
+    private boolean isMinutePrecision(LocalDateTime dateTime) {
+        return dateTime.getSecond() == 0
+                && dateTime.getNano() == 0;
     }
 
     /**

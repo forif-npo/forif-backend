@@ -13,7 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 학기 관리의 스터디 시작일에 맞춰 승인된 스터디를 실제 개설 상태로 전환한다. */
+/** 학기 관리의 스터디 시작 시각에 맞춰 승인된 스터디를 실제 개설 상태로 전환한다. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -47,7 +47,7 @@ public class StudyStartScheduler {
             log.info("과거 학기 승인 스터디 시작 상태 전환: {}건", migratedCount);
         }
         if (startedCount > 0) {
-            log.info("스터디 시작일 도래: {}년 {}학기 {}건 STARTED 전환",
+            log.info("스터디 시작 시각 도래: {}년 {}학기 {}건 STARTED 전환",
                     active.actYear(), active.actSemester(), startedCount);
         }
     }
