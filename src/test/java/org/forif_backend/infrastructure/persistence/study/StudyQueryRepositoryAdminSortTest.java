@@ -104,6 +104,61 @@ class StudyQueryRepositoryAdminSortTest {
     }
 
     @Test
+    void usesTheSecondSortConditionWhenTheFirstConditionTies() {
+        User 다람Mentor = persistUser(900020L, "다람");
+        User 가람Mentor = persistUser(900021L, "가람");
+        User 나람Mentor = persistUser(900022L, "나람");
+        persistApprovedStudy(다람Mentor, "같은 스터디명");
+        persistApprovedStudy(가람Mentor, "같은 스터디명");
+        persistApprovedStudy(나람Mentor, "같은 스터디명");
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Study> studies = studyQueryRepository.searchAdminStudiesWithOffset(
+                0,
+                10,
+                YEAR,
+                SEMESTER,
+                null,
+                List.of(StudyStatus.APPROVED),
+                List.of(
+                        new SortCriteria("study_name", SortDirection.ASC),
+                        new SortCriteria("primary_mentor_name", SortDirection.ASC)
+                )
+        );
+
+        assertThat(studies).extracting(Study::getPrimaryMentorName)
+                .containsExactly("가람", "나람", "다람");
+    }
+
+    @Test
+    void usesTheRequestedSecondConditionBeforeTheSecondaryMentorName() {
+        User mentor = persistUser(900022L, "같은 주멘토");
+        Study firstByStudyName = persistApprovedStudy(mentor, "가 스터디");
+        Study secondByStudyName = persistApprovedStudy(mentor, "나 스터디");
+        firstByStudyName.setSecondaryMentorName("보조 Z");
+        secondByStudyName.setSecondaryMentorName("보조 A");
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Study> studies = studyQueryRepository.searchAdminStudiesWithOffset(
+                0,
+                10,
+                YEAR,
+                SEMESTER,
+                null,
+                List.of(StudyStatus.APPROVED),
+                List.of(
+                        new SortCriteria("primary_mentor_name", SortDirection.ASC),
+                        new SortCriteria("study_name", SortDirection.ASC)
+                )
+        );
+
+        assertThat(studies).extracting(Study::getStudyName)
+                .containsExactly("가 스터디", "나 스터디");
+    }
+
+    @Test
     void ordersStatusDifficultyAndMenteeCountUsingTheirDomainValues() {
         User mentor = persistUser(900015L, "파생 컬럼 멘토");
         Study applicableEasy = persistApprovedStudy(mentor, "모집중 쉬움");
@@ -153,6 +208,36 @@ class StudyQueryRepositoryAdminSortTest {
                 .last()
                 .extracting(Study::getStudyName)
                 .isEqualTo("마감 어려움");
+    }
+
+    @Test
+    void ordersStudyApplicationsByCreatedAt() {
+        User mentor = persistUser(900019L, "신청일 멘토");
+        Study older = persistApprovedStudy(mentor, "먼저 신청");
+        Study newer = persistApprovedStudy(mentor, "나중 신청");
+        entityManager.flush();
+        entityManager.createNativeQuery(
+                        "UPDATE tb_study SET created_at = TIMESTAMP '2026-01-01 00:00:00' WHERE study_id = ?")
+                .setParameter(1, older.getId())
+                .executeUpdate();
+        entityManager.createNativeQuery(
+                        "UPDATE tb_study SET created_at = TIMESTAMP '2026-01-02 00:00:00' WHERE study_id = ?")
+                .setParameter(1, newer.getId())
+                .executeUpdate();
+        entityManager.clear();
+
+        List<Study> studies = studyQueryRepository.searchAdminStudiesWithOffset(
+                0,
+                10,
+                YEAR,
+                SEMESTER,
+                null,
+                List.of(StudyStatus.APPROVED),
+                List.of(new SortCriteria("created_at", SortDirection.DESC))
+        );
+
+        assertThat(studies).extracting(Study::getStudyName)
+                .containsExactly("나중 신청", "먼저 신청");
     }
 
     private User persistUser(Long id, String name) {

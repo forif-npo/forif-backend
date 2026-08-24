@@ -145,6 +145,15 @@ class StudyQueryRepositoryMentorTest {
                 List.of(new SortCriteria("userId", SortDirection.ASC))))
                 .extracting(User::getUserName)
                 .containsExactly("다람", "가람", "나람");
+
+        assertThat(studyQueryRepository.searchMentorsByYearSemesterWithOffset(
+                YEAR, SEMESTER, 0, 10, null,
+                List.of(
+                        new SortCriteria("department", SortDirection.ASC),
+                        new SortCriteria("name", SortDirection.DESC)
+                )))
+                .extracting(User::getUserName)
+                .containsExactly("다람", "나람", "가람");
     }
 
     private User persistUser(Long id, String name) {

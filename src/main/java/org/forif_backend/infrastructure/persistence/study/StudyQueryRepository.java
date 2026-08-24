@@ -596,10 +596,7 @@ public class StudyQueryRepository {
                 case "recruit_status" -> addNullableOrder(
                         orders, criterion, recruitStatusOrder(), study.recruitStatus.isNull());
                 case "study_name" -> orders.add(order(criterion, study.studyName));
-                case "primary_mentor_name" -> {
-                    orders.add(order(criterion, study.primaryMentorName));
-                    orders.add(order(criterion, study.secondaryMentorName));
-                }
+                case "primary_mentor_name" -> orders.add(order(criterion, study.primaryMentorName));
                 case "tags" -> orders.add(order(criterion, studyTag.name.min()));
                 case "difficulty" -> addNullableOrder(
                         orders, criterion, difficultyOrder(), study.difficulty.isNull());
@@ -611,6 +608,7 @@ public class StudyQueryRepository {
                 case "mentee_count" -> orders.add(order(criterion, studyUser.user.id.countDistinct()));
                 case "study_status" -> addNullableOrder(
                         orders, criterion, studyStatusOrder(), study.studyStatus.isNull());
+                case "created_at" -> orders.add(order(criterion, study.createdAt));
                 default -> throw new IllegalStateException("Unsupported study sort field: " + criterion.field());
             }
         }
