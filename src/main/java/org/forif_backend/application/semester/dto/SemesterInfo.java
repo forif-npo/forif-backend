@@ -24,4 +24,15 @@ public record SemesterInfo(int actYear, int actSemester, String label) {
         return actSemester == 1 ? of(actYear, 2) : of(actYear + 1, 1);
     }
 
+    /** 주어진 학기가 이 학기와 같은지 */
+    public boolean matches(int actYear, int actSemester) {
+        return this.actYear == actYear && this.actSemester == actSemester;
+    }
+
+    /** 주어진 학기가 이 학기보다 앞선(이미 지난) 학기인지 */
+    public boolean isAfter(int actYear, int actSemester) {
+        return this.actYear > actYear
+                || (this.actYear == actYear && this.actSemester > actSemester);
+    }
+
 }

@@ -177,21 +177,11 @@ public class StaffAccountService {
     public CursorPageResponse<MentorSummary> getMentors(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = studyRepository.countMentors(search);
 
-        if (page != null) {
-            List<User> mentors = studyRepository.searchMentorsWithOffset(page, size, search, sorting);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return toMentorPage(
-                    CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
-                    null,
-                    null
-            );
-        }
-
-        List<User> mentors = studyRepository.searchMentors(cursor, size, search);
-        boolean hasNext = mentors.size() > size;
-        List<User> content = hasNext ? mentors.subList(0, size) : mentors;
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId().intValue() : null;
-        return toMentorPage(CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements), null, null);
+        return toMentorPage(CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> studyRepository.searchMentorsWithOffset(page, size, search, sorting),
+                () -> studyRepository.searchMentors(cursor, size, search),
+                user -> user.getId().intValue()), null, null);
     }
 
     /**
@@ -201,25 +191,11 @@ public class StaffAccountService {
     public CursorPageResponse<MentorSummary> getMentors(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = studyRepository.countMentorsByYearSemester(year, semester, search);
 
-        if (page != null) {
-            List<User> mentors = studyRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search, sorting);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return toMentorPage(
-                    CursorPageResponse.ofOffset(mentors, hasNext, totalElements, page, size),
-                    year,
-                    semester
-            );
-        }
-
-        List<User> mentors = studyRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
-        boolean hasNext = mentors.size() > size;
-        List<User> content = hasNext ? mentors.subList(0, size) : mentors;
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId().intValue() : null;
-        return toMentorPage(
-                CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements),
-                year,
-                semester
-        );
+        return toMentorPage(CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> studyRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search, sorting),
+                () -> studyRepository.searchMentorsByYearSemester(year, semester, cursor, size, search),
+                user -> user.getId().intValue()), year, semester);
     }
 
     private CursorPageResponse<MentorSummary> toMentorPage(
@@ -307,17 +283,11 @@ public class StaffAccountService {
 
         long totalElements = staffAccountRepository.countAdmins(search);
 
-        if (page != null) {
-            List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithOffset(page, size, search);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(staffAccounts, hasNext, totalElements, page, size);
-        }
-
-        List<StaffAccount> staffAccounts = staffAccountRepository.searchAdminsWithCursor(cursor, size, search);
-        boolean hasNext = staffAccounts.size() > size;
-        List<StaffAccount> content = hasNext ? staffAccounts.subList(0, size) : staffAccounts;
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getUserId().intValue() : null;
-        return CursorPageResponse.ofCursor(content, nextCursor, hasNext, totalElements);
+        return CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> staffAccountRepository.searchAdminsWithOffset(page, size, search),
+                () -> staffAccountRepository.searchAdminsWithCursor(cursor, size, search),
+                account -> account.getUserId().intValue());
     }
 
     /**

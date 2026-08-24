@@ -34,12 +34,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
 
+    private static final String FILE_CLEANUP_CONTEXT = "프로필 이미지";
     private static final String PROFILE_IMAGE_DIRECTORY = "users/profiles";
     private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
     private static final Set<String> PROFILE_IMAGE_CONTENT_TYPES = Set.of(
@@ -284,14 +287,7 @@ public class UserService {
     }
 
     private String resolveThumbnailImage(Study study) {
-        String thumbnailImage = study.getThumbnailImage();
-        if (thumbnailImage == null || thumbnailImage.isBlank()) {
-            return null;
-        }
-        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
-            return thumbnailImage;
-        }
-        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, study.getThumbnailImage());
     }
 
     /**
@@ -356,10 +352,7 @@ public class UserService {
     }
 
     public String getProfileImageUrl(String imgUrl) {
-        if (imgUrl == null || imgUrl.isBlank() || imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) {
-            return imgUrl;
-        }
-        return filePort.generatePresignedViewUrl(imgUrl).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, imgUrl);
     }
 
     private void validateProfileImage(MultipartFile file) {
@@ -370,34 +363,21 @@ public class UserService {
     }
 
     private void registerProfileImageCleanup(String previousObjectKey, String uploadedObjectKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+        boolean registered = TransactionalFileCleanup.replaceAfterCompletion(
+                filePort, singletonKey(previousObjectKey), singletonKey(uploadedObjectKey), FILE_CLEANUP_CONTEXT);
+
+        if (!registered) {
             deleteProfileImageQuietly(uploadedObjectKey);
             throw new IllegalStateException("프로필 이미지 변경 트랜잭션이 활성화되지 않았습니다.");
         }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED) {
-                    deleteProfileImageQuietly(previousObjectKey);
-                } else {
-                    deleteProfileImageQuietly(uploadedObjectKey);
-                }
-            }
-        });
     }
 
     private void deleteProfileImageQuietly(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()
-                || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
-            return;
-        }
+        TransactionalFileCleanup.deleteQuietly(filePort, singletonKey(objectKey), FILE_CLEANUP_CONTEXT);
+    }
 
-        try {
-            filePort.deleteFile(objectKey);
-        } catch (Exception e) {
-            log.warn("프로필 이미지 삭제 실패: {}", objectKey, e);
-        }
+    private static List<String> singletonKey(String objectKey) {
+        return objectKey == null ? List.of() : List.of(objectKey);
     }
 
     /**
@@ -410,19 +390,13 @@ public class UserService {
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
 
-        if (page != null) {
-            List<User> users = userRepository.searchUsersWithOffset(page, size, search, sorting);
-            List<MemberResponse> responses = buildMemberResponses(users, currentYear, currentSemester);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<User> users = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> userRepository.searchUsersWithOffset(page, size, search, sorting),
+                () -> userRepository.searchUsersWithCursor(cursor, size, search),
+                user -> user.getId().intValue());
 
-        List<User> users = userRepository.searchUsersWithCursor(cursor, size, search);
-        boolean hasNext = users.size() > size;
-        List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, currentYear, currentSemester);
-        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return users.withContent(buildMemberResponses(users.content(), currentYear, currentSemester));
     }
 
     /**
@@ -432,19 +406,13 @@ public class UserService {
     public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
 
-        if (page != null) {
-            List<User> users = userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search, sorting);
-            List<MemberResponse> responses = buildMemberResponses(users, year, semester);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<User> users = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search, sorting),
+                () -> userRepository.searchUsersByYearSemester(year, semester, cursor, size, search),
+                user -> user.getId().intValue());
 
-        List<User> users = userRepository.searchUsersByYearSemester(year, semester, cursor, size, search);
-        boolean hasNext = users.size() > size;
-        List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
-        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return users.withContent(buildMemberResponses(users.content(), year, semester));
     }
 
     /**

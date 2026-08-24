@@ -173,9 +173,7 @@ public class MentorConfirmationService {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
         SemesterInfo active = semesterService.getActive();
-        boolean isCompletedSemester = study.getActYear() < active.actYear()
-                || (study.getActYear() == active.actYear()
-                && study.getActSemester() < active.actSemester());
+        boolean isCompletedSemester = active.isAfter(study.getActYear(), study.getActSemester());
         if (study.getStudyStatus() != StudyStatus.STARTED || !isCompletedSemester) {
             throw new ForifException(ErrorCode.MENTOR_CONFIRMATION_NOT_AVAILABLE);
         }

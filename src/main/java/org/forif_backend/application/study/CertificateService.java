@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.forif_backend.application.file.FileViewUrls;
 
 /**
  * 수료증 발급 서비스 (운영진 전용)
@@ -272,13 +273,7 @@ public class CertificateService {
     }
 
     private String resolveCertificateViewUrl(String certificateObjectKey) {
-        if (certificateObjectKey == null || certificateObjectKey.isBlank()) {
-            return null;
-        }
-        if (certificateObjectKey.startsWith("http://") || certificateObjectKey.startsWith("https://")) {
-            return certificateObjectKey;
-        }
-        return filePort.generatePresignedViewUrl(certificateObjectKey).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, certificateObjectKey);
     }
 
     private Study getStudy(Integer studyId) {
