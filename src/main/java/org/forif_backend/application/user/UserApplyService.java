@@ -297,6 +297,7 @@ public class UserApplyService {
      * @param userId 유저 id
      * @return 지원 상태 응답
      */
+    @Transactional(readOnly = true)
     public ApplyStatusResponse getApplyStatus(Long userId) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -347,6 +348,7 @@ public class UserApplyService {
     /**
      * 지원자 목록을 조회하는 메서드입니다.
      */
+    @Transactional(readOnly = true)
     public Page<UserApplyInfo> getApplyInfo(Long userId, Integer studyId, int page, int pageSize, UserApplyStatus statusFilter,
                                                           SortDirection applyDateDirection) {
         Study study = getStudyIfMentor(userId, studyId);
@@ -357,6 +359,7 @@ public class UserApplyService {
     /**
      * 지원 내역 상세 조회 메서드입니다.
      */
+    @Transactional(readOnly = true)
     public ApplyDetailInfo getApplyDetailInfo(Long userId, Integer studyId, Long applyId) {
         Study study = getStudyIfMentor(userId, studyId);
         UserApply userApply = getApplication(applyId);

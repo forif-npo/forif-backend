@@ -210,6 +210,7 @@ public class UserService {
     /**
      * 멘토 스터디 개설 신청서 목록 조회
      */
+    @Transactional(readOnly = true)
     public GetStudyCreationApplicationsResult getStudyCreationApplications(Long userId) {
         List<Study> studies = studyRepository.findAllStudiesByMentorId(userId);
 
@@ -219,12 +220,10 @@ public class UserService {
                             study.getPrimaryMentor().getId().equals(userId);
                     String role = isPrimaryMentor ? "PRIMARY_MENTOR" : "SECONDARY_MENTOR";
 
-                    String partnerMentorName = null;
-                    if (isPrimaryMentor && study.getSecondaryMentor() != null) {
-                        partnerMentorName = study.getSecondaryMentor().getUserName();
-                    } else if (!isPrimaryMentor && study.getPrimaryMentor() != null) {
-                        partnerMentorName = study.getPrimaryMentor().getUserName();
-                    }
+                    // 멘토 연관은 지연 로딩이라 비정규화 컬럼을 쓴다
+                    String partnerMentorName = isPrimaryMentor
+                            ? study.getSecondaryMentorName()
+                            : study.getPrimaryMentorName();
 
                     List<String> tags = study.getTags().stream()
                             .map(StudyTag::getName)
@@ -240,7 +239,7 @@ public class UserService {
                             study.getEndTime(),
                             study.getWeekDay(),
                             study.getLocation(),
-                            study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
+                            study.getDifficulty() != null ? study.getDifficulty().getLevel() : null,
                             study.getActYear(),
                             study.getActSemester(),
                             role,
@@ -273,7 +272,7 @@ public class UserService {
                 study.getStartTime(),
                 study.getEndTime(),
                 study.getLocation(),
-                study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
+                study.getDifficulty() != null ? study.getDifficulty().getLevel() : null,
                 study.getImgUrl(),
                 resolveThumbnailImage(study),
                 study.isAutonomousStudy()
@@ -298,6 +297,7 @@ public class UserService {
     /**
      * 인증서 조회
      */
+    @Transactional(readOnly = true)
     public GetCertificateResult getCertificate(Long userId, Integer studyId) {
         // 1. StudyUser 조회
         StudyUser studyUser = studyUserRepository.findByUserIdAndStudyId(userId, studyId)
