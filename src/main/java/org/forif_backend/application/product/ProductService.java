@@ -214,6 +214,7 @@ public class ProductService {
 
         String objectKey = filePort.uploadFile(file, THUMBNAIL_DIRECTORY);
         product.updateThumbnail(objectKey);
+        deleteUploadOnRollback(objectKey);
         if (!Objects.equals(previousThumbnailObjectKey, objectKey)) {
             deleteFileAfterCommit(previousThumbnailObjectKey);
         }

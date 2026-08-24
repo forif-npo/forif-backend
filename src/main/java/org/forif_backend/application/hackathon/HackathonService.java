@@ -470,7 +470,7 @@ public class HackathonService {
         }
 
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
+                ? uploadPresentation(presentation, event)
                 : null;
         HackathonSubmission submission = HackathonSubmission.create(
                 event,
@@ -501,7 +501,7 @@ public class HackathonService {
 
         String previousPresentationFile = submission.getPresentationFile();
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
+                ? uploadPresentation(presentation, event)
                 : previousPresentationFile;
         submission.update(
                 request.projectName(),
@@ -963,6 +963,13 @@ public class HackathonService {
 
     private void deleteFileAfterCommit(String objectKey) {
         TransactionalFileCleanup.deleteAfterCommit(filePort, objectKey, FILE_CLEANUP_CONTEXT);
+    }
+
+    /** 저장이 롤백되면 방금 올린 발표자료가 고아로 남지 않게 회수한다. */
+    private String uploadPresentation(MultipartFile presentation, HackathonEvent event) {
+        String objectKey = filePort.uploadFile(presentation, hackathonUploadDirectory(event));
+        TransactionalFileCleanup.deleteOnRollback(filePort, objectKey, FILE_CLEANUP_CONTEXT);
+        return objectKey;
     }
 
     private void disbandTeam(HackathonTeam team) {

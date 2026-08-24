@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 /**
  * 수료증 발급 서비스 (운영진 전용)
@@ -39,6 +40,7 @@ import org.forif_backend.application.file.FileViewUrls;
 @RequiredArgsConstructor
 public class CertificateService {
 
+    private static final String FILE_CLEANUP_CONTEXT = "회장 서명";
     private static final int REQUIRED_ATTENDANCE = 5;
     private static final DateTimeFormatter ISSUE_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy. MM. dd.");
 
@@ -81,9 +83,14 @@ public class CertificateService {
             throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
 
+        String previousObjectKey = account.getSignatureObjectKey();
         String objectKey = filePort.uploadFile(file, "signatures");
         account.updateSignature(objectKey);
         staffAccountRepository.save(account);
+
+        // 교체된 서명은 커밋 후 지우고, 롤백되면 방금 올린 파일을 회수한다
+        TransactionalFileCleanup.replaceAfterCompletion(
+                filePort, singletonKey(previousObjectKey), singletonKey(objectKey), FILE_CLEANUP_CONTEXT);
 
         return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
     }
@@ -180,8 +187,9 @@ public class CertificateService {
                 userName, studentNumber, department, studyName, activityPeriod,
                 resolvedIssueDate, resolvedPresidentName, signature);
 
-        // 파일명에 타임스탬프를 붙여 동일 인물 재발급 시 기존 파일을 덮어쓰지 않는다
-        String filename = "%s-%d.png".formatted(studentNumber, System.currentTimeMillis());
+        // 수동 발급분은 DB에 기록이 남지 않아 참조를 추적할 수 없다. 파일명에 타임스탬프를 붙이면
+        // 재발급할 때마다 회수 불가능한 파일이 쌓이므로, 학번+스터디명으로 키를 정해 덮어쓴다.
+        String filename = "%s-%s.png".formatted(studentNumber, manualCertificateSlug(studyName));
         String objectKey = filePort.uploadBytes(image, filename, "certificates/manual", "image/png");
         return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
     }
@@ -274,6 +282,23 @@ public class CertificateService {
 
     private String resolveCertificateViewUrl(String certificateObjectKey) {
         return FileViewUrls.resolveViewUrl(filePort, certificateObjectKey);
+    }
+
+    private static List<String> singletonKey(String objectKey) {
+        return objectKey == null ? List.of() : List.of(objectKey);
+    }
+
+    /** 파일명에 쓸 수 있도록 스터디명을 정규화한다. 값이 없으면 고정 문자열을 쓴다. */
+    private static String manualCertificateSlug(String studyName) {
+        if (studyName == null || studyName.isBlank()) {
+            return "manual";
+        }
+        String slug = studyName.trim().replaceAll("[^\\p{L}\\p{N}]+", "-");
+        slug = slug.replaceAll("(^-+)|(-+$)", "");
+        if (slug.isEmpty()) {
+            return "manual";
+        }
+        return slug.length() > 50 ? slug.substring(0, 50) : slug;
     }
 
     private Study getStudy(Integer studyId) {

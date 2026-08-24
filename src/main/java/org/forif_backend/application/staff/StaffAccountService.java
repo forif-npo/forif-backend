@@ -32,11 +32,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.forif_backend.application.file.port.out.FilePort;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class StaffAccountService {
+
+    private static final String FILE_CLEANUP_CONTEXT = "회장 서명";
 
     private final SemesterService semesterService;
     private final StaffAccountRepository staffAccountRepository;
@@ -46,6 +50,7 @@ public class StaffAccountService {
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final ForifTeamRepository forifTeamRepository;
+    private final FilePort filePort;
 
     /**
      * 스태프(멘토/운영진) 로그인
@@ -396,8 +401,11 @@ public class StaffAccountService {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
+        String signatureObjectKey = target.getSignatureObjectKey();
         staffAccountRepository.delete(target);
         refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
+        // 계정이 사라지면 서명 이미지를 참조하는 곳이 없어진다
+        TransactionalFileCleanup.deleteAfterCommit(filePort, signatureObjectKey, FILE_CLEANUP_CONTEXT);
     }
 
     /**
