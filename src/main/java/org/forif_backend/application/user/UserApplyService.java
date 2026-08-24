@@ -26,11 +26,6 @@ import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.application.study.dto.StudyDto;
-import org.forif_backend.web.study.dto.StudyResponse;
-import org.forif_backend.web.userApply.dto.ApplyStatusResponse;
-import org.forif_backend.web.userApply.dto.UserApplyRequest;
-import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
-import org.forif_backend.web.userApply.dto.UserApplyUpdateRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import org.forif_backend.application.user.dto.ApplyStatusInfo;
+import org.forif_backend.application.user.dto.UserApplyCommand;
+import org.forif_backend.application.user.dto.UserApplyUpdateCommand;
 
 @Service
 @RequiredArgsConstructor
@@ -58,7 +56,7 @@ public class UserApplyService {
      * @param request 요청 dto (studyId, applyReason, priority)
      */
     @Transactional
-    public void applyStudy(Long userId, UserApplyRequest request) {
+    public void applyStudy(Long userId, UserApplyCommand request) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_RECRUIT);
 
         User user = userRepository.findUserById(userId)
@@ -114,7 +112,7 @@ public class UserApplyService {
      * @param request 수정 요청 dto
      */
     @Transactional
-    public void updateApplication(Long userId, Long applyId, UserApplyUpdateRequest request) {
+    public void updateApplication(Long userId, Long applyId, UserApplyUpdateCommand request) {
         UserApply apply = getApplication(applyId);
 
         if (!apply.getApplier().getId().equals(userId)) {
@@ -298,7 +296,7 @@ public class UserApplyService {
      * @return 지원 상태 응답
      */
     @Transactional(readOnly = true)
-    public ApplyStatusResponse getApplyStatus(Long userId) {
+    public ApplyStatusInfo getApplyStatus(Long userId) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -311,7 +309,7 @@ public class UserApplyService {
         Optional<UserApply> applyOpt = userRepository.findUserApplyByYearAndSemesterAndUser(year, semester, user);
 
         if (applyOpt.isEmpty()) {
-            return ApplyStatusResponse.builder()
+            return ApplyStatusInfo.builder()
                     .canApplyPrimary(menteeRecruitmentOpen)
                     .canApplySecondary(false)
                     .canApplyAutonomousStudy(menteeRecruitmentOpen)
@@ -324,24 +322,21 @@ public class UserApplyService {
 
         Study primaryStudy = studyRepository.findStudyByIdWithTags(apply.getPrimaryStudy())
                 .orElse(null);
-        StudyResponse primaryStudyResponse = primaryStudy == null
-                ? null
-                : StudyResponse.from(StudyDto.from(primaryStudy));
         boolean isAutonomousApplication = primaryStudy != null && primaryStudy.isAutonomousStudy();
 
-        StudyResponse secondaryStudyResponse = hasSecondary
+        StudyDto secondaryStudyDto = hasSecondary
                 ? studyRepository.findStudyByIdWithTags(apply.getSecondaryStudy())
-                        .map(s -> StudyResponse.from(StudyDto.from(s)))
+                        .map(StudyDto::from)
                         .orElse(null)
                 : null;
 
-        return ApplyStatusResponse.builder()
+        return ApplyStatusInfo.builder()
                 .canApplyPrimary(false)
                 .canApplySecondary(menteeRecruitmentOpen && !hasSecondary && !isAutonomousApplication)
                 .canApplyAutonomousStudy(false)
                 .hasAutonomousStudyApplication(isAutonomousApplication)
-                .primaryStudy(primaryStudyResponse)
-                .secondaryStudy(secondaryStudyResponse)
+                .primaryStudy(primaryStudy == null ? null : StudyDto.from(primaryStudy))
+                .secondaryStudy(secondaryStudyDto)
                 .build();
     }
 
@@ -379,7 +374,7 @@ public class UserApplyService {
      * 이 엔드포인트에서는 ACCEPT 처리를 허용하지 않습니다. (합격은 /accept 엔드포인트 사용)
      */
     @Transactional
-    public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatusUpdateRequest request) {
+    public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatus newStatus) {
         Study study = getStudyIfActiveMentor(userId, studyId);
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
         UserApply userApply = getApplication(applyId);
@@ -390,11 +385,11 @@ public class UserApplyService {
         }
 
         // ACCEPT는 /accept 엔드포인트를 사용해야 함 (StudyUser 동기화 필요)
-        if (request.status() == UserApplyStatus.ACCEPT) {
+        if (newStatus == UserApplyStatus.ACCEPT) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
-        userApply.updateStatus(study.getId(), request.status());
+        userApply.updateStatus(study.getId(), newStatus);
     }
 
     /** 조회용. 지난 학기 스터디도 본인이 멘토였으면 볼 수 있다. */
@@ -448,7 +443,7 @@ public class UserApplyService {
     private void applyAutonomousStudy(
             User user,
             Study study,
-            UserApplyRequest request,
+            UserApplyCommand request,
             int year,
             int semester,
             Optional<UserApply> existingApply
@@ -466,7 +461,7 @@ public class UserApplyService {
         userRepository.createUserApply(userApply);
     }
 
-    private void requireRegularStudyApplicationInput(UserApplyRequest request) {
+    private void requireRegularStudyApplicationInput(UserApplyCommand request) {
         if (request.priority() == null
                 || request.applyReason() == null
                 || request.applyReason().isBlank()) {
@@ -474,7 +469,7 @@ public class UserApplyService {
         }
     }
 
-    private void validateRegularStudyApplicationUpdateInput(UserApplyUpdateRequest request) {
+    private void validateRegularStudyApplicationUpdateInput(UserApplyUpdateCommand request) {
         List<ApiErrorData> errors = validator.validate(request).stream()
                 .map(this::toApiErrorData)
                 .toList();
@@ -484,7 +479,7 @@ public class UserApplyService {
         }
     }
 
-    private ApiErrorData toApiErrorData(ConstraintViolation<UserApplyUpdateRequest> violation) {
+    private ApiErrorData toApiErrorData(ConstraintViolation<UserApplyUpdateCommand> violation) {
         return new ApiErrorData(
                 violation.getPropertyPath().toString(),
                 violation.getMessage(),

@@ -31,14 +31,14 @@ public class UserApplyController {
     @PostMapping("")
     public ResponseEntity<ApiResponse<Void>> applyStudy(@AuthenticationPrincipal Long userId,
                                                         @Valid @RequestBody UserApplyRequest userApplyRequest) {
-        userApplyService.applyStudy(userId, userApplyRequest);
+        userApplyService.applyStudy(userId, userApplyRequest.toCommand());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "지원 상태 조회", description = "현재 유저의 이번 학기 지원 상태를 조회합니다. 프론트에서 지원서 작성 페이지 진입 가능 여부를 판단하는 데 사용합니다.")
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<ApplyStatusResponse>> getApplyStatus(@AuthenticationPrincipal Long userId) {
-        ApplyStatusResponse response = userApplyService.getApplyStatus(userId);
+        ApplyStatusResponse response = ApplyStatusResponse.from(userApplyService.getApplyStatus(userId));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -47,7 +47,7 @@ public class UserApplyController {
     public ResponseEntity<ApiResponse<Void>> updateApplication(@AuthenticationPrincipal Long userId,
                                                                @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
                                                                @RequestBody UserApplyUpdateRequest request) {
-        userApplyService.updateApplication(userId, applyId, request);
+        userApplyService.updateApplication(userId, applyId, request.toCommand());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -95,7 +95,7 @@ public class UserApplyController {
                                                                 @Parameter(description = "스터디 ID") @PathVariable("studyId") Integer studyId,
                                                                 @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
                                                                 @Valid @RequestBody UserApplyStatusUpdateRequest request) {
-        userApplyService.updateApplyStatus(userId, studyId, applyId, request);
+        userApplyService.updateApplyStatus(userId, studyId, applyId, request.status());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

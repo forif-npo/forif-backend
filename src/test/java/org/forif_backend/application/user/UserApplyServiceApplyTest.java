@@ -25,9 +25,9 @@ import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.userApply.dto.ApplyStatusResponse;
-import org.forif_backend.web.userApply.dto.UserApplyRequest;
-import org.forif_backend.web.userApply.dto.UserApplyUpdateRequest;
+import org.forif_backend.application.user.dto.ApplyStatusInfo;
+import org.forif_backend.application.user.dto.UserApplyCommand;
+import org.forif_backend.application.user.dto.UserApplyUpdateCommand;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,7 +59,7 @@ class UserApplyServiceApplyTest {
     void setUp() {
         lenient().when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         lenient().when(userRepository.findUserById(USER_ID)).thenReturn(java.util.Optional.of(user));
-        lenient().when(validator.validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class)))
+        lenient().when(validator.validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateCommand.class)))
                 .thenReturn(java.util.Set.of());
     }
 
@@ -70,7 +70,7 @@ class UserApplyServiceApplyTest {
         when(study.getStudyName()).thenReturn("테스트 스터디");
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
 
-        userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, "지원 동기", 1));
+        userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, "지원 동기", 1));
 
         verify(userRepository).createUserApply(org.mockito.ArgumentMatchers.any());
     }
@@ -80,7 +80,7 @@ class UserApplyServiceApplyTest {
         Study study = applicableStudy(2026, 1, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
 
-        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, "지원 동기", 1)));
+        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, "지원 동기", 1)));
 
         verify(userRepository, never()).createUserApply(org.mockito.ArgumentMatchers.any());
     }
@@ -90,12 +90,12 @@ class UserApplyServiceApplyTest {
         Study pendingStudy = applicableStudy(2026, 2, StudyStatus.PENDING, RecruitStatus.APPLICABLE);
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(pendingStudy));
 
-        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, "지원 동기", 1)));
+        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, "지원 동기", 1)));
 
         Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
 
-        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, "지원 동기", 1)));
+        assertPeriodEnded(() -> userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, "지원 동기", 1)));
         verify(userRepository, never()).createUserApply(org.mockito.ArgumentMatchers.any());
     }
 
@@ -124,7 +124,7 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
         userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 지원 동기", 1));
+                USER_ID, 77L, new UserApplyUpdateCommand(STUDY_ID, "수정된 지원 동기", 1));
 
         verify(semesterPhaseGuard).requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 2);
         verify(semesterPhaseGuard, never()).requireOpen(SemesterPhase.MENTEE_RECRUIT);
@@ -143,7 +143,7 @@ class UserApplyServiceApplyTest {
                 .thenReturn(java.util.Optional.of(application));
 
         assertDuplicatePriority(() -> userApplyService.applyStudy(
-                USER_ID, new UserApplyRequest(STUDY_ID, "2순위도 같은 스터디에 지원하려는 동기", 2)));
+                USER_ID, new UserApplyCommand(STUDY_ID, "2순위도 같은 스터디에 지원하려는 동기", 2)));
 
         assertThat(application.getSecondaryStudy()).isNull();
     }
@@ -164,7 +164,7 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(secondaryStudy));
 
         assertDuplicatePriority(() -> userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 1순위 지원 동기", 1)));
+                USER_ID, 77L, new UserApplyUpdateCommand(STUDY_ID, "수정된 1순위 지원 동기", 1)));
 
         assertThat(application.getPrimaryStudy()).isEqualTo(10);
     }
@@ -184,7 +184,7 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
         assertDuplicatePriority(() -> userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 2순위 지원 동기", 2)));
+                USER_ID, 77L, new UserApplyUpdateCommand(STUDY_ID, "수정된 2순위 지원 동기", 2)));
 
         assertThat(application.getSecondaryStudy()).isEqualTo(200);
     }
@@ -200,7 +200,7 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
 
         assertThatThrownBy(() -> userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정할 지원 사유", 1)))
+                USER_ID, 77L, new UserApplyUpdateCommand(STUDY_ID, "수정할 지원 사유", 1)))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
@@ -219,12 +219,12 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
 
         assertThatThrownBy(() -> userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(null, null, null)))
+                USER_ID, 77L, new UserApplyUpdateCommand(null, null, null)))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED));
 
-        verify(validator, never()).validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateRequest.class));
+        verify(validator, never()).validate(org.mockito.ArgumentMatchers.any(UserApplyUpdateCommand.class));
     }
 
     @Test
@@ -239,7 +239,7 @@ class UserApplyServiceApplyTest {
         when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
 
         assertPeriodEnded(() -> userApplyService.updateApplication(
-                USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 지원 동기", 1)));
+                USER_ID, 77L, new UserApplyUpdateCommand(STUDY_ID, "수정된 지원 동기", 1)));
 
         assertThat(application.getPrimaryStudy()).isEqualTo(10);
     }
@@ -250,7 +250,7 @@ class UserApplyServiceApplyTest {
         when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
                 .thenReturn(java.util.Optional.empty());
 
-        ApplyStatusResponse response = userApplyService.getApplyStatus(USER_ID);
+        ApplyStatusInfo response = userApplyService.getApplyStatus(USER_ID);
 
         assertThat(response.canApplyPrimary()).isFalse();
         assertThat(response.canApplySecondary()).isFalse();
@@ -275,7 +275,7 @@ class UserApplyServiceApplyTest {
         when(studyRepository.findStudyByIdWithTags(999))
                 .thenReturn(java.util.Optional.of(autonomousStudy));
 
-        ApplyStatusResponse response = userApplyService.getApplyStatus(USER_ID);
+        ApplyStatusInfo response = userApplyService.getApplyStatus(USER_ID);
 
         assertThat(response.canApplyPrimary()).isFalse();
         assertThat(response.canApplySecondary()).isFalse();
@@ -293,7 +293,7 @@ class UserApplyServiceApplyTest {
         when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
                 .thenReturn(java.util.Optional.empty());
 
-        userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, null, null));
+        userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, null, null));
 
         verify(userRepository).createUserApply(org.mockito.ArgumentMatchers.any());
     }
@@ -307,7 +307,7 @@ class UserApplyServiceApplyTest {
                 .thenReturn(java.util.Optional.of(mock(UserApply.class)));
 
         assertThatThrownBy(() ->
-                userApplyService.applyStudy(USER_ID, new UserApplyRequest(STUDY_ID, null, null))
+                userApplyService.applyStudy(USER_ID, new UserApplyCommand(STUDY_ID, null, null))
         ).isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLY_CONFLICT));
@@ -329,7 +329,7 @@ class UserApplyServiceApplyTest {
 
         assertThatThrownBy(() -> userApplyService.applyStudy(
                 USER_ID,
-                new UserApplyRequest(
+                new UserApplyCommand(
                         STUDY_ID,
                         "정규스터디에서 체계적인 커리큘럼을 따라 학습하고 동료들과 함께 성장하고 싶어 지원합니다.",
                         2

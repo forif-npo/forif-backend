@@ -15,7 +15,6 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.userApply.dto.UserApplyStatusUpdateRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -90,7 +89,7 @@ class UserApplyServiceDeletedApplicationTest {
         when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
 
         assertError(() -> userApplyService.updateApplyStatus(
-                99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));
+                99L, 10, 100L, UserApplyStatus.REJECT));
 
         verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
     }
@@ -106,7 +105,7 @@ class UserApplyServiceDeletedApplicationTest {
 
         assertPhaseClosed(() -> userApplyService.rejectApplications(99L, 10, List.of(100L)));
         assertPhaseClosed(() -> userApplyService.updateApplyStatus(
-                99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));
+                99L, 10, 100L, UserApplyStatus.REJECT));
 
         verify(userRepository, never()).findUserApplyById(anyLong());
     }

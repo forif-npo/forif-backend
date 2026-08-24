@@ -10,7 +10,7 @@ import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.infrastructure.persistence.user.UserApplyJpaRepository;
 import org.forif_backend.infrastructure.persistence.user.UserJpaRepository;
 import org.forif_backend.mock.DefaultMockitoTest;
-import org.forif_backend.web.userApply.dto.UserApplyRequest;
+import org.forif_backend.application.user.dto.UserApplyCommand;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         User user = userJpaRepository.findById(1L).get();
 
         // when
-        UserApplyRequest request = new UserApplyRequest(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
+        UserApplyCommand request = new UserApplyCommand(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
         userApplyService.applyStudy(user.getId(), request);
 
         // then
@@ -68,11 +68,11 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         User user = userJpaRepository.findById(1L).get();
 
         // when - 1순위 지원
-        UserApplyRequest primaryRequest = new UserApplyRequest(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
+        UserApplyCommand primaryRequest = new UserApplyCommand(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
         userApplyService.applyStudy(user.getId(), primaryRequest);
 
         // when - 2순위 지원
-        UserApplyRequest secondaryRequest = new UserApplyRequest(2, "2순위 스터디에 지원하는 이유는 백엔드 개발 역량을 키우기 위해서입니다.", 2);
+        UserApplyCommand secondaryRequest = new UserApplyCommand(2, "2순위 스터디에 지원하는 이유는 백엔드 개발 역량을 키우기 위해서입니다.", 2);
         userApplyService.applyStudy(user.getId(), secondaryRequest);
 
         // then
@@ -95,7 +95,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         User user = userJpaRepository.findById(1L).get();
 
         // when
-        UserApplyRequest request = new UserApplyRequest(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
+        UserApplyCommand request = new UserApplyCommand(1, "1순위 스터디에 지원하는 이유는 웹 개발의 기초부터 심화까지 배우고 싶기 때문입니다.", 1);
         userApplyService.applyStudy(user.getId(), request);
 
         // then
@@ -116,7 +116,7 @@ public class UserApplyServiceTest extends DefaultMockitoTest {
         User user = userJpaRepository.findById(1L).get();
 
         // when & then
-        UserApplyRequest request = new UserApplyRequest(2, "2순위 스터디에 지원하는 이유는 백엔드 개발 역량을 키우기 위해서입니다.", 2);
+        UserApplyCommand request = new UserApplyCommand(2, "2순위 스터디에 지원하는 이유는 백엔드 개발 역량을 키우기 위해서입니다.", 2);
         assertThatThrownBy(() -> {
             userApplyService.applyStudy(user.getId(), request);
         }).hasMessage(ErrorCode.PRIMARY_NOT_APPLIED.getMessage());

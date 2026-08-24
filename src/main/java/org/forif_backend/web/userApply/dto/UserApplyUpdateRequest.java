@@ -1,6 +1,7 @@
 package org.forif_backend.web.userApply.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.forif_backend.application.user.dto.UserApplyUpdateCommand;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -24,4 +25,8 @@ public record UserApplyUpdateRequest(
     @Max(value = 2, message = "지원 순위는 1 또는 2만 가능합니다.")
     Integer priority
 ) {
+
+    public UserApplyUpdateCommand toCommand() {
+        return new UserApplyUpdateCommand(studyId, applyReason, priority);
+    }
 }
