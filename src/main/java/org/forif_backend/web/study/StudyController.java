@@ -89,7 +89,7 @@ public class StudyController {
     ) {
         List<SortCriteria> sorting = SortCriteria.parse(sort, Set.of(
                 "recruit_status", "study_name", "primary_mentor_name", "tags",
-                "difficulty", "week_day", "mentee_count", "study_status"
+                "difficulty", "week_day", "mentee_count", "study_status", "created_at"
         ));
         CursorPageResponse<AdminStudyDto> result = studyService.getAdminStudies(cursor, page, size, year, semester, search, studyStatuses, sorting);
 

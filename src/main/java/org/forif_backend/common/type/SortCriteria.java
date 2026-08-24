@@ -15,7 +15,9 @@ public record SortCriteria(String field, SortDirection direction) {
             return List.of();
         }
 
-        return List.of(parse(values.get(0), allowedFields));
+        return values.stream()
+                .map(value -> parse(value, allowedFields))
+                .toList();
     }
 
     private static SortCriteria parse(String value, Set<String> allowedFields) {

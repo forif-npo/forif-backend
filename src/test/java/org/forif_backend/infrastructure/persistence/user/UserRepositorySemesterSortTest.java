@@ -65,6 +65,15 @@ class UserRepositorySemesterSortTest {
                 List.of(new SortCriteria("userId", SortDirection.ASC))))
                 .extracting(User::getUserName)
                 .containsExactly("다람", "가람", "나람");
+
+        assertThat(userRepository.searchUsersByYearSemesterWithOffset(
+                YEAR, SEMESTER, 0, 10, null,
+                List.of(
+                        new SortCriteria("department", SortDirection.ASC),
+                        new SortCriteria("userName", SortDirection.DESC)
+                )))
+                .extracting(User::getUserName)
+                .containsExactly("다람", "나람", "가람");
     }
 
     private User persistUser(Long id, String name) {
