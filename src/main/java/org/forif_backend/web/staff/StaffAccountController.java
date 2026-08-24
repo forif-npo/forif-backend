@@ -200,7 +200,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
-            @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
                 cursor, page, size, search,
@@ -233,7 +233,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
-            @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
                 year, semester, cursor, page, size, search,
@@ -306,7 +306,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
-            @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
                 cursor, page, size, search,
@@ -332,7 +332,7 @@ public class StaffAccountController {
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
-            @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
                 year, semester, cursor, page, size, search,

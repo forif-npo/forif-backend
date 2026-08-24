@@ -97,6 +97,35 @@ class UserApplyServiceCancelTest {
     }
 
     @Test
+    void deletesApplicationInsteadOfPromotingRejectedSecondary() {
+        UserApply application = pendingApplication(applicant());
+        application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
+        application.updateStatus(20, UserApplyStatus.REJECT);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
+        // 승격했다면 1순위가 REJECT가 되어 취소도 재지원도 불가능해진다
+        verify(userRepository).deleteUserApply(application);
+        assertThat(application.getPrimaryStatus()).isEqualTo(UserApplyStatus.PENDING);
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
+    }
+
+    @Test
+    void promotesAcceptedSecondaryWhenPrimaryApplicationIsCancelled() {
+        UserApply application = pendingApplication(applicant());
+        application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
+        application.updateStatus(20, UserApplyStatus.ACCEPT);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
+        verify(userRepository, never()).deleteUserApply(application);
+        assertThat(application.getPrimaryStudy()).isEqualTo(20);
+        assertThat(application.getPrimaryStatus()).isEqualTo(UserApplyStatus.ACCEPT);
+    }
+
+    @Test
     void deletesApplicationWhenItsOnlyPrimaryApplicationIsCancelled() {
         UserApply application = pendingApplication(applicant());
         when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));

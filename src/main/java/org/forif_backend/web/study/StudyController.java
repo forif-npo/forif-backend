@@ -85,7 +85,7 @@ public class StudyController {
             @Parameter(description = "조회 학기 (1 또는 2)") @RequestParam(required = false) Integer semester,
             @Parameter(description = "스터디 이름 검색어") @RequestParam(required = false) String search,
             @Parameter(description = "스터디 승인 상태 필터") @RequestParam(value = "study_status", required = false) List<StudyStatus> studyStatuses,
-            @Parameter(description = "정렬 조건 (예: sort=study_name:asc)") @RequestParam(value = "sort", required = false) List<String> sort
+            @Parameter(description = "정렬 조건 (예: sort=study_name:asc). page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         List<SortCriteria> sorting = SortCriteria.parse(sort, Set.of(
                 "recruit_status", "study_name", "primary_mentor_name", "tags",

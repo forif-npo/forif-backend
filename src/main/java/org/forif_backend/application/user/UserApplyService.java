@@ -169,10 +169,15 @@ public class UserApplyService {
                 throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
             }
 
-            if (apply.getSecondaryStudy() == null) {
-                userRepository.deleteUserApply(apply);
-            } else {
+            // 불합격한 2순위를 1순위로 올리면 지원자가 취소도 재지원도 못 하는 상태로 갇힌다.
+            // 살릴 값이 없으므로 신청서 자체를 지워 다시 지원할 수 있게 둔다.
+            boolean hasPromotableSecondary = apply.getSecondaryStudy() != null
+                    && apply.getSecondaryStatus() != UserApplyStatus.REJECT;
+
+            if (hasPromotableSecondary) {
                 apply.promoteSecondaryToPrimary();
+            } else {
+                userRepository.deleteUserApply(apply);
             }
             return;
         }
