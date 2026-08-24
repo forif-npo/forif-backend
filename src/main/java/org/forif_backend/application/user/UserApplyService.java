@@ -200,7 +200,7 @@ public class UserApplyService {
     }
 
     private Optional<UserApply> findApplication(Long applyId) {
-        return Optional.ofNullable(userRepository.findUserApplyById(applyId));
+        return userRepository.findUserApplyById(applyId);
     }
 
     /**

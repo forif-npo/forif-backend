@@ -62,8 +62,8 @@ class UserApplyServiceDeletedApplicationTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(null);
-        when(userRepository.findUserApplyById(101L)).thenReturn(remainingApplication);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
+        when(userRepository.findUserApplyById(101L)).thenReturn(Optional.of(remainingApplication));
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
 
         userApplyService.rejectApplications(99L, 10, List.of(100L, 101L));
@@ -77,7 +77,7 @@ class UserApplyServiceDeletedApplicationTest {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(null);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
 
         assertError(() -> userApplyService.getApplyDetailInfo(99L, 10, 100L));
     }
@@ -87,7 +87,7 @@ class UserApplyServiceDeletedApplicationTest {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(null);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
 
         assertError(() -> userApplyService.updateApplyStatus(
                 99L, 10, 100L, new UserApplyStatusUpdateRequest(UserApplyStatus.REJECT)));

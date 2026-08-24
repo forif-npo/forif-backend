@@ -48,7 +48,7 @@ public class AdminProductController {
             @Parameter(description = "서비스 ID") @PathVariable Integer productId
     ) {
         productService.approveProduct(productId);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "등록 신청 반려", description = "검토 대기 신청을 사유와 함께 반려합니다.")
@@ -58,7 +58,7 @@ public class AdminProductController {
             @Valid @RequestBody RejectProductRequest request
     ) {
         productService.rejectProduct(productId, request.getRejectReason());
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "게시 상태 변경", description = "게시된 서비스의 상태(LIVE/DEV/PAUSED/RETIRED)를 변경합니다.")
@@ -68,7 +68,7 @@ public class AdminProductController {
             @Valid @RequestBody UpdateProductStatusRequest request
     ) {
         productService.changeProductStatus(productId, request.getStatus());
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "서비스 정보 수정", description = "서비스의 소개·링크·기술 스택 등을 수정합니다. 전달하지 않은 필드는 변경되지 않습니다.")
@@ -97,7 +97,7 @@ public class AdminProductController {
             @Parameter(description = "서비스 ID") @PathVariable Integer productId
     ) {
         productService.deleteThumbnail(productId);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "서비스 삭제", description = "서비스를 삭제합니다. 검토 대기·반려 상태의 등록 신청도 같은 방식으로 지울 수 있으며, 삭제하면 되돌릴 수 없습니다.")
@@ -106,7 +106,7 @@ public class AdminProductController {
             @Parameter(description = "서비스 ID") @PathVariable Integer productId
     ) {
         productService.deleteProduct(productId);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Getter

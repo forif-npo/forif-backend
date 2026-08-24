@@ -34,6 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class UserApplyServiceApplyTest {
@@ -118,7 +119,7 @@ class UserApplyServiceApplyTest {
         Study replacementStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("변경 스터디");
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
         when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
@@ -158,7 +159,7 @@ class UserApplyServiceApplyTest {
         Study secondaryStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(secondaryStudy.getId()).thenReturn(STUDY_ID);
         when(secondaryStudy.getStudyName()).thenReturn("기존 2순위 스터디");
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
         when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(primaryStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(secondaryStudy));
 
@@ -179,7 +180,7 @@ class UserApplyServiceApplyTest {
         Study replacementStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(replacementStudy.getId()).thenReturn(STUDY_ID);
         when(replacementStudy.getStudyName()).thenReturn("기존 1순위 스터디");
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(replacementStudy));
 
         assertDuplicatePriority(() -> userApplyService.updateApplication(
@@ -195,7 +196,7 @@ class UserApplyServiceApplyTest {
         when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
         when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
         UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
         when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
 
         assertThatThrownBy(() -> userApplyService.updateApplication(
@@ -214,7 +215,7 @@ class UserApplyServiceApplyTest {
         when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
         when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
         UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
         when(studyRepository.findStudyById(999)).thenReturn(java.util.Optional.of(autonomousStudy));
 
         assertThatThrownBy(() -> userApplyService.updateApplication(
@@ -235,7 +236,7 @@ class UserApplyServiceApplyTest {
         Study closedStudy = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.CLOSED);
         when(studyRepository.findStudyById(10)).thenReturn(java.util.Optional.of(originalStudy));
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(closedStudy));
-        when(userRepository.findUserApplyById(77L)).thenReturn(application);
+        when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
 
         assertPeriodEnded(() -> userApplyService.updateApplication(
                 USER_ID, 77L, new UserApplyUpdateRequest(STUDY_ID, "수정된 지원 동기", 1)));

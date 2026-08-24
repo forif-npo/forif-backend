@@ -86,7 +86,7 @@ public class ProductController {
             @Parameter(description = "서비스 신청 ID") @PathVariable Integer productId
     ) {
         productService.deleteMyPendingApplication(userId, productId);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "서비스 상세 조회", description = "게시된 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")

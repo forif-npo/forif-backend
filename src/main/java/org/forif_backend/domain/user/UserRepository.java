@@ -34,7 +34,7 @@ public interface UserRepository {
 
     Page<UserApply> findUserApply(Integer studyId, Pageable pageable, UserApplyStatus statusFilter, SortDirection applyDateDirection);
 
-    UserApply findUserApplyById(Long applyId);
+    Optional<UserApply> findUserApplyById(Long applyId);
 
     Optional<User> findByPhoneNum(String phoneNum);
 
