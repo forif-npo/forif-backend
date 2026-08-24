@@ -21,7 +21,6 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.*;
-import org.forif_backend.web.user.dto.MemberResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -384,7 +383,7 @@ public class UserService {
      * 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
+    public CursorPageResponse<MemberInfo> getAllMembers(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsers(search);
         SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
@@ -396,14 +395,14 @@ public class UserService {
                 () -> userRepository.searchUsersWithCursor(cursor, size, search),
                 user -> user.getId().intValue());
 
-        return users.withContent(buildMemberResponses(users.content(), currentYear, currentSemester));
+        return users.withContent(buildMemberInfos(users.content(), currentYear, currentSemester));
     }
 
     /**
      * 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
+    public CursorPageResponse<MemberInfo> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
 
         CursorPageResponse<User> users = CursorPageResponse.paginate(
@@ -412,7 +411,7 @@ public class UserService {
                 () -> userRepository.searchUsersByYearSemester(year, semester, cursor, size, search),
                 user -> user.getId().intValue());
 
-        return users.withContent(buildMemberResponses(users.content(), year, semester));
+        return users.withContent(buildMemberInfos(users.content(), year, semester));
     }
 
     /**
@@ -447,19 +446,19 @@ public class UserService {
 
     /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getApplicants(int year, int semester, Long cursor, int size, String search) {
+    public CursorPageResponse<MemberInfo> getApplicants(int year, int semester, Long cursor, int size, String search) {
         long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);
         List<User> users = userRepository.searchApplicantsByYearSemester(year, semester, cursor, size, search);
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
     /** 문자 발송 수신자용 전체 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getNotificationMembers(Long cursor, int size, String search) {
+    public CursorPageResponse<MemberInfo> getNotificationMembers(Long cursor, int size, String search) {
         SemesterInfo active = semesterService.getActive();
         long totalElements = userRepository.countNotificationUsers(search);
         List<User> users = userRepository.searchNotificationUsersWithCursor(cursor, size, search);
@@ -468,7 +467,7 @@ public class UserService {
 
     /** 문자 발송 수신자용 학기 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getNotificationMembers(
+    public CursorPageResponse<MemberInfo> getNotificationMembers(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countNotificationUsersByYearSemester(year, semester, search);
@@ -478,7 +477,7 @@ public class UserService {
 
     /** 회비 미납 상태인 현재 학기 합격자 조회. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingDues(
+    public CursorPageResponse<MemberInfo> getAcceptedUsersMissingDues(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingDuesByYearSemester(year, semester, search);
@@ -488,7 +487,7 @@ public class UserService {
 
     /** 구글폼을 미제출한 현재 학기 합격자 조회. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingGoogleForm(
+    public CursorPageResponse<MemberInfo> getAcceptedUsersMissingGoogleForm(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingGoogleFormByYearSemester(year, semester, search);
@@ -496,7 +495,7 @@ public class UserService {
         return toCursorMemberPage(users, totalElements, size, year, semester);
     }
 
-    private CursorPageResponse<MemberResponse> toCursorMemberPage(
+    private CursorPageResponse<MemberInfo> toCursorMemberPage(
             List<User> users,
             long totalElements,
             int size,
@@ -505,12 +504,12 @@ public class UserService {
     ) {
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
-    private List<MemberResponse> buildMemberResponses(List<User> users, int year, int semester) {
+    private List<MemberInfo> buildMemberInfos(List<User> users, int year, int semester) {
         List<Long> userIds = users.stream().map(User::getId).toList();
 
         Map<Long, String> studyNameMap = studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
@@ -519,7 +518,7 @@ public class UserService {
         Set<Long> mentorUserIds = studyRepository.findMentorUserIdsByUserIds(userIds, year, semester);
 
         return users.stream()
-                .map(u -> MemberResponse.builder()
+                .map(u -> MemberInfo.builder()
                         .userId(u.getId())
                         .department(u.getDepartment())
                         .userName(u.getUserName())

@@ -308,10 +308,10 @@ public class StaffAccountController {
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
             @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
                 cursor, page, size, search,
                 SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
-        )));
+        ))));
     }
 
     /**
@@ -334,10 +334,10 @@ public class StaffAccountController {
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
             @Parameter(description = "정렬 조건") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
-        return ResponseEntity.ok(ApiResponse.success(userService.getAllMembers(
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
                 year, semester, cursor, page, size, search,
                 SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
-        )));
+        ))));
     }
 
     /**

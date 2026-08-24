@@ -41,9 +41,9 @@ public class NotificationController {
             @RequestParam(defaultValue = "100") int size,
             @RequestParam(required = false) String search
     ) {
-        return ResponseEntity.ok(ApiResponse.success(
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(
                 notificationService.getRecipients(target, cursor, size, search)
-        ));
+        )));
     }
 
     /**
