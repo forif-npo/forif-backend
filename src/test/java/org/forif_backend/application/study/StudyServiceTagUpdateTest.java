@@ -57,7 +57,7 @@ class StudyServiceTagUpdateTest {
         request.setStudyTagIds(List.of());
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
 
-        studyService.updateStudy(1, request);
+        studyService.updateStudy(1, request.toCommand());
 
         verify(study).setTags(List.of());
     }
@@ -71,7 +71,7 @@ class StudyServiceTagUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(studyRepository.findAllStudyTagByName(List.of("ai"))).thenReturn(List.of(tag));
 
-        studyService.updateStudy(1, request);
+        studyService.updateStudy(1, request.toCommand());
 
         verify(studyRepository).findAllStudyTagByName(List.of("ai"));
         verify(study).setTags(List.of(tag));
@@ -84,7 +84,7 @@ class StudyServiceTagUpdateTest {
         request.setStudyTagNames(Arrays.asList("ai", null));
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
 
-        assertThatThrownBy(() -> studyService.updateStudy(1, request))
+        assertThatThrownBy(() -> studyService.updateStudy(1, request.toCommand()))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.INVALID_INPUT));

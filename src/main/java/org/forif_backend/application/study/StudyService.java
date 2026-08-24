@@ -22,8 +22,6 @@ import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
-import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -236,7 +234,7 @@ public class StudyService {
     }
 
     @Transactional
-    public void updateStudy(Integer studyId, UpdateStudyRequest request) {
+    public void updateStudy(Integer studyId, UpdateStudyCommand request) {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
@@ -254,7 +252,7 @@ public class StudyService {
         }
     }
 
-    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
+    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyCommand request) {
         // null이 아닌 기본 필드만 반영
         if (!study.isAutonomousStudy()
                 && Study.isAutonomousStudyName(request.getStudyName())) {
@@ -386,7 +384,7 @@ public class StudyService {
      * @return 서버에 저장된 파일의 조회 URL 정보
      */
     @Transactional
-    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyCommand request,
                                                  MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
         requireRegularStudyName(request.getTitle());
@@ -402,12 +400,12 @@ public class StudyService {
         User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());
 
         // 공통 데이터 반영
-        study.applyRequestData(request, tags, secondaryMentor);
+        study.applyRequestData(request.toApplyData(), tags, secondaryMentor);
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
     }
 
-    private List<StudyTag> resolveStudyTags(CreateStudyApplyRequest request) {
+    private List<StudyTag> resolveStudyTags(CreateStudyApplyCommand request) {
         return resolveStudyTags(request.getStudyTagId(), request.getStudyTagNames());
     }
 
@@ -462,7 +460,7 @@ public class StudyService {
     /**
      * StudyPlan 생성
      */
-    private StudyPlan createStudyPlan(CreateStudyApplyRequest.Plan planRequest, Study study) {
+    private StudyPlan createStudyPlan(CreateStudyApplyCommand.Plan planRequest, Study study) {
         return StudyPlan.create(
                 planRequest.getWeekNum(),
                 planRequest.getDate(),
@@ -476,7 +474,7 @@ public class StudyService {
      * Reference DTO를 StudyReference 엔티티로 변환하고,
      * 파일 타입일 경우 저장된 파일 정보를 'referenceUploadInfos' 리스트에 추가합니다.
      */
-    private StudyReference toReferenceEntity(CreateStudyApplyRequest.Reference reference, Study study, List<MultipartFile> referenceFiles, List<FileInfo> referenceUploadInfos) {
+    private StudyReference toReferenceEntity(CreateStudyApplyCommand.Reference reference, Study study, List<MultipartFile> referenceFiles, List<FileInfo> referenceUploadInfos) {
         String content;
         // ReferenceType을 study 패키지의 것으로 변환
         ReferenceType refType = ReferenceType.valueOf(reference.getType().name());
@@ -503,13 +501,13 @@ public class StudyService {
      * @return 서버에 저장된 파일의 조회 URL 정보가 담긴 Info 객체
      */
     @Transactional
-    public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyCommand request,
                                              MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, true);
     }
 
     @Transactional
-    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyRequest request,
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyCommand request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         Study study = findModifiableStudyApplication(studyId, userId, false);
         applyStudyUpdate(studyId, study, request);
@@ -549,7 +547,7 @@ public class StudyService {
     private List<FileInfo> replaceStudyReferences(
             Integer studyId,
             Study study,
-            List<UpdateStudyRequest.Reference> newReferences,
+            List<UpdateStudyCommand.Reference> newReferences,
             List<UUID> retainedReferenceIds,
             List<MultipartFile> referenceFiles,
             boolean skipUnuploadedFileReferences,
@@ -576,7 +574,7 @@ public class StudyService {
         List<StudyReference> referencesToCreate = new ArrayList<>();
 
         List<FileInfo> uploadedFiles = new ArrayList<>();
-        for (UpdateStudyRequest.Reference reference : newReferences) {
+        for (UpdateStudyCommand.Reference reference : newReferences) {
             if (reference.getType() == ReferenceType.FILE) {
                 MultipartFile file = referenceFiles.stream()
                         .filter(candidate -> Objects.equals(candidate.getOriginalFilename(), reference.getFileName()))
@@ -623,7 +621,7 @@ public class StudyService {
         TransactionalFileCleanup.deleteQuietly(filePort, objectKeys, FILE_CLEANUP_CONTEXT);
     }
 
-    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyCommand request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
         requireRegularStudyName(request.getTitle());
@@ -631,7 +629,7 @@ public class StudyService {
 
         List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
-        study.applyRequestData(request, tags, secondaryMentor);
+        study.applyRequestData(request.toApplyData(), tags, secondaryMentor);
 
         if (request.getStudyPlanList() != null) {
             studyRepository.deleteStudyPlansByStudyId(studyId);
@@ -745,7 +743,7 @@ public class StudyService {
     /**
      * [공통] 스터디 리소스(파일, 플랜, 참고자료) 처리 및 DB 저장
      */
-    private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyRequest request,
+    private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyCommand request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         FileInfo thumbnailInfo = null;
         // 썸네일 처리

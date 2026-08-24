@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.forif_backend.application.study.dto.CreateStudyApplyCommand;
 import org.forif_backend.domain.study.ReferenceType;
 import org.hibernate.validator.constraints.Length;
 
@@ -110,5 +111,42 @@ public class CreateStudyApplyRequest {
         private LocalDateTime date;         // 날짜
         private String topic;               // 주제
         private String content;             // 내용
+    }
+
+    public CreateStudyApplyCommand toCommand() {
+        return CreateStudyApplyCommand.builder()
+                .title(title)
+                .oneLiner(oneLiner)
+                .studyTagId(studyTagId)
+                .studyTagNames(studyTagNames)
+                .explanation(explanation)
+                .isOnline(isOnline)
+                .studyLocation(studyLocation)
+                .studyLocationDetail(studyLocationDetail)
+                .weekDay(weekDay)
+                .startTime(startTime)
+                .endTime(endTime)
+                .studyPlanList(studyPlanList == null ? null : studyPlanList.stream()
+                        .map(p -> CreateStudyApplyCommand.Plan.builder()
+                                .weekNum(p.getWeekNum())
+                                .date(p.getDate())
+                                .topic(p.getTopic())
+                                .content(p.getContent())
+                                .build())
+                        .toList())
+                .difficulty(difficulty)
+                .selectionCriteria(selectionCriteria)
+                .capacity(capacity)
+                .requiresInterview(requiresInterview)
+                .interviewDate(interviewDate)
+                .references(references == null ? null : references.stream()
+                        .map(r -> CreateStudyApplyCommand.Reference.builder()
+                                .type(r.getType())
+                                .url(r.getUrl())
+                                .fileName(r.getFileName())
+                                .build())
+                        .toList())
+                .secondaryMentorId(secondaryMentorId)
+                .build();
     }
 }

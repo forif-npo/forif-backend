@@ -121,7 +121,7 @@ public class StudyController {
             @Parameter(description = "수정할 스터디 ID") @PathVariable Integer studyId,
             @RequestBody @Valid UpdateStudyRequest request
     ) {
-        studyService.updateStudy(studyId, request);
+        studyService.updateStudy(studyId, request.toCommand());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

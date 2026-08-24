@@ -63,7 +63,7 @@ public class StudyApplyController {
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "references", required = false) List<MultipartFile> references
     ) {
-        CreateStudyApplyInfo info = studyService.createStudyApply(userId, request, thumbnail, references);
+        CreateStudyApplyInfo info = studyService.createStudyApply(userId, request.toCommand(), thumbnail, references);
         return ResponseEntity.ok().body(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 
@@ -114,7 +114,7 @@ public class StudyApplyController {
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "references", required = false) List<MultipartFile> references
     ) {
-        CreateStudyApplyInfo info = studyService.updateStudyApplication(studyId, userId, request, thumbnail, references);
+        CreateStudyApplyInfo info = studyService.updateStudyApplication(studyId, userId, request.toCommand(), thumbnail, references);
         return ResponseEntity.ok(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 
@@ -131,7 +131,7 @@ public class StudyApplyController {
             @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
             @RequestPart(value = "references", required = false) List<MultipartFile> references) {
 
-        CreateStudyApplyInfo info = studyService.reApplyStudy(studyId, userId, request, thumbnail, references);
+        CreateStudyApplyInfo info = studyService.reApplyStudy(studyId, userId, request.toCommand(), thumbnail, references);
         return ResponseEntity.ok().body(ApiResponse.success(CreateStudyApplyResponse.from(info)));
     }
 }

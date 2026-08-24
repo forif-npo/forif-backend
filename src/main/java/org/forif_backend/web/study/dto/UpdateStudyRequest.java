@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import jakarta.validation.constraints.NotBlank;
+import org.forif_backend.application.study.dto.CreateStudyApplyCommand;
+import org.forif_backend.application.study.dto.UpdateStudyCommand;
 import org.forif_backend.domain.study.ReferenceType;
 import org.hibernate.validator.constraints.Length;
 
@@ -77,5 +79,45 @@ public class UpdateStudyRequest {
         private ReferenceType type;
         private String url;
         private String fileName;
+    }
+
+    public UpdateStudyCommand toCommand() {
+        return UpdateStudyCommand.builder()
+                .studyName(studyName)
+                .oneLiner(oneLiner)
+                .explanation(explanation)
+                .goal(goal)
+                .startTime(startTime)
+                .endTime(endTime)
+                .weekDay(weekDay)
+                .location(location)
+                .locationDetail(locationDetail)
+                .isOnline(isOnline)
+                .difficulty(difficulty)
+                .capacity(capacity)
+                .selectionCriteria(selectionCriteria)
+                .requiresInterview(requiresInterview)
+                .interviewDate(interviewDate)
+                .studyTagIds(studyTagIds)
+                .studyTagNames(studyTagNames)
+                .secondaryMentorId(secondaryMentorId)
+                .secondaryMentorIdPresent(secondaryMentorIdPresent)
+                .studyPlanList(studyPlanList == null ? null : studyPlanList.stream()
+                        .map(p -> CreateStudyApplyCommand.Plan.builder()
+                                .weekNum(p.getWeekNum())
+                                .date(p.getDate())
+                                .topic(p.getTopic())
+                                .content(p.getContent())
+                                .build())
+                        .toList())
+                .references(references == null ? null : references.stream()
+                        .map(r -> UpdateStudyCommand.Reference.builder()
+                                .type(r.getType())
+                                .url(r.getUrl())
+                                .fileName(r.getFileName())
+                                .build())
+                        .toList())
+                .retainedReferenceIds(retainedReferenceIds)
+                .build();
     }
 }
