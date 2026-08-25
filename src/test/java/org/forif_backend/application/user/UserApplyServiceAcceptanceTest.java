@@ -61,7 +61,7 @@ class UserApplyServiceAcceptanceTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(application);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getApplier()).thenReturn(applicant);
 
@@ -82,8 +82,8 @@ class UserApplyServiceAcceptanceTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(null);
-        when(userRepository.findUserApplyById(101L)).thenReturn(remainingApplication);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
+        when(userRepository.findUserApplyById(101L)).thenReturn(Optional.of(remainingApplication));
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
         when(remainingApplication.getApplier()).thenReturn(applicant);
 

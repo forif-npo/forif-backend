@@ -22,8 +22,6 @@ import org.forif_backend.domain.study.*;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
-import org.forif_backend.web.study.dto.UpdateStudyRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -33,11 +31,15 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class StudyService {
+
+    private static final String FILE_CLEANUP_CONTEXT = "스터디 수정 중";
 
     // TODO: 하드코딩된 기본 비밀번호 개선 필요. 멘토가 직접 초기 비밀번호를 설정하거나,
     //       랜덤 생성 후 이메일 발송하는 방식으로 변경 필요.
@@ -72,19 +74,13 @@ public class StudyService {
 
         long totalElements = studyRepository.countStudiesForUser(searchCond);
 
-        if (page != null) {
-            List<Study> studies = studyRepository.getStudiesWithOffset(searchCond, page, size);
-            List<StudyDto> dtos = studies.stream().map(this::toStudyDto).toList();
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(dtos, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<Study> studies = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> studyRepository.getStudiesWithOffset(searchCond, page, size),
+                () -> studyRepository.getStudies(searchCond, cursor, size),
+                Study::getId);
 
-        List<Study> studies = studyRepository.getStudies(searchCond, cursor, size);
-        boolean hasNext = studies.size() > size;
-        List<Study> content = hasNext ? studies.subList(0, size) : studies;
-        List<StudyDto> dtos = content.stream().map(this::toStudyDto).toList();
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(dtos, nextCursor, hasNext, totalElements);
+        return studies.withContent(studies.content().stream().map(this::toStudyDto).toList());
     }
 
     @Transactional(readOnly = true)
@@ -124,8 +120,7 @@ public class StudyService {
                 || study.getStudyStatus() == StudyStatus.RE_APPLIED
                 || study.getStudyStatus() == StudyStatus.REJECTED
                 || (study.getStudyStatus() == StudyStatus.APPROVED
-                && study.getActYear() == activeSemester.actYear()
-                && study.getActSemester() == activeSemester.actSemester());
+                && activeSemester.matches(study.getActYear(), study.getActSemester()));
         if (!study.isMentor(mentorId)
                 || study.isAutonomousStudy()
                 || !isApplicationStatus) {
@@ -225,42 +220,32 @@ public class StudyService {
                 : studyStatuses;
         long totalElements = studyRepository.countStudies(year, semester, search, statusFilter);
 
-        if (page != null) {
-            List<Study> studies = studyRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, statusFilter, sorting);
-            List<Integer> studyIds = studies.stream().map(Study::getId).toList();
-            Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
-            List<AdminStudyDto> dtos = studies.stream()
-                    .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
-                    .toList();
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(dtos, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<Study> studies = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> studyRepository.searchAdminStudiesWithOffset(page, size, year, semester, search, statusFilter, sorting),
+                () -> studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search, statusFilter),
+                Study::getId);
 
-        List<Study> studies = studyRepository.searchStudiesWithCursor(cursor, size, year, semester, search, statusFilter);
-        boolean hasNext = studies.size() > size;
-        List<Study> content = hasNext ? studies.subList(0, size) : studies;
-        List<Integer> studyIds = content.stream().map(Study::getId).toList();
+        List<Integer> studyIds = studies.content().stream().map(Study::getId).toList();
         Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
-        List<AdminStudyDto> dtos = content.stream()
+        return studies.withContent(studies.content().stream()
                 .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
-                .toList();
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(dtos, nextCursor, hasNext, totalElements);
+                .toList());
     }
 
     @Transactional
-    public void updateStudy(Integer studyId, UpdateStudyRequest request) {
+    public void updateStudy(Integer studyId, UpdateStudyCommand request) {
         updateStudy(studyId, request, null, List.of(), true, true);
     }
 
     @Transactional
-    public void updateStudy(Integer studyId, UpdateStudyRequest request,
+    public void updateStudy(Integer studyId, UpdateStudyCommand request,
                             MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         updateStudy(studyId, request, thumbnail,
                 Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList), false, false);
     }
 
-    private void updateStudy(Integer studyId, UpdateStudyRequest request,
+    private void updateStudy(Integer studyId, UpdateStudyCommand request,
                              MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                              boolean skipUnuploadedFileReferences,
                              boolean retainExistingFilesWhenRetainedIdsOmitted) {
@@ -292,7 +277,7 @@ public class StudyService {
         studyRepository.saveStudy(study);
     }
 
-    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyRequest request) {
+    private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyCommand request) {
         // null이 아닌 기본 필드만 반영
         if (!study.isAutonomousStudy()
                 && Study.isAutonomousStudyName(request.getStudyName())) {
@@ -424,7 +409,7 @@ public class StudyService {
      * @return 서버에 저장된 파일의 조회 URL 정보
      */
     @Transactional
-    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo createStudyApply(Long mentorId, CreateStudyApplyCommand request,
                                                  MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTOR_RECRUIT);
         requireRegularStudyName(request.getTitle());
@@ -440,12 +425,12 @@ public class StudyService {
         User secondaryMentor = resolveSecondaryMentor(mentorId, request.getSecondaryMentorId());
 
         // 공통 데이터 반영
-        study.applyRequestData(request, tags, secondaryMentor);
+        study.applyRequestData(request.toApplyData(), tags, secondaryMentor);
 
         return saveStudyWithResources(study, request, thumbnail, referenceFiles);
     }
 
-    private List<StudyTag> resolveStudyTags(CreateStudyApplyRequest request) {
+    private List<StudyTag> resolveStudyTags(CreateStudyApplyCommand request) {
         return resolveStudyTags(request.getStudyTagId(), request.getStudyTagNames());
     }
 
@@ -500,7 +485,7 @@ public class StudyService {
     /**
      * StudyPlan 생성
      */
-    private StudyPlan createStudyPlan(CreateStudyApplyRequest.Plan planRequest, Study study) {
+    private StudyPlan createStudyPlan(CreateStudyApplyCommand.Plan planRequest, Study study) {
         return StudyPlan.create(
                 planRequest.getWeekNum(),
                 planRequest.getDate(),
@@ -514,7 +499,7 @@ public class StudyService {
      * Reference DTO를 StudyReference 엔티티로 변환하고,
      * 파일 타입일 경우 저장된 파일 정보를 'referenceUploadInfos' 리스트에 추가합니다.
      */
-    private StudyReference toReferenceEntity(CreateStudyApplyRequest.Reference reference, Study study, List<MultipartFile> referenceFiles, List<FileInfo> referenceUploadInfos) {
+    private StudyReference toReferenceEntity(CreateStudyApplyCommand.Reference reference, Study study, List<MultipartFile> referenceFiles, List<FileInfo> referenceUploadInfos) {
         String content;
         // ReferenceType을 study 패키지의 것으로 변환
         ReferenceType refType = ReferenceType.valueOf(reference.getType().name());
@@ -541,13 +526,13 @@ public class StudyService {
      * @return 서버에 저장된 파일의 조회 URL 정보가 담긴 Info 객체
      */
     @Transactional
-    public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    public CreateStudyApplyInfo reApplyStudy(Integer studyId, Long userId, CreateStudyApplyCommand request,
                                              MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         return updateStudyApplication(studyId, userId, request, thumbnail, referenceFiles, true);
     }
 
     @Transactional
-    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyRequest request,
+    public CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, UpdateStudyCommand request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         Study study = findModifiableStudyApplication(studyId, userId, false);
         applyStudyUpdate(studyId, study, request);
@@ -587,7 +572,7 @@ public class StudyService {
     private List<FileInfo> replaceStudyReferences(
             Integer studyId,
             Study study,
-            List<UpdateStudyRequest.Reference> newReferences,
+            List<UpdateStudyCommand.Reference> newReferences,
             List<UUID> retainedReferenceIds,
             List<MultipartFile> referenceFiles,
             boolean skipUnuploadedFileReferences,
@@ -614,7 +599,7 @@ public class StudyService {
         List<StudyReference> referencesToCreate = new ArrayList<>();
 
         List<FileInfo> uploadedFiles = new ArrayList<>();
-        for (UpdateStudyRequest.Reference reference : newReferences) {
+        for (UpdateStudyCommand.Reference reference : newReferences) {
             if (reference.getType() == ReferenceType.FILE) {
                 MultipartFile file = referenceFiles.stream()
                         .filter(candidate -> Objects.equals(candidate.getOriginalFilename(), reference.getFileName()))
@@ -653,37 +638,15 @@ public class StudyService {
 
     /** DB 반영 성공 뒤 교체 전 파일을 지우고, 롤백 시 새로 올린 파일을 회수한다. */
     private void deleteStoredFilesAfterCompletion(List<String> previousObjectKeys, List<String> uploadedObjectKeys) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED) {
-                    deleteStoredFilesQuietly(previousObjectKeys);
-                } else {
-                    deleteStoredFilesQuietly(uploadedObjectKeys);
-                }
-            }
-        });
+        TransactionalFileCleanup.replaceAfterCompletion(
+                filePort, previousObjectKeys, uploadedObjectKeys, FILE_CLEANUP_CONTEXT);
     }
 
     private void deleteStoredFilesQuietly(List<String> objectKeys) {
-        for (String objectKey : objectKeys) {
-            if (objectKey == null || objectKey.isBlank()
-                    || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
-                continue;
-            }
-            try {
-                filePort.deleteFile(objectKey);
-            } catch (Exception e) {
-                log.warn("스터디 수정 중 파일 삭제 실패: {}", objectKey, e);
-            }
-        }
+        TransactionalFileCleanup.deleteQuietly(filePort, objectKeys, FILE_CLEANUP_CONTEXT);
     }
 
-    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyRequest request,
+    private CreateStudyApplyInfo updateStudyApplication(Integer studyId, Long userId, CreateStudyApplyCommand request,
                                                          MultipartFile thumbnail, List<MultipartFile> referenceFiles,
                                                          boolean rejectedOnly) {
         requireRegularStudyName(request.getTitle());
@@ -691,7 +654,7 @@ public class StudyService {
 
         List<StudyTag> tags = resolveStudyTags(request);
         User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
-        study.applyRequestData(request, tags, secondaryMentor);
+        study.applyRequestData(request.toApplyData(), tags, secondaryMentor);
 
         if (request.getStudyPlanList() != null) {
             studyRepository.deleteStudyPlansByStudyId(studyId);
@@ -760,8 +723,7 @@ public class StudyService {
         }
 
         SemesterInfo active = semesterService.getActive();
-        if (study.getActYear() != active.actYear()
-                || study.getActSemester() != active.actSemester()
+        if (!active.matches(study.getActYear(), study.getActSemester())
                 || !semesterPhaseGuard.isBeforeStart(
                 SemesterPhase.MENTEE_RECRUIT,
                 study.getActYear(),
@@ -788,8 +750,7 @@ public class StudyService {
         return (study.getStudyStatus() == StudyStatus.PENDING
                 || study.getStudyStatus() == StudyStatus.RE_APPLIED
                 || study.getStudyStatus() == StudyStatus.REJECTED)
-                && study.getActYear() == active.actYear()
-                && study.getActSemester() == active.actSemester()
+                && active.matches(study.getActYear(), study.getActSemester())
                 && semesterPhaseGuard.isOpen(
                 SemesterPhase.MENTOR_RECRUIT,
                 study.getActYear(),
@@ -807,7 +768,7 @@ public class StudyService {
     /**
      * [공통] 스터디 리소스(파일, 플랜, 참고자료) 처리 및 DB 저장
      */
-    private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyRequest request,
+    private CreateStudyApplyInfo saveStudyWithResources(Study study, CreateStudyApplyCommand request,
                                                         MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
         FileInfo thumbnailInfo = null;
         // 썸네일 처리
@@ -852,17 +813,8 @@ public class StudyService {
     }
 
     private StudyDto toStudyDto(Study study) {
-        String thumbnailImage = study.getThumbnailImage();
-        if (thumbnailImage == null || thumbnailImage.isBlank()) {
-            return StudyDto.from(study);
-        }
-
-        return StudyDto.from(
-                study,
-                thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")
-                        ? thumbnailImage
-                        : filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl()
-        );
+        String viewUrl = resolveThumbnailImage(study);
+        return viewUrl == null ? StudyDto.from(study) : StudyDto.from(study, viewUrl);
     }
 
     private StudyInfo toStudyInfo(Study study, boolean certificateIssued) {
@@ -870,26 +822,16 @@ public class StudyService {
     }
 
     private String resolveThumbnailImage(Study study) {
-        String thumbnailImage = study.getThumbnailImage();
-        if (thumbnailImage == null || thumbnailImage.isBlank()) {
-            return null;
-        }
-        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
-            return thumbnailImage;
-        }
-        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, study.getThumbnailImage());
     }
 
     private String resolveReferenceContent(StudyReference reference) {
         String content = reference.getContent();
-        if (reference.getReferenceType() != ReferenceType.FILE
-                || content == null
-                || content.isBlank()
-                || content.startsWith("http://")
-                || content.startsWith("https://")) {
+        if (reference.getReferenceType() != ReferenceType.FILE) {
             return content;
         }
-        return filePort.generatePresignedViewUrl(content).presignedUrl();
+        String viewUrl = FileViewUrls.resolveViewUrl(filePort, content);
+        return viewUrl != null ? viewUrl : content;
     }
 
     /**
@@ -969,8 +911,7 @@ public class StudyService {
     /** 승인·반려는 현재 활동 학기의 개설 신청서에만 할 수 있다. */
     private void requireActiveSemesterStudy(Study study) {
         SemesterInfo active = semesterService.getActive();
-        if (study.getActYear() != active.actYear()
-                || study.getActSemester() != active.actSemester()) {
+        if (!active.matches(study.getActYear(), study.getActSemester())) {
             throw new ForifException(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER);
         }
     }

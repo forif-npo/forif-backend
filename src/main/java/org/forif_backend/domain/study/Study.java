@@ -15,7 +15,6 @@ import org.forif_backend.common.BaseTimeEntity;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.user.User;
-import org.forif_backend.web.study.dto.CreateStudyApplyRequest;
 
 @Entity
 @Getter
@@ -198,22 +197,22 @@ public class Study extends BaseTimeEntity {
      * DTO로부터 스터디 데이터를 반영하는 도메인 메서드
      * 최초 신청(Create)과 재요청(Re-apply) 시 공통으로 사용됩니다.
      */
-    public void applyRequestData(CreateStudyApplyRequest request, List<StudyTag> tags, User secondaryMentor) {
-        this.studyName = request.getTitle();
+    public void applyRequestData(StudyApplyData data, List<StudyTag> tags, User secondaryMentor) {
+        this.studyName = data.title();
         this.subTitle = null;
-        this.oneLiner = request.getOneLiner();
-        this.explanation = request.getExplanation();
-        this.isOnline = request.getIsOnline();
-        this.location = request.getStudyLocation();
-        this.locationDetail = request.getStudyLocationDetail();
-        this.weekDay = request.getWeekDay();
-        this.startTime = request.getStartTime();
-        this.endTime = request.getEndTime();
-        this.difficulty = StudyDifficulty.fromLevel(request.getDifficulty());
-        this.selectionCriteria = request.getSelectionCriteria();
-        this.capacity = request.getCapacity();
-        this.requiresInterview = request.getRequiresInterview();
-        this.interviewDate = request.getInterviewDate();
+        this.oneLiner = data.oneLiner();
+        this.explanation = data.explanation();
+        this.isOnline = data.isOnline();
+        this.location = data.studyLocation();
+        this.locationDetail = data.studyLocationDetail();
+        this.weekDay = data.weekDay();
+        this.startTime = data.startTime();
+        this.endTime = data.endTime();
+        this.difficulty = StudyDifficulty.fromLevel(data.difficulty());
+        this.selectionCriteria = data.selectionCriteria();
+        this.capacity = data.capacity();
+        this.requiresInterview = data.requiresInterview();
+        this.interviewDate = data.interviewDate();
 
         // 연관 관계 설정
         this.tags = tags;

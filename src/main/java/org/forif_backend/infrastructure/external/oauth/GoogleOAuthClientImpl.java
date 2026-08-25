@@ -50,10 +50,10 @@ public class GoogleOAuthClientImpl implements GoogleOAuthClient {
                 .bodyToMono(GoogleUserInfo.class)
                 .block();
 
-            log.info("Google user email retrieved successfully: {}", response.email());
+            log.debug("Google user email retrieved successfully");
             return response.email();
         } catch (WebClientResponseException e) {
-            log.error("Error while retrieving user email: {}", e.getResponseBodyAsString(), e);
+            log.error("Error while retrieving user email (status: {})", e.getStatusCode(), e);
             throw new ForifException(ErrorCode.INVALID_TOKEN);
         } catch (Exception e) {
             log.error("Unexpected error while retrieving user email", e);

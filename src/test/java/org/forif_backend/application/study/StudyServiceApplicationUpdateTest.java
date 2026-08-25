@@ -97,7 +97,7 @@ class StudyServiceApplicationUpdateTest {
                 .requireMentorOfActiveSemester(study, 10L);
 
         assertThatThrownBy(() -> studyService.updateStudyApplication(
-                1, 10L, new UpdateStudyRequest(), null, null))
+                1, 10L, new UpdateStudyRequest().toCommand(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER));
@@ -190,7 +190,7 @@ class StudyServiceApplicationUpdateTest {
                 .requireOpen(org.forif_backend.domain.semester.SemesterPhase.MENTOR_REVIEW);
 
         assertThatThrownBy(() -> studyService.updateStudyApplication(
-                1, 10L, new UpdateStudyRequest(), null, null))
+                1, 10L, new UpdateStudyRequest().toCommand(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
@@ -204,7 +204,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
 
-        studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest(), null, null);
+        studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest().toCommand(), null, null);
 
         verify(semesterPhaseGuard).requireBeforeStart(
                 org.forif_backend.domain.semester.SemesterPhase.MENTEE_RECRUIT);
@@ -226,7 +226,7 @@ class StudyServiceApplicationUpdateTest {
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(studyRepository.findAllStudyTagByName(List.of("backend"))).thenReturn(List.of(tag));
 
-        studyService.updateStudyApplication(1, 10L, request, null, null);
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, null);
 
         verify(study).setExplanation("수정된 상세 소개입니다.");
         verify(study).setStartTime("19:00");
@@ -254,7 +254,7 @@ class StudyServiceApplicationUpdateTest {
         when(filePort.generatePresignedViewUrl("studies/thumbnails/new.png"))
                 .thenReturn(new FileInfo("studies/thumbnails/new.png", "https://example.com/new.png"));
 
-        studyService.updateStudyApplication(1, 10L, request, thumbnail, null);
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), thumbnail, null);
 
         verify(study).setSecondaryMentor(secondaryMentor);
         verify(study).setSecondaryMentorName("부멘토");
@@ -275,7 +275,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
 
-        studyService.updateStudyApplication(1, 10L, request, null, List.of());
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, List.of());
 
         verify(study).setStudyName("수정된 스터디명");
         verify(study).setOneLiner("수정된 한 줄 소개");
@@ -301,7 +301,7 @@ class StudyServiceApplicationUpdateTest {
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.INSUFFICIENT_PERMISSION));
 
-        assertThatThrownBy(() -> studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest(), null, null))
+        assertThatThrownBy(() -> studyService.updateStudyApplication(1, 10L, new UpdateStudyRequest().toCommand(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_NOT_ALLOWED));
@@ -372,7 +372,7 @@ class StudyServiceApplicationUpdateTest {
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
         when(studyRepository.findAllStudyTagByName(List.of("ai"))).thenReturn(List.of(tag));
 
-        studyService.updateStudyApplication(1, 10L, request, null, null);
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, null);
 
         verify(studyRepository, never()).deleteStudyPlansByStudyId(1);
         verify(studyRepository).findAllStudyTagByName(List.of("ai"));
@@ -387,7 +387,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
 
-        studyService.updateStudyApplication(1, 10L, request, null, null);
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, null);
 
         verify(study).setExplanation(request.getExplanation());
         verify(studyRepository, never()).deleteStudyPlansByStudyId(1);
@@ -403,7 +403,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.PENDING);
 
-        studyService.updateStudyApplication(1, 10L, request, null, null);
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, null);
 
         verify(study).setSecondaryMentor(null);
         verify(study).setSecondaryMentorName(null);
@@ -425,7 +425,7 @@ class StudyServiceApplicationUpdateTest {
         when(fileReference.getId()).thenReturn(referenceId);
         when(fileReference.getReferenceType()).thenReturn(ReferenceType.FILE);
 
-        studyService.updateStudy(1, request);
+        studyService.updateStudy(1, request.toCommand());
 
         verify(studyRepository, never()).deleteStudyReferencesByIds(anyList());
         verify(studyRepository, never()).saveAllStudyReference(anyList());
@@ -440,7 +440,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.isAutonomousStudy()).thenReturn(true);
 
-        assertThatThrownBy(() -> studyService.updateStudy(1, request))
+        assertThatThrownBy(() -> studyService.updateStudy(1, request.toCommand()))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_NOT_CHANGEABLE));
@@ -457,7 +457,7 @@ class StudyServiceApplicationUpdateTest {
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
         when(study.isAutonomousStudy()).thenReturn(false);
 
-        assertThatThrownBy(() -> studyService.updateStudy(1, request))
+        assertThatThrownBy(() -> studyService.updateStudy(1, request.toCommand()))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
@@ -470,7 +470,7 @@ class StudyServiceApplicationUpdateTest {
         CreateStudyApplyRequest request = new CreateStudyApplyRequest();
         request.setTitle(Study.AUTONOMOUS_STUDY_NAME);
 
-        assertThatThrownBy(() -> studyService.createStudyApply(10L, request, null, null))
+        assertThatThrownBy(() -> studyService.createStudyApply(10L, request.toCommand(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
@@ -483,7 +483,7 @@ class StudyServiceApplicationUpdateTest {
         CreateStudyApplyRequest request = new CreateStudyApplyRequest();
         request.setTitle(Study.AUTONOMOUS_STUDY_NAME);
 
-        assertThatThrownBy(() -> studyService.reApplyStudy(1, 10L, request, null, null))
+        assertThatThrownBy(() -> studyService.reApplyStudy(1, 10L, request.toCommand(), null, null))
                 .isInstanceOf(ForifException.class)
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_NAME_RESERVED));
@@ -535,7 +535,7 @@ class StudyServiceApplicationUpdateTest {
         when(existingFileReference.getContent()).thenReturn("studies/references/old.pdf");
         TransactionSynchronizationManager.initSynchronization();
 
-        studyService.updateStudyApplication(1, 10L, request, null, List.of());
+        studyService.updateStudyApplication(1, 10L, request.toCommand(), null, List.of());
 
         verify(studyRepository).deleteStudyReferencesByIds(List.of(existingReferenceId));
         TransactionSynchronizationManager.getSynchronizations()
@@ -574,7 +574,7 @@ class StudyServiceApplicationUpdateTest {
                 .thenReturn(new FileInfo("studies/thumbnails/replacement.png", "https://example.com/replacement.png"));
         TransactionSynchronizationManager.initSynchronization();
 
-        studyService.reApplyStudy(1, 10L, request, replacementThumbnail, List.of(replacementFile));
+        studyService.reApplyStudy(1, 10L, request.toCommand(), replacementThumbnail, List.of(replacementFile));
 
         verify(studyRepository).deleteStudyReferencesByStudyId(1);
         verify(filePort).uploadFile(replacementFile);
@@ -611,7 +611,7 @@ class StudyServiceApplicationUpdateTest {
         when(removedFileReference.getContent()).thenReturn("studies/references/old.pdf");
         TransactionSynchronizationManager.initSynchronization();
 
-        studyService.updateStudy(1, request);
+        studyService.updateStudy(1, request.toCommand());
 
         verify(studyRepository).deleteStudyReferencesByIds(List.of(removedId));
         verify(studyRepository, never()).saveAllStudyReference(anyList());

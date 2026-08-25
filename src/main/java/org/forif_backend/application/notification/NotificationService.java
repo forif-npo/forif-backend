@@ -16,7 +16,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.MemberResponse;
+import org.forif_backend.application.user.dto.MemberInfo;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -68,7 +68,7 @@ public class NotificationService {
         return notificationSendPort.getKakaoTemplates();
     }
 
-    public CursorPageResponse<MemberResponse> getRecipients(
+    public CursorPageResponse<MemberInfo> getRecipients(
             NotificationRecipientTarget target,
             Long cursor,
             int size,

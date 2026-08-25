@@ -31,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class UserApplyServiceCancelTest {
@@ -65,7 +66,7 @@ class UserApplyServiceCancelTest {
     void cancelsOnlySecondaryApplicationWhenBothPrioritiesArePending() {
         UserApply application = pendingApplication(applicant());
         application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2);
 
@@ -82,7 +83,7 @@ class UserApplyServiceCancelTest {
     void promotesSecondaryApplicationWhenPrimaryApplicationIsCancelled() {
         UserApply application = pendingApplication(applicant());
         application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
 
@@ -96,9 +97,38 @@ class UserApplyServiceCancelTest {
     }
 
     @Test
+    void deletesApplicationInsteadOfPromotingRejectedSecondary() {
+        UserApply application = pendingApplication(applicant());
+        application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
+        application.updateStatus(20, UserApplyStatus.REJECT);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
+        // 승격했다면 1순위가 REJECT가 되어 취소도 재지원도 불가능해진다
+        verify(userRepository).deleteUserApply(application);
+        assertThat(application.getPrimaryStatus()).isEqualTo(UserApplyStatus.PENDING);
+        assertThat(application.getPrimaryStudy()).isEqualTo(10);
+    }
+
+    @Test
+    void promotesAcceptedSecondaryWhenPrimaryApplicationIsCancelled() {
+        UserApply application = pendingApplication(applicant());
+        application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
+        application.updateStatus(20, UserApplyStatus.ACCEPT);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
+
+        userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
+
+        verify(userRepository, never()).deleteUserApply(application);
+        assertThat(application.getPrimaryStudy()).isEqualTo(20);
+        assertThat(application.getPrimaryStatus()).isEqualTo(UserApplyStatus.ACCEPT);
+    }
+
+    @Test
     void deletesApplicationWhenItsOnlyPrimaryApplicationIsCancelled() {
         UserApply application = pendingApplication(applicant());
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1);
 
@@ -108,7 +138,7 @@ class UserApplyServiceCancelTest {
     @Test
     void doesNotDeleteAnotherUsersApplication() {
         UserApply application = pendingApplication(user(2L));
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.INSUFFICIENT_PERMISSION,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
@@ -120,7 +150,7 @@ class UserApplyServiceCancelTest {
     void doesNotDeleteApplicationWhenPrimaryHasBeenReviewed() {
         UserApply application = pendingApplication(applicant());
         application.updateStatus(10, UserApplyStatus.ACCEPT);
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.APPLY_NOT_PENDING,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
@@ -133,7 +163,7 @@ class UserApplyServiceCancelTest {
         UserApply application = pendingApplication(applicant());
         application.addSecondaryStudy(20, "2순위 스터디", "2순위 지원 동기");
         application.updateStatus(20, UserApplyStatus.REJECT);
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.APPLY_NOT_PENDING,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2));
@@ -144,7 +174,7 @@ class UserApplyServiceCancelTest {
     @Test
     void doesNotDeleteApplicationFromAnotherSemester() {
         UserApply application = pendingApplication(applicant(), 2025, 2);
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
@@ -154,7 +184,7 @@ class UserApplyServiceCancelTest {
 
     @Test
     void returnsNotFoundWhenApplicationDoesNotExist() {
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(null);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.empty());
 
         assertError(ErrorCode.STUDY_APPLY_NOT_FOUND,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 1));
@@ -165,7 +195,7 @@ class UserApplyServiceCancelTest {
     @Test
     void doesNotDeleteApplicationWhenRecruitmentHasEnded() {
         UserApply application = pendingApplication(applicant());
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
         doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
                 .when(semesterPhaseGuard)
                 .requireNotEnded(SemesterPhase.MENTEE_RECRUIT, 2026, 1);
@@ -179,7 +209,7 @@ class UserApplyServiceCancelTest {
     @Test
     void doesNotCancelMissingSecondaryApplication() {
         UserApply application = pendingApplication(applicant());
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.INVALID_INPUT,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 2));
@@ -190,7 +220,7 @@ class UserApplyServiceCancelTest {
     @Test
     void rejectsInvalidPriority() {
         UserApply application = pendingApplication(applicant());
-        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(application);
+        when(userRepository.findUserApplyById(APPLICATION_ID)).thenReturn(Optional.of(application));
 
         assertError(ErrorCode.INVALID_INPUT,
                 () -> userApplyService.cancelApplication(APPLICANT_ID, APPLICATION_ID, 3));

@@ -19,6 +19,7 @@ import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.web.user.dto.*;
 import org.forif_backend.common.util.CookieUtils;
@@ -111,8 +112,7 @@ public class UserController {
     ) {
         // 1. 쿠키에서 Refresh Token 확인
         if (refreshToken == null || refreshToken.isEmpty()) {
-            return ResponseEntity.status(401)
-                    .body(ApiResponse.error(ErrorCode.INVALID_TOKEN));
+            throw new ForifException(ErrorCode.INVALID_TOKEN);
         }
 
         // 2. Web DTO → Application Command 변환
@@ -135,7 +135,7 @@ public class UserController {
      */
     @Operation(summary = "로그아웃", description = "Access Token을 블랙리스트에 등록하고 Refresh Token을 삭제합니다.")
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout(
+    public ResponseEntity<ApiResponse<Void>> logout(
             HttpServletRequest request,
             HttpServletResponse httpResponse
     ) {

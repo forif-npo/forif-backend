@@ -31,14 +31,14 @@ public class UserApplyController {
     @PostMapping("")
     public ResponseEntity<ApiResponse<Void>> applyStudy(@AuthenticationPrincipal Long userId,
                                                         @Valid @RequestBody UserApplyRequest userApplyRequest) {
-        userApplyService.applyStudy(userId, userApplyRequest);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        userApplyService.applyStudy(userId, userApplyRequest.toCommand());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "지원 상태 조회", description = "현재 유저의 이번 학기 지원 상태를 조회합니다. 프론트에서 지원서 작성 페이지 진입 가능 여부를 판단하는 데 사용합니다.")
     @GetMapping("/status")
     public ResponseEntity<ApiResponse<ApplyStatusResponse>> getApplyStatus(@AuthenticationPrincipal Long userId) {
-        ApplyStatusResponse response = userApplyService.getApplyStatus(userId);
+        ApplyStatusResponse response = ApplyStatusResponse.from(userApplyService.getApplyStatus(userId));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -47,8 +47,8 @@ public class UserApplyController {
     public ResponseEntity<ApiResponse<Void>> updateApplication(@AuthenticationPrincipal Long userId,
                                                                @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
                                                                @RequestBody UserApplyUpdateRequest request) {
-        userApplyService.updateApplication(userId, applyId, request);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        userApplyService.updateApplication(userId, applyId, request.toCommand());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "수강 신청 취소", description = "본인의 대기 중인 특정 우선순위 스터디 수강 신청을 취소합니다. 1순위 취소 시 2순위가 1순위로 승격됩니다.")
@@ -59,7 +59,7 @@ public class UserApplyController {
             @Parameter(description = "취소할 지원 순위 (1 또는 2)", example = "2") @RequestParam("priority") int priority
     ) {
         userApplyService.cancelApplication(userId, applyId, priority);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "신청자 목록 조회 (멘토 전용)", description = "해당 스터디에 신청한 멘티 목록을 조회합니다. 상태 필터 및 날짜 정렬을 지원합니다.")
@@ -95,8 +95,8 @@ public class UserApplyController {
                                                                 @Parameter(description = "스터디 ID") @PathVariable("studyId") Integer studyId,
                                                                 @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,
                                                                 @Valid @RequestBody UserApplyStatusUpdateRequest request) {
-        userApplyService.updateApplyStatus(userId, studyId, applyId, request);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        userApplyService.updateApplyStatus(userId, studyId, applyId, request.status());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "합격 처리 (멘토 전용)", description = "신청서 ID 목록을 받아 일괄 합격 처리합니다. 이미 합격인 신청서는 스킵되고, 2순위 합격 상태에서 1순위 합격 시 2순위 StudyUser가 삭제됩니다.")
@@ -106,7 +106,7 @@ public class UserApplyController {
                                                                  @Parameter(description = "스터디 ID") @PathVariable("studyId") Integer studyId,
                                                                  @Valid @RequestBody AcceptRequest request) {
         userApplyService.acceptApplications(userId, studyId, request.applyIds());
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @Operation(summary = "불합격 처리 (멘토 전용)", description = "신청서 ID 목록을 받아 일괄 불합격 처리합니다. 이미 불합격인 신청서는 스킵되고, 합격 상태였다면 StudyUser가 삭제됩니다.")
@@ -116,6 +116,6 @@ public class UserApplyController {
                                                                  @Parameter(description = "스터디 ID") @PathVariable("studyId") Integer studyId,
                                                                  @Valid @RequestBody RejectRequest request) {
         userApplyService.rejectApplications(userId, studyId, request.applyIds());
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -122,8 +122,8 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public UserApply findUserApplyById(Long applyId) {
-        return userApplyJpaRepository.findByid(applyId);
+    public Optional<UserApply> findUserApplyById(Long applyId) {
+        return Optional.ofNullable(userApplyJpaRepository.findByid(applyId));
     }
 
     private BooleanExpression filterByStudyAndStatus(Integer studyId, UserApplyStatus statusFilter) {

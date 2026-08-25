@@ -95,7 +95,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 // 4. 토큰이 유효한지 검증
                 if(!jwtProvider.validateToken(token)) {
-                    log.error("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
+                    log.warn("토큰이 유효하지 않습니다. URI: {}", request.getRequestURI());
                     request.setAttribute("jwt.error", ErrorCode.INVALID_TOKEN);
                     filterChain.doFilter(request, response);
                     return;

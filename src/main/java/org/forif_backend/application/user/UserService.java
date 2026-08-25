@@ -21,7 +21,6 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.user.*;
-import org.forif_backend.web.user.dto.MemberResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,12 +33,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
 
+    private static final String FILE_CLEANUP_CONTEXT = "프로필 이미지";
     private static final String PROFILE_IMAGE_DIRECTORY = "users/profiles";
     private static final long MAX_PROFILE_IMAGE_SIZE = 5 * 1024 * 1024;
     private static final Set<String> PROFILE_IMAGE_CONTENT_TYPES = Set.of(
@@ -210,6 +212,7 @@ public class UserService {
     /**
      * 멘토 스터디 개설 신청서 목록 조회
      */
+    @Transactional(readOnly = true)
     public GetStudyCreationApplicationsResult getStudyCreationApplications(Long userId) {
         List<Study> studies = studyRepository.findAllStudiesByMentorId(userId);
 
@@ -219,12 +222,10 @@ public class UserService {
                             study.getPrimaryMentor().getId().equals(userId);
                     String role = isPrimaryMentor ? "PRIMARY_MENTOR" : "SECONDARY_MENTOR";
 
-                    String partnerMentorName = null;
-                    if (isPrimaryMentor && study.getSecondaryMentor() != null) {
-                        partnerMentorName = study.getSecondaryMentor().getUserName();
-                    } else if (!isPrimaryMentor && study.getPrimaryMentor() != null) {
-                        partnerMentorName = study.getPrimaryMentor().getUserName();
-                    }
+                    // 멘토 연관은 지연 로딩이라 비정규화 컬럼을 쓴다
+                    String partnerMentorName = isPrimaryMentor
+                            ? study.getSecondaryMentorName()
+                            : study.getPrimaryMentorName();
 
                     List<String> tags = study.getTags().stream()
                             .map(StudyTag::getName)
@@ -240,7 +241,7 @@ public class UserService {
                             study.getEndTime(),
                             study.getWeekDay(),
                             study.getLocation(),
-                            study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
+                            study.getDifficulty() != null ? study.getDifficulty().getLevel() : null,
                             study.getActYear(),
                             study.getActSemester(),
                             role,
@@ -273,7 +274,7 @@ public class UserService {
                 study.getStartTime(),
                 study.getEndTime(),
                 study.getLocation(),
-                study.getDifficulty() != null ? study.getDifficulty().ordinal() : null,
+                study.getDifficulty() != null ? study.getDifficulty().getLevel() : null,
                 study.getImgUrl(),
                 resolveThumbnailImage(study),
                 study.isAutonomousStudy()
@@ -285,19 +286,13 @@ public class UserService {
     }
 
     private String resolveThumbnailImage(Study study) {
-        String thumbnailImage = study.getThumbnailImage();
-        if (thumbnailImage == null || thumbnailImage.isBlank()) {
-            return null;
-        }
-        if (thumbnailImage.startsWith("http://") || thumbnailImage.startsWith("https://")) {
-            return thumbnailImage;
-        }
-        return filePort.generatePresignedViewUrl(thumbnailImage).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, study.getThumbnailImage());
     }
 
     /**
      * 인증서 조회
      */
+    @Transactional(readOnly = true)
     public GetCertificateResult getCertificate(Long userId, Integer studyId) {
         // 1. StudyUser 조회
         StudyUser studyUser = studyUserRepository.findByUserIdAndStudyId(userId, studyId)
@@ -356,10 +351,7 @@ public class UserService {
     }
 
     public String getProfileImageUrl(String imgUrl) {
-        if (imgUrl == null || imgUrl.isBlank() || imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) {
-            return imgUrl;
-        }
-        return filePort.generatePresignedViewUrl(imgUrl).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, imgUrl);
     }
 
     private void validateProfileImage(MultipartFile file) {
@@ -370,81 +362,56 @@ public class UserService {
     }
 
     private void registerProfileImageCleanup(String previousObjectKey, String uploadedObjectKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+        boolean registered = TransactionalFileCleanup.replaceAfterCompletion(
+                filePort, singletonKey(previousObjectKey), singletonKey(uploadedObjectKey), FILE_CLEANUP_CONTEXT);
+
+        if (!registered) {
             deleteProfileImageQuietly(uploadedObjectKey);
             throw new IllegalStateException("프로필 이미지 변경 트랜잭션이 활성화되지 않았습니다.");
         }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status == STATUS_COMMITTED) {
-                    deleteProfileImageQuietly(previousObjectKey);
-                } else {
-                    deleteProfileImageQuietly(uploadedObjectKey);
-                }
-            }
-        });
     }
 
     private void deleteProfileImageQuietly(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()
-                || objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
-            return;
-        }
+        TransactionalFileCleanup.deleteQuietly(filePort, singletonKey(objectKey), FILE_CLEANUP_CONTEXT);
+    }
 
-        try {
-            filePort.deleteFile(objectKey);
-        } catch (Exception e) {
-            log.warn("프로필 이미지 삭제 실패: {}", objectKey, e);
-        }
+    private static List<String> singletonKey(String objectKey) {
+        return objectKey == null ? List.of() : List.of(objectKey);
     }
 
     /**
      * 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
+    public CursorPageResponse<MemberInfo> getAllMembers(Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsers(search);
         SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
 
-        if (page != null) {
-            List<User> users = userRepository.searchUsersWithOffset(page, size, search, sorting);
-            List<MemberResponse> responses = buildMemberResponses(users, currentYear, currentSemester);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<User> users = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> userRepository.searchUsersWithOffset(page, size, search, sorting),
+                () -> userRepository.searchUsersWithCursor(cursor, size, search),
+                user -> user.getId().intValue());
 
-        List<User> users = userRepository.searchUsersWithCursor(cursor, size, search);
-        boolean hasNext = users.size() > size;
-        List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, currentYear, currentSemester);
-        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return users.withContent(buildMemberInfos(users.content(), currentYear, currentSemester));
     }
 
     /**
      * 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
      */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
+    public CursorPageResponse<MemberInfo> getAllMembers(int year, int semester, Long cursor, Integer page, int size, String search, List<SortCriteria> sorting) {
         long totalElements = userRepository.countUsersByYearSemester(year, semester, search);
 
-        if (page != null) {
-            List<User> users = userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search, sorting);
-            List<MemberResponse> responses = buildMemberResponses(users, year, semester);
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(responses, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<User> users = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> userRepository.searchUsersByYearSemesterWithOffset(year, semester, page, size, search, sorting),
+                () -> userRepository.searchUsersByYearSemester(year, semester, cursor, size, search),
+                user -> user.getId().intValue());
 
-        List<User> users = userRepository.searchUsersByYearSemester(year, semester, cursor, size, search);
-        boolean hasNext = users.size() > size;
-        List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
-        Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+        return users.withContent(buildMemberInfos(users.content(), year, semester));
     }
 
     /**
@@ -479,19 +446,19 @@ public class UserService {
 
     /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getApplicants(int year, int semester, Long cursor, int size, String search) {
+    public CursorPageResponse<MemberInfo> getApplicants(int year, int semester, Long cursor, int size, String search) {
         long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);
         List<User> users = userRepository.searchApplicantsByYearSemester(year, semester, cursor, size, search);
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
     /** 문자 발송 수신자용 전체 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getNotificationMembers(Long cursor, int size, String search) {
+    public CursorPageResponse<MemberInfo> getNotificationMembers(Long cursor, int size, String search) {
         SemesterInfo active = semesterService.getActive();
         long totalElements = userRepository.countNotificationUsers(search);
         List<User> users = userRepository.searchNotificationUsersWithCursor(cursor, size, search);
@@ -500,7 +467,7 @@ public class UserService {
 
     /** 문자 발송 수신자용 학기 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getNotificationMembers(
+    public CursorPageResponse<MemberInfo> getNotificationMembers(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countNotificationUsersByYearSemester(year, semester, search);
@@ -510,7 +477,7 @@ public class UserService {
 
     /** 회비 미납 상태인 현재 학기 합격자 조회. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingDues(
+    public CursorPageResponse<MemberInfo> getAcceptedUsersMissingDues(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingDuesByYearSemester(year, semester, search);
@@ -520,7 +487,7 @@ public class UserService {
 
     /** 구글폼을 미제출한 현재 학기 합격자 조회. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberResponse> getAcceptedUsersMissingGoogleForm(
+    public CursorPageResponse<MemberInfo> getAcceptedUsersMissingGoogleForm(
             int year, int semester, Long cursor, int size, String search
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingGoogleFormByYearSemester(year, semester, search);
@@ -528,7 +495,7 @@ public class UserService {
         return toCursorMemberPage(users, totalElements, size, year, semester);
     }
 
-    private CursorPageResponse<MemberResponse> toCursorMemberPage(
+    private CursorPageResponse<MemberInfo> toCursorMemberPage(
             List<User> users,
             long totalElements,
             int size,
@@ -537,12 +504,12 @@ public class UserService {
     ) {
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberResponse> responses = buildMemberResponses(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
-    private List<MemberResponse> buildMemberResponses(List<User> users, int year, int semester) {
+    private List<MemberInfo> buildMemberInfos(List<User> users, int year, int semester) {
         List<Long> userIds = users.stream().map(User::getId).toList();
 
         Map<Long, String> studyNameMap = studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
@@ -551,7 +518,7 @@ public class UserService {
         Set<Long> mentorUserIds = studyRepository.findMentorUserIdsByUserIds(userIds, year, semester);
 
         return users.stream()
-                .map(u -> MemberResponse.builder()
+                .map(u -> MemberInfo.builder()
                         .userId(u.getId())
                         .department(u.getDepartment())
                         .userName(u.getUserName())

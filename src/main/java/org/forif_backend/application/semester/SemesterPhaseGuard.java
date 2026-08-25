@@ -67,10 +67,11 @@ public class SemesterPhaseGuard {
 
         throw new ForifException(errorCode, List.of(new ApiErrorData(
                 phase.name(),
+                // 종료 시각은 포함하지 않는 반열림 구간이므로, 안내는 실제 마지막 가능 시각으로 적는다
                 "%s 기간은 %s부터 %s까지입니다.".formatted(
                         phase.getLabel(),
                         window.getStartsAt().format(DISPLAY),
-                        window.getEndsAt().format(DISPLAY)),
+                        window.getEndsAt().minusMinutes(1).format(DISPLAY)),
                 null
         )));
     }

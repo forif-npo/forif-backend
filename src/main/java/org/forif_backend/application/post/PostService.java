@@ -24,12 +24,15 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PostService {
+
+    private static final String FILE_CLEANUP_CONTEXT = "게시글 이미지";
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
@@ -158,19 +161,13 @@ public class PostService {
         validatePostType(postType);
         long totalElements = postRepository.countByPostType(postType, search);
 
-        if (page != null) {
-            List<Post> posts = postRepository.searchWithOffset(postType, search, page, size);
-            List<PostDto> postDtos = posts.stream().map(this::convertToDto).toList();
-            boolean hasNext = (long) (page + 1) * size < totalElements;
-            return CursorPageResponse.ofOffset(postDtos, hasNext, totalElements, page, size);
-        }
+        CursorPageResponse<Post> posts = CursorPageResponse.paginate(
+                page, size, totalElements,
+                () -> postRepository.searchWithOffset(postType, search, page, size),
+                () -> postRepository.searchWithCursor(postType, search, cursor, size),
+                Post::getId);
 
-        List<Post> posts = postRepository.searchWithCursor(postType, search, cursor, size);
-        boolean hasNext = posts.size() > size;
-        List<Post> content = hasNext ? posts.subList(0, size) : posts;
-        List<PostDto> postDtos = content.stream().map(this::convertToDto).toList();
-        Integer nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
-        return CursorPageResponse.ofCursor(postDtos, nextCursor, hasNext, totalElements);
+        return posts.withContent(posts.content().stream().map(this::convertToDto).toList());
     }
 
     private void validatePostType(String postType) {
@@ -241,7 +238,7 @@ public class PostService {
                 uploadedPostFiles.add(PostFile.createPostFile(post, i + 1, fileType, objectKey));
             }
         } catch (RuntimeException e) {
-            uploadedObjectKeys.forEach(this::deleteFileQuietly);
+            TransactionalFileCleanup.deleteQuietly(filePort, uploadedObjectKeys, FILE_CLEANUP_CONTEXT);
             throw e;
         }
         return uploadedPostFiles;
@@ -279,30 +276,8 @@ public class PostService {
         if (postFiles == null || postFiles.isEmpty()) {
             return;
         }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            deletePhysicalPostFiles(postFiles);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                deletePhysicalPostFiles(postFiles);
-            }
-        });
-    }
-
-    private void deletePhysicalPostFiles(List<PostFile> postFiles) {
-        for (PostFile postFile : postFiles) {
-            deleteFileQuietly(postFile.getFileUrl());
-        }
-    }
-
-    private void deleteFileQuietly(String objectKey) {
-        try {
-            filePort.deleteFile(objectKey);
-        } catch (Exception e) {
-            log.warn("게시글 이미지 삭제 실패: {}", objectKey, e);
-        }
+        List<String> objectKeys = postFiles.stream().map(PostFile::getFileUrl).toList();
+        TransactionalFileCleanup.deleteAfterCommit(filePort, objectKeys, FILE_CLEANUP_CONTEXT);
     }
 
     private void verifyAdminRole(Long userId) {

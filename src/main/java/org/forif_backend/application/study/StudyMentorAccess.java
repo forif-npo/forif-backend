@@ -37,7 +37,7 @@ public class StudyMentorAccess {
         requireMentor(study, userId);
 
         SemesterInfo active = semesterService.getActive();
-        if (study.getActYear() != active.actYear() || study.getActSemester() != active.actSemester()) {
+        if (!active.matches(study.getActYear(), study.getActSemester())) {
             throw new ForifException(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER);
         }
     }

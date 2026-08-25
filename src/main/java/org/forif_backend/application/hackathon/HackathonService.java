@@ -33,6 +33,8 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Service
 @Slf4j
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class HackathonService {
 
+    private static final String FILE_CLEANUP_CONTEXT = "해커톤 제출 발표자료";
     private static final int DEFAULT_MAX_SCORE = 5;
     private static final BigDecimal DEFAULT_WEIGHT = BigDecimal.ONE;
     private static final List<HackathonStatus> STATUS_FLOW = List.of(
@@ -467,7 +470,7 @@ public class HackathonService {
         }
 
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
+                ? uploadPresentation(presentation, event)
                 : null;
         HackathonSubmission submission = HackathonSubmission.create(
                 event,
@@ -498,7 +501,7 @@ public class HackathonService {
 
         String previousPresentationFile = submission.getPresentationFile();
         String presentationFile = presentation != null && !presentation.isEmpty()
-                ? filePort.uploadFile(presentation, hackathonUploadDirectory(event))
+                ? uploadPresentation(presentation, event)
                 : previousPresentationFile;
         submission.update(
                 request.projectName(),
@@ -959,27 +962,14 @@ public class HackathonService {
     }
 
     private void deleteFileAfterCommit(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return;
-        }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            deleteFileQuietly(objectKey);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                deleteFileQuietly(objectKey);
-            }
-        });
+        TransactionalFileCleanup.deleteAfterCommit(filePort, objectKey, FILE_CLEANUP_CONTEXT);
     }
 
-    private void deleteFileQuietly(String objectKey) {
-        try {
-            filePort.deleteFile(objectKey);
-        } catch (Exception e) {
-            log.warn("해커톤 제출 발표자료 삭제 실패: {}", objectKey, e);
-        }
+    /** 저장이 롤백되면 방금 올린 발표자료가 고아로 남지 않게 회수한다. */
+    private String uploadPresentation(MultipartFile presentation, HackathonEvent event) {
+        String objectKey = filePort.uploadFile(presentation, hackathonUploadDirectory(event));
+        TransactionalFileCleanup.deleteOnRollback(filePort, objectKey, FILE_CLEANUP_CONTEXT);
+        return objectKey;
     }
 
     private void disbandTeam(HackathonTeam team) {
@@ -1230,13 +1220,7 @@ public class HackathonService {
     }
 
     private String toFileViewUrl(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return objectKey;
-        }
-        if (objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
-            return objectKey;
-        }
-        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, objectKey);
     }
 
     private Map<Long, List<String>> techStacksBySubmissionId(List<HackathonSubmission> submissions) {

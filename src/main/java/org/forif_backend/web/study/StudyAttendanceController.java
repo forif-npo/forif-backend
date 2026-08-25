@@ -53,6 +53,6 @@ public class StudyAttendanceController {
                 .toList();
 
         studyAttendanceService.updateAttendance(userId, studyId, commands);
-        return ResponseEntity.ok(ApiResponse.successWithMsg("Success"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

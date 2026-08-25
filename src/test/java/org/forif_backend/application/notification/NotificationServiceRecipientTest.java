@@ -8,7 +8,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.UserRepository;
-import org.forif_backend.web.user.dto.MemberResponse;
+import org.forif_backend.application.user.dto.MemberInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceRecipientTest {
 
-    private static final CursorPageResponse<MemberResponse> EMPTY_PAGE =
+    private static final CursorPageResponse<MemberInfo> EMPTY_PAGE =
             CursorPageResponse.ofCursor(java.util.List.of(), null, false, 0);
 
     @Mock
@@ -52,7 +52,7 @@ class NotificationServiceRecipientTest {
         when(userService.getNotificationMembers(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.CURRENT_SEMESTER_MEMBERS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
@@ -63,7 +63,7 @@ class NotificationServiceRecipientTest {
         when(userService.getApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.CURRENT_SEMESTER_APPLICANTS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
@@ -74,7 +74,7 @@ class NotificationServiceRecipientTest {
         when(userService.getNotificationMembers(2025, 2, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.PREVIOUS_SEMESTER_MEMBERS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
@@ -86,7 +86,7 @@ class NotificationServiceRecipientTest {
         when(userService.getNotificationMembers(null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.ALL_MEMBERS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
@@ -97,7 +97,7 @@ class NotificationServiceRecipientTest {
         when(userService.getAcceptedUsersMissingDues(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.ACCEPTED_DUES_UNPAID, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
@@ -108,7 +108,7 @@ class NotificationServiceRecipientTest {
         when(userService.getAcceptedUsersMissingGoogleForm(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
-        CursorPageResponse<MemberResponse> result = notificationService.getRecipients(
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
                 NotificationRecipientTarget.ACCEPTED_GOOGLE_FORM_NOT_SUBMITTED, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);

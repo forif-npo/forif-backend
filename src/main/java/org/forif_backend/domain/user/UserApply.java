@@ -108,6 +108,13 @@ public class UserApply extends BaseTimeEntity {
      * 1순위 지원을 취소하면서 2순위가 있으면 그 지원을 1순위로 승격한다.
      */
     public void promoteSecondaryToPrimary() {
+        if (this.secondaryStudy == null) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        // 불합격 상태가 1순위로 올라가면 취소도 재지원도 불가능한 신청서가 된다
+        if (this.secondaryStatus == UserApplyStatus.REJECT) {
+            throw new ForifException(ErrorCode.APPLY_NOT_PENDING);
+        }
         this.primaryStudy = this.secondaryStudy;
         this.primaryStudyName = this.secondaryStudyName;
         this.primaryIntro = this.secondaryIntro;

@@ -26,6 +26,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.forif_backend.application.file.FileViewUrls;
+import org.forif_backend.application.file.TransactionalFileCleanup;
 
 @Slf4j
 @Service
@@ -33,6 +35,7 @@ import java.util.regex.Pattern;
 @Transactional(readOnly = true)
 public class ProductService {
 
+    private static final String FILE_CLEANUP_CONTEXT = "서비스 썸네일";
     private static final Pattern SLUG_PATTERN = Pattern.compile("^[a-z0-9](?:[a-z0-9-]{1,18})[a-z0-9]$");
     private static final Set<String> RESERVED_SLUGS = Set.of(
             "www", "dev", "api", "admin", "mail", "apply", "applications", "products", "forif"
@@ -211,6 +214,7 @@ public class ProductService {
 
         String objectKey = filePort.uploadFile(file, THUMBNAIL_DIRECTORY);
         product.updateThumbnail(objectKey);
+        deleteUploadOnRollback(objectKey);
         if (!Objects.equals(previousThumbnailObjectKey, objectKey)) {
             deleteFileAfterCommit(previousThumbnailObjectKey);
         }
@@ -297,15 +301,8 @@ public class ProductService {
         return ProductInfo.from(product, toFileViewUrl(product.getThumbnailObjectKey()));
     }
 
-    /** 저장된 objectKey를 클라이언트가 볼 수 있는 조회 URL로 변환한다 */
     private String toFileViewUrl(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return null;
-        }
-        if (objectKey.startsWith("http://") || objectKey.startsWith("https://")) {
-            return objectKey;
-        }
-        return filePort.generatePresignedViewUrl(objectKey).presignedUrl();
+        return FileViewUrls.resolveViewUrl(filePort, objectKey);
     }
 
     private void validateImageFile(MultipartFile file) {
@@ -348,46 +345,11 @@ public class ProductService {
 
     /** 슬러그 경합 등으로 신청이 롤백되면 방금 올린 썸네일이 고아로 남지 않게 회수한다 */
     private void deleteUploadOnRollback(String objectKey) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status != STATUS_COMMITTED) {
-                    try {
-                        filePort.deleteFile(objectKey);
-                    } catch (Exception e) {
-                        log.warn("롤백 후 썸네일 회수 실패: {}", objectKey, e);
-                    }
-                }
-            }
-        });
+        TransactionalFileCleanup.deleteOnRollback(filePort, objectKey, FILE_CLEANUP_CONTEXT);
     }
 
     /** DB 반영이 끝난 뒤에만 더 이상 참조되지 않는 기존 파일을 삭제한다. */
     private void deleteFileAfterCommit(String objectKey) {
-        if (objectKey == null || objectKey.isBlank()) {
-            return;
-        }
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            deleteFileSafely(objectKey);
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                deleteFileSafely(objectKey);
-            }
-        });
-    }
-
-    private void deleteFileSafely(String objectKey) {
-        try {
-            filePort.deleteFile(objectKey);
-        } catch (Exception e) {
-            // DB 커밋 뒤의 파일 삭제 실패가 이미 성공한 서비스 수정 요청을 실패시키지 않게 한다.
-            log.warn("기존 서비스 썸네일 삭제 실패: {}", objectKey, e);
-        }
+        TransactionalFileCleanup.deleteAfterCommit(filePort, objectKey, FILE_CLEANUP_CONTEXT);
     }
 }

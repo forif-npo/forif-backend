@@ -2,6 +2,7 @@ package org.forif_backend.web.userApply.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
+import org.forif_backend.application.user.dto.ApplyStatusInfo;
 import org.forif_backend.web.study.dto.StudyResponse;
 
 @Schema(description = "지원 상태 응답")
@@ -25,4 +26,14 @@ public record ApplyStatusResponse(
         @Schema(description = "이미 지원한 2순위 스터디 정보")
         StudyResponse secondaryStudy
 ) {
+    public static ApplyStatusResponse from(ApplyStatusInfo info) {
+        return ApplyStatusResponse.builder()
+                .canApplyPrimary(info.canApplyPrimary())
+                .canApplySecondary(info.canApplySecondary())
+                .canApplyAutonomousStudy(info.canApplyAutonomousStudy())
+                .hasAutonomousStudyApplication(info.hasAutonomousStudyApplication())
+                .primaryStudy(info.primaryStudy() == null ? null : StudyResponse.from(info.primaryStudy()))
+                .secondaryStudy(info.secondaryStudy() == null ? null : StudyResponse.from(info.secondaryStudy()))
+                .build();
+    }
 }
