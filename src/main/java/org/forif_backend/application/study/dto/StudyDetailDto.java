@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.study.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -94,7 +95,40 @@ public class StudyDetailDto {
                                 referenceContents.getOrDefault(reference.getId(), reference.getContent())
                         ))
                         .toList())
-                .mentors(mentorStudies.stream().map(MentorStudyDto::from).toList())
+                .mentors(resolveMentors(study, mentorStudies))
                 .build();
+    }
+
+    /**
+     * 멘토 목록.
+     *
+     * <p>FOR-116에서 멘토가 레거시 조인 테이블(tb_mentor_study)에서 tb_study의 FK 컬럼으로
+     * 옮겨졌다. 그 이후 개설된 스터디는 조인 테이블에 행이 없으므로, 비어 있으면 FK 컬럼에서
+     * 만들어 준다. 그러지 않으면 클라이언트는 부멘토가 없는 것으로 오해하고,
+     * 그 상태로 저장하면 실제 부멘토가 지워진다.
+     *
+     * <p>이름은 비정규화 컬럼을 쓰므로 지연 로딩된 멘토 연관을 초기화하지 않는다.
+     */
+    private static List<MentorStudyDto> resolveMentors(Study study, List<MentorStudy> mentorStudies) {
+        if (mentorStudies != null && !mentorStudies.isEmpty()) {
+            return mentorStudies.stream().map(MentorStudyDto::from).toList();
+        }
+
+        List<MentorStudyDto> mentors = new ArrayList<>();
+        if (study.getPrimaryMentor() != null) {
+            mentors.add(MentorStudyDto.builder()
+                    .mentorId(study.getPrimaryMentor().getId())
+                    .mentorName(study.getPrimaryMentorName())
+                    .mentorNum(1)
+                    .build());
+        }
+        if (study.getSecondaryMentor() != null) {
+            mentors.add(MentorStudyDto.builder()
+                    .mentorId(study.getSecondaryMentor().getId())
+                    .mentorName(study.getSecondaryMentorName())
+                    .mentorNum(2)
+                    .build());
+        }
+        return mentors;
     }
 }

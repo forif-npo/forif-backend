@@ -33,6 +33,9 @@ public class CreateStudyApplyCommand {
     private final List<Reference> references;
     private final Long secondaryMentorId;
 
+    /** 요청에 부멘토 필드가 실려 있었는지. 생략(변경 없음)과 null 전달(제거)을 구분한다. */
+    private final boolean secondaryMentorIdPresent;
+
     /** 엔티티에 반영할 값만 추린다. */
     public StudyApplyData toApplyData() {
         return StudyApplyData.builder()
