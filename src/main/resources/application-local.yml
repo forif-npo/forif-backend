@@ -10,18 +10,6 @@ spring:
     hibernate:
       ddl-auto: update
 
-  cloud:
-    aws:
-      credentials:
-        access-key: ${AWS_ACCESS_KEY_ID:test}
-        secret-key: ${AWS_SECRET_ACCESS_KEY:test}
-      region:
-        static: ${AWS_REGION:ap-northeast-2}
-      s3:
-        bucket-name: ${S3_BUCKET_NAME:test}
-      presigned-url:
-        expiration-minutes: 60
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}

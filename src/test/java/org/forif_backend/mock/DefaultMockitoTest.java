@@ -9,9 +9,6 @@ import org.springframework.test.annotation.Rollback;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.S3ClientBuilder;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -31,15 +28,6 @@ import static org.mockito.Mockito.when;
 public class DefaultMockitoTest {
     @MockitoBean
     protected FilePort filePort;
-
-    @MockitoBean
-    protected S3Client s3Client;
-
-    @MockitoBean
-    protected S3Presigner s3Presigner;
-
-    @MockitoBean
-    protected S3ClientBuilder s3ClientBuilder;
 
     @BeforeEach
     void setupMockFilePort() {
