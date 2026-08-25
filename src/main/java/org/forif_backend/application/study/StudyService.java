@@ -303,7 +303,7 @@ public class StudyService {
             User secondaryMentor = request.getSecondaryMentorId() == null
                     ? null
                     : resolveSecondaryMentor(
-                    study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+                    requirePrimaryMentorId(study), request.getSecondaryMentorId());
             study.setSecondaryMentor(secondaryMentor);
             study.setSecondaryMentorName(secondaryMentor == null ? null : secondaryMentor.getUserName());
         }
@@ -467,6 +467,14 @@ public class StudyService {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
         return tagName.strip().toLowerCase(Locale.ROOT);
+    }
+
+    /** 레거시 스터디는 멘토가 이름 문자열로만 남아 FK가 비어 있을 수 있다. 그 경우 500 대신 원인을 알린다. */
+    private static Long requirePrimaryMentorId(Study study) {
+        if (study.getPrimaryMentor() == null) {
+            throw new ForifException(ErrorCode.FIRST_MENTOR_NOT_FOUND);
+        }
+        return study.getPrimaryMentor().getId();
     }
 
     private User resolveSecondaryMentor(Long primaryMentorId, Long secondaryMentorId) {
@@ -653,7 +661,11 @@ public class StudyService {
         Study study = findModifiableStudyApplication(studyId, userId, rejectedOnly);
 
         List<StudyTag> tags = resolveStudyTags(request);
-        User secondaryMentor = resolveSecondaryMentor(study.getPrimaryMentor().getId(), request.getSecondaryMentorId());
+        // 재신청도 부분 수정이므로 요청에 부멘토 필드가 없으면 기존 값을 유지한다.
+        // 생략을 제거로 해석하면 부멘토를 건드리지 않은 재신청에도 부멘토가 지워진다.
+        User secondaryMentor = request.isSecondaryMentorIdPresent()
+                ? resolveSecondaryMentor(requirePrimaryMentorId(study), request.getSecondaryMentorId())
+                : study.getSecondaryMentor();
         study.applyRequestData(request.toApplyData(), tags, secondaryMentor);
 
         if (request.getStudyPlanList() != null) {

@@ -1,5 +1,7 @@
 package org.forif_backend.web.study.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -87,6 +89,16 @@ public class CreateStudyApplyRequest {
 
     private Long secondaryMentorId;         // 부멘토 유저 ID
 
+    /** 요청 본문에 secondary_mentor_id 키가 있었는지. 재신청에서 '생략'과 '제거'를 구분한다. */
+    @JsonIgnore
+    private boolean secondaryMentorIdPresent;
+
+    @JsonSetter("secondary_mentor_id")
+    public void setSecondaryMentorId(Long secondaryMentorId) {
+        this.secondaryMentorId = secondaryMentorId;
+        this.secondaryMentorIdPresent = true;
+    }
+
     @AssertTrue(message = "온라인 또는 장소 미정이 아닌 경우 강의실(호)을 입력해야 합니다.")
     public boolean isStudyLocationDetailValid() {
         return Boolean.TRUE.equals(isOnline)
@@ -147,6 +159,7 @@ public class CreateStudyApplyRequest {
                                 .build())
                         .toList())
                 .secondaryMentorId(secondaryMentorId)
+                .secondaryMentorIdPresent(secondaryMentorIdPresent)
                 .build();
     }
 }

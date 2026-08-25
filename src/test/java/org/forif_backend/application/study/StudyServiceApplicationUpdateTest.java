@@ -31,7 +31,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -232,6 +234,26 @@ class StudyServiceApplicationUpdateTest {
         verify(study).setStartTime("19:00");
         verify(study).setTags(List.of(tag));
         verify(studyRepository).deleteStudyPlansByStudyId(1);
+    }
+
+    @Test
+    void keepsSecondaryMentorWhenReapplyOmitsTheField() {
+        Study study = mock(Study.class);
+        User primaryMentor = mock(User.class);
+        User existingSecondary = mock(User.class);
+        CreateStudyApplyRequest request = new CreateStudyApplyRequest();
+        request.setTitle("정규 스터디");
+        // secondary_mentor_id 를 보내지 않는다 (부멘토를 건드리지 않은 재신청)
+
+        when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
+        when(study.getSecondaryMentor()).thenReturn(existingSecondary);
+
+        studyService.reApplyStudy(1, 10L, request.toCommand(), null, null);
+
+        // 생략을 제거로 해석하면 실제 부멘토가 지워진다
+        verify(study).applyRequestData(any(), any(), eq(existingSecondary));
+        verify(userRepository, never()).findUserById(any());
     }
 
     @Test
@@ -557,9 +579,7 @@ class StudyServiceApplicationUpdateTest {
         request.setReferences(List.of(replacementReference));
 
         when(studyRepository.findStudyByIdWithTags(1)).thenReturn(Optional.of(study));
-        when(study.getPrimaryMentor()).thenReturn(primaryMentor);
         when(study.getStudyStatus()).thenReturn(StudyStatus.REJECTED);
-        when(primaryMentor.getId()).thenReturn(10L);
         when(study.getThumbnailImage()).thenReturn("studies/thumbnails/rejected.png");
         when(studyRepository.findStudyReferencesByStudyId(1)).thenReturn(List.of(existingFileReference));
         when(existingFileReference.getReferenceType()).thenReturn(ReferenceType.FILE);

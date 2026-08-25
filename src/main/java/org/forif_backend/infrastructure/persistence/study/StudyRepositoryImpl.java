@@ -228,11 +228,8 @@ public class StudyRepositoryImpl implements StudyRepository {
 
     @Override
     public boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester) {
-        return mentorStudyJpaRepository.existsByMentorIdAndStudyActYearAndStudyActSemester(
-                mentorId,
-                year,
-                semester
-        );
+        // FOR-116 이후 tb_mentor_study에는 아무것도 쌓이지 않는다. 멘토는 tb_study의 FK가 원본이다.
+        return !studyQueryRepository.findMentorUserIdsByUserIds(List.of(mentorId), year, semester).isEmpty();
     }
 
     @Override

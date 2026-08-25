@@ -1,7 +1,9 @@
 package org.forif_backend.infrastructure.persistence.study;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -429,19 +431,39 @@ public class StudyQueryRepository {
             return Map.of();
         }
 
-        List<Tuple> results = queryFactory
-                .select(mentorStudy.mentor.id, study)
-                .from(mentorStudy)
-                .join(mentorStudy.study, study)
+        // FOR-116에서 멘토가 tb_mentor_study에서 tb_study의 FK 컬럼으로 옮겨졌다.
+        // 그 조인 테이블은 더 이상 쓰이지 않아 조회하면 항상 비어 있다.
+        List<Study> studies = queryFactory
+                .selectFrom(study)
                 .where(
-                        mentorStudy.mentor.id.in(userIds),
                         study.actYear.eq(year),
-                        study.actSemester.eq(semester)
+                        study.actSemester.eq(semester),
+                        study.primaryMentor.id.in(userIds).or(study.secondaryMentor.id.in(userIds))
                 )
                 .orderBy(study.studyName.asc())
                 .fetch();
 
-        return groupStudiesByUserId(results, mentorStudy.mentor.id);
+        Map<Long, List<Study>> mentorStudies = new HashMap<>();
+        for (Study found : studies) {
+            for (Long mentorId : mentorIdsOf(found)) {
+                if (userIds.contains(mentorId)) {
+                    mentorStudies.computeIfAbsent(mentorId, key -> new ArrayList<>()).add(found);
+                }
+            }
+        }
+        return mentorStudies;
+    }
+
+    /** 주·부멘토의 유저 ID. 지연 로딩된 연관을 초기화하지 않도록 식별자만 읽는다. */
+    private static List<Long> mentorIdsOf(Study study) {
+        List<Long> ids = new ArrayList<>(2);
+        if (study.getPrimaryMentor() != null) {
+            ids.add(study.getPrimaryMentor().getId());
+        }
+        if (study.getSecondaryMentor() != null) {
+            ids.add(study.getSecondaryMentor().getId());
+        }
+        return ids;
     }
 
     private Map<Long, List<Study>> groupStudiesByUserId(List<Tuple> results, com.querydsl.core.types.Expression<Long> userIdExpression) {
