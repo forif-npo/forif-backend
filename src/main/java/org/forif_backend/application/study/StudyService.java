@@ -235,6 +235,20 @@ public class StudyService {
 
     @Transactional
     public void updateStudy(Integer studyId, UpdateStudyCommand request) {
+        updateStudy(studyId, request, null, List.of(), true, true);
+    }
+
+    @Transactional
+    public void updateStudy(Integer studyId, UpdateStudyCommand request,
+                            MultipartFile thumbnail, List<MultipartFile> referenceFiles) {
+        updateStudy(studyId, request, thumbnail,
+                Optional.ofNullable(referenceFiles).orElseGet(Collections::emptyList), false, false);
+    }
+
+    private void updateStudy(Integer studyId, UpdateStudyCommand request,
+                             MultipartFile thumbnail, List<MultipartFile> referenceFiles,
+                             boolean skipUnuploadedFileReferences,
+                             boolean retainExistingFilesWhenRetainedIdsOmitted) {
         Study study = studyRepository.findStudyByIdWithTags(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
@@ -245,11 +259,22 @@ public class StudyService {
                     study,
                     request.getReferences(),
                     request.getRetainedReferenceIds(),
-                    List.of(),
-                    true,
-                    true
+                    referenceFiles,
+                    skipUnuploadedFileReferences,
+                    retainExistingFilesWhenRetainedIdsOmitted
             );
         }
+
+        if (thumbnail != null && !thumbnail.isEmpty()) {
+            String previousThumbnailObjectKey = study.getThumbnailImage();
+            FileInfo thumbnailInfo = uploadAndBuildFileInfo(thumbnail);
+            study.setThumbnailImage(thumbnailInfo.objectKey());
+            deleteStoredFilesAfterCompletion(
+                    Collections.singletonList(previousThumbnailObjectKey),
+                    List.of(thumbnailInfo.objectKey())
+            );
+        }
+        studyRepository.saveStudy(study);
     }
 
     private void applyStudyUpdate(Integer studyId, Study study, UpdateStudyCommand request) {

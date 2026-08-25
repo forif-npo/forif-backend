@@ -17,9 +17,11 @@ import org.forif_backend.domain.study.StudyDifficulty;
 import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.web.study.dto.*;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
@@ -115,13 +117,28 @@ public class StudyController {
      * [어드민용] 스터디 수정
      */
     @Operation(summary = "스터디 정보 수정 (어드민 전용)", description = "스터디의 이름, 설명, 태그, 커리큘럼 등을 수정합니다.")
-    @PatchMapping("/api/v1/admin/studies/{studyId}")
+    @PatchMapping(value = "/api/v1/admin/studies/{studyId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> updateStudy(
             @Parameter(description = "수정할 스터디 ID") @PathVariable Integer studyId,
             @RequestBody @Valid UpdateStudyRequest request
     ) {
         studyService.updateStudy(studyId, request.toCommand());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [어드민용] 파일을 포함한 스터디 수정. 기존 JSON 요청도 위 엔드포인트로 계속 지원한다.
+     */
+    @PatchMapping(value = "/api/v1/admin/studies/{studyId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateStudyWithFiles(
+            @Parameter(description = "수정할 스터디 ID") @PathVariable Integer studyId,
+            @RequestPart("studyRequest") @Valid UpdateStudyRequest request,
+            @RequestPart(value = "thumbnail", required = false) MultipartFile thumbnail,
+            @RequestPart(value = "references", required = false) List<MultipartFile> references
+    ) {
+        studyService.updateStudy(studyId, request.toCommand(), thumbnail, references);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
