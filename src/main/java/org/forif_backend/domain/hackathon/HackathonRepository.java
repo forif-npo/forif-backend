@@ -13,7 +13,7 @@ public interface HackathonRepository {
 
     List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status);
 
-    boolean existsEventRound(int eventRound);
+    int findNextEventRound();
 
     boolean existsEventSemester(int heldYear, int heldSemester);
 

@@ -1,5 +1,7 @@
 -- Run once against the release database before deploying this application version.
 -- Existing teams predate competition_type and are treated as HACKATHON teams.
+-- Before adding the global unique key, set each historic event_round to its actual cumulative round.
+-- For example, after assigning historic rows through 16, the next created event receives 17.
 
 ALTER TABLE tb_hackathon_event
     ADD CONSTRAINT uk_hackathon_event_round UNIQUE (event_round),

@@ -186,7 +186,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         assertThatThrownBy(() -> hackathonService.createHackathon(new CreateHackathonRequest(
                 2025,
                 2,
-                2,
                 "FORIF 아이디어톤",
                 "설명",
                 "장소",
@@ -200,14 +199,13 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("대회 회차는 학기와 무관하게 전역에서 고유하다")
-    void createHackathonRejectsAnExistingRoundInAnotherSemester() {
+    @DisplayName("새 대회에는 기존 최대 회차보다 1 큰 회차가 자동으로 부여된다")
+    void createHackathonAssignsNextEventRound() {
         createDefaultHackathon();
         LocalDateTime now = LocalDateTime.now();
 
-        assertThatThrownBy(() -> hackathonService.createHackathon(new CreateHackathonRequest(
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
                 2026,
-                1,
                 1,
                 "FORIF 아이디어톤",
                 "설명",
@@ -218,7 +216,9 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 now.plusDays(2),
                 now.plusDays(3),
                 now.plusDays(4)
-        ))).hasMessage(ErrorCode.HACKATHON_ALREADY_EXISTS.getMessage());
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).eventRound()).isEqualTo(2);
     }
 
     @Test
@@ -242,7 +242,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
                 2026,
                 1,
-                99,
                 "자동 전환 해커톤",
                 "설명",
                 "장소",
@@ -267,7 +266,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
                 2026,
                 1,
-                100,
                 "심사 전환 해커톤",
                 "설명",
                 "장소",
@@ -614,7 +612,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         return hackathonService.createHackathon(new CreateHackathonRequest(
                 2025,
                 2,
-                1,
                 "FORIF 해커톤",
                 "설명",
                 "장소",

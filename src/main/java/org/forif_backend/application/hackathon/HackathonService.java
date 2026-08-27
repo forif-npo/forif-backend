@@ -71,15 +71,15 @@ public class HackathonService {
                 request.endsAt()
         );
 
-        if (hackathonRepository.existsEventRound(request.eventRound())
-                || hackathonRepository.existsEventSemester(request.heldYear(), request.heldSemester())) {
+        if (hackathonRepository.existsEventSemester(request.heldYear(), request.heldSemester())) {
             throw new ForifException(ErrorCode.HACKATHON_ALREADY_EXISTS);
         }
 
+        int eventRound = hackathonRepository.findNextEventRound();
         HackathonEvent event = HackathonEvent.create(
                 request.heldYear(),
                 request.heldSemester(),
-                request.eventRound(),
+                eventRound,
                 request.title(),
                 request.description(),
                 request.location(),

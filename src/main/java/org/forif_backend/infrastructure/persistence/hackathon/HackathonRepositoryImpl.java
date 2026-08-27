@@ -45,8 +45,8 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
-    public boolean existsEventRound(int eventRound) {
-        return eventJpaRepository.existsByEventRound(eventRound);
+    public int findNextEventRound() {
+        return eventJpaRepository.findMaxEventRound() + 1;
     }
 
     @Override

@@ -10,7 +10,8 @@ import java.util.List;
 
 public interface HackathonEventJpaRepository extends JpaRepository<HackathonEvent, Long> {
 
-    boolean existsByEventRound(int eventRound);
+    @Query("SELECT COALESCE(MAX(h.eventRound), 0) FROM HackathonEvent h")
+    int findMaxEventRound();
 
     boolean existsByHeldYearAndHeldSemester(int heldYear, int heldSemester);
 
