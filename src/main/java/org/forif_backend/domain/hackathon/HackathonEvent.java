@@ -12,7 +12,10 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "tb_hackathon_event", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"held_year", "held_semester", "event_round"})
+        @UniqueConstraint(
+                name = "uk_hackathon_event_semester_round_type",
+                columnNames = {"held_year", "held_semester", "event_round", "competition_type"}
+        )
 })
 public class HackathonEvent extends BaseTimeEntity {
 
@@ -29,6 +32,10 @@ public class HackathonEvent extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int eventRound;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    private CompetitionType competitionType;
 
     @Column(length = 200, nullable = false)
     private String title;
@@ -56,7 +63,8 @@ public class HackathonEvent extends BaseTimeEntity {
 
     private LocalDateTime deletedAt;
 
-    public static HackathonEvent create(int heldYear, int heldSemester, int eventRound, String title,
+    public static HackathonEvent create(int heldYear, int heldSemester, int eventRound,
+                                        CompetitionType competitionType, String title,
                                         String description, String location,
                                         LocalDateTime recruitStartsAt, LocalDateTime recruitEndsAt,
                                         LocalDateTime teamBuildingStartsAt, LocalDateTime teamBuildingEndsAt,
@@ -65,6 +73,7 @@ public class HackathonEvent extends BaseTimeEntity {
         event.heldYear = heldYear;
         event.heldSemester = heldSemester;
         event.eventRound = eventRound;
+        event.competitionType = competitionType;
         event.title = title;
         event.description = description;
         event.location = location;

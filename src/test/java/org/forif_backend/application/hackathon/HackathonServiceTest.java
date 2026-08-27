@@ -3,6 +3,7 @@ package org.forif_backend.application.hackathon;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.domain.hackathon.HackathonRepository;
 import org.forif_backend.domain.hackathon.HackathonStatus;
+import org.forif_backend.domain.hackathon.CompetitionType;
 import org.forif_backend.domain.hackathon.JoinRequestStatus;
 import org.forif_backend.mock.DefaultMockitoTest;
 import org.forif_backend.web.hackathon.dto.*;
@@ -176,6 +177,32 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("같은 학기와 회차에도 아이디어톤과 해커톤을 각각 생성할 수 있다")
+    void createHackathonAllowsDifferentCompetitionTypesForSameRound() {
+        createDefaultHackathon();
+        LocalDateTime now = LocalDateTime.now();
+
+        Long ideathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2025,
+                2,
+                1,
+                CompetitionType.IDEATHON,
+                "FORIF 아이디어톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.plusDays(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3),
+                now.plusDays(4)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(ideathonId).competitionType())
+                .isEqualTo(CompetitionType.IDEATHON);
+    }
+
+    @Test
     @DisplayName("해커톤 상태는 정해진 순서로만 전환할 수 있다")
     void changeStatusRequiresNextFlow() {
         Long hackathonId = createDefaultHackathon();
@@ -197,6 +224,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2026,
                 1,
                 99,
+                CompetitionType.HACKATHON,
                 "자동 전환 해커톤",
                 "설명",
                 "장소",
@@ -222,6 +250,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2026,
                 1,
                 100,
+                CompetitionType.HACKATHON,
                 "심사 전환 해커톤",
                 "설명",
                 "장소",
@@ -569,6 +598,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2025,
                 2,
                 1,
+                CompetitionType.HACKATHON,
                 "FORIF 해커톤",
                 "설명",
                 "장소",

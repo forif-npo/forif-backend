@@ -2,6 +2,7 @@ package org.forif_backend.web.hackathon.dto;
 
 import org.forif_backend.domain.hackathon.HackathonEvent;
 import org.forif_backend.domain.hackathon.HackathonStatus;
+import org.forif_backend.domain.hackathon.CompetitionType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -11,6 +12,7 @@ public record ArchiveHackathonDetailResponse(
         int heldYear,
         int heldSemester,
         int eventRound,
+        CompetitionType competitionType,
         String title,
         String description,
         String location,
@@ -32,6 +34,7 @@ public record ArchiveHackathonDetailResponse(
                 event.getHeldYear(),
                 event.getHeldSemester(),
                 event.getEventRound(),
+                event.getCompetitionType(),
                 event.getTitle(),
                 event.getDescription(),
                 event.getLocation(),

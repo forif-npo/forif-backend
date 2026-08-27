@@ -45,13 +45,9 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
-    public boolean existsActiveEvent() {
-        return eventJpaRepository.existsByDeletedAtIsNullAndStatusNot(HackathonStatus.ENDED);
-    }
-
-    @Override
-    public boolean existsEventRound(int heldYear, int heldSemester, int eventRound) {
-        return eventJpaRepository.existsByHeldYearAndHeldSemesterAndEventRound(heldYear, heldSemester, eventRound);
+    public boolean existsEventRound(int heldYear, int heldSemester, int eventRound, CompetitionType competitionType) {
+        return eventJpaRepository.existsByHeldYearAndHeldSemesterAndEventRoundAndCompetitionType(
+                heldYear, heldSemester, eventRound, competitionType);
     }
 
     @Override
