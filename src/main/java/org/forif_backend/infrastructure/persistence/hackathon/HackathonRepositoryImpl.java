@@ -45,9 +45,13 @@ public class HackathonRepositoryImpl implements HackathonRepository {
     }
 
     @Override
-    public boolean existsEventRound(int heldYear, int heldSemester, int eventRound, CompetitionType competitionType) {
-        return eventJpaRepository.existsByHeldYearAndHeldSemesterAndEventRoundAndCompetitionType(
-                heldYear, heldSemester, eventRound, competitionType);
+    public boolean existsEventRound(int eventRound) {
+        return eventJpaRepository.existsByEventRound(eventRound);
+    }
+
+    @Override
+    public boolean existsEventSemester(int heldYear, int heldSemester) {
+        return eventJpaRepository.existsByHeldYearAndHeldSemester(heldYear, heldSemester);
     }
 
     @Override

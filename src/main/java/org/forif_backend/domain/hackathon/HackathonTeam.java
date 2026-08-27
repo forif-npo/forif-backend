@@ -33,6 +33,10 @@ public class HackathonTeam extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, nullable = false)
+    private CompetitionType competitionType;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "leader_id", nullable = false)
     private User leader;
@@ -44,13 +48,14 @@ public class HackathonTeam extends BaseTimeEntity {
     private TeamStatus status;
 
     public static HackathonTeam create(HackathonEvent hackathon, User leader, String name, String topic,
-                                       String description, Integer maxMembers) {
+                                       String description, CompetitionType competitionType, Integer maxMembers) {
         HackathonTeam team = new HackathonTeam();
         team.hackathon = hackathon;
         team.leader = leader;
         team.name = name;
         team.topic = topic;
         team.description = description;
+        team.competitionType = competitionType;
         team.maxMembers = maxMembers;
         team.status = TeamStatus.FORMING;
         return team;

@@ -71,8 +71,8 @@ public class HackathonService {
                 request.endsAt()
         );
 
-        if (hackathonRepository.existsEventRound(
-                request.heldYear(), request.heldSemester(), request.eventRound(), request.competitionType())) {
+        if (hackathonRepository.existsEventRound(request.eventRound())
+                || hackathonRepository.existsEventSemester(request.heldYear(), request.heldSemester())) {
             throw new ForifException(ErrorCode.HACKATHON_ALREADY_EXISTS);
         }
 
@@ -80,7 +80,6 @@ public class HackathonService {
                 request.heldYear(),
                 request.heldSemester(),
                 request.eventRound(),
-                request.competitionType(),
                 request.title(),
                 request.description(),
                 request.location(),
@@ -307,6 +306,7 @@ public class HackathonService {
                 request.name(),
                 request.topic(),
                 request.description(),
+                request.competitionType(),
                 request.maxMembers()
         );
         HackathonTeam savedTeam = hackathonRepository.saveTeam(team);

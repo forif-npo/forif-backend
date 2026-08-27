@@ -2,7 +2,6 @@ package org.forif_backend.infrastructure.persistence.hackathon;
 
 import org.forif_backend.domain.hackathon.HackathonEvent;
 import org.forif_backend.domain.hackathon.HackathonStatus;
-import org.forif_backend.domain.hackathon.CompetitionType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,8 +10,9 @@ import java.util.List;
 
 public interface HackathonEventJpaRepository extends JpaRepository<HackathonEvent, Long> {
 
-    boolean existsByHeldYearAndHeldSemesterAndEventRoundAndCompetitionType(
-            int heldYear, int heldSemester, int eventRound, CompetitionType competitionType);
+    boolean existsByEventRound(int eventRound);
+
+    boolean existsByHeldYearAndHeldSemester(int heldYear, int heldSemester);
 
     List<HackathonEvent> findByDeletedAtIsNullAndStatusNot(HackathonStatus status);
 

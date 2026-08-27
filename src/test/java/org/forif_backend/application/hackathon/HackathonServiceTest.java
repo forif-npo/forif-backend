@@ -100,15 +100,16 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         TeamResponse team = hackathonService.createTeam(
                 hackathonId,
                 1L,
-                new CreateTeamRequest("팀 A", "주제", "소개", 4)
+                new CreateTeamRequest("팀 A", "주제", "소개", CompetitionType.IDEATHON, 4)
         );
 
+        assertThat(team.competitionType()).isEqualTo(CompetitionType.IDEATHON);
         assertThat(team.members()).hasSize(1);
         assertThat(team.members().get(0).role().name()).isEqualTo("LEADER");
         assertThatThrownBy(() -> hackathonService.createTeam(
                 hackathonId,
                 1L,
-                new CreateTeamRequest("팀 B", "주제", "소개", 4)
+                new CreateTeamRequest("팀 B", "주제", "소개", CompetitionType.HACKATHON, 4)
         )).hasMessage(ErrorCode.HACKATHON_ALREADY_TEAM_MEMBER.getMessage());
     }
 
@@ -125,7 +126,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         TeamResponse team = hackathonService.createTeam(
                 hackathonId,
                 1L,
-                new CreateTeamRequest("팀 A", "기존 주제", "기존 소개", 4)
+                new CreateTeamRequest("팀 A", "기존 주제", "기존 소개", CompetitionType.HACKATHON, 4)
         );
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
 
@@ -155,7 +156,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         TeamResponse team = hackathonService.createTeam(
                 hackathonId,
                 1L,
-                new CreateTeamRequest("팀 A", null, null, 4)
+                new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4)
         );
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.JUDGING);
@@ -177,16 +178,15 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("같은 학기와 회차에도 아이디어톤과 해커톤을 각각 생성할 수 있다")
-    void createHackathonAllowsDifferentCompetitionTypesForSameRound() {
+    @DisplayName("한 학기에는 하나의 대회 회차만 만들 수 있다")
+    void createHackathonRejectsAnotherRoundInTheSameSemester() {
         createDefaultHackathon();
         LocalDateTime now = LocalDateTime.now();
 
-        Long ideathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+        assertThatThrownBy(() -> hackathonService.createHackathon(new CreateHackathonRequest(
                 2025,
                 2,
-                1,
-                CompetitionType.IDEATHON,
+                2,
                 "FORIF 아이디어톤",
                 "설명",
                 "장소",
@@ -196,10 +196,29 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 now.plusDays(2),
                 now.plusDays(3),
                 now.plusDays(4)
-        )).hackathonId();
+        ))).hasMessage(ErrorCode.HACKATHON_ALREADY_EXISTS.getMessage());
+    }
 
-        assertThat(hackathonService.getHackathon(ideathonId).competitionType())
-                .isEqualTo(CompetitionType.IDEATHON);
+    @Test
+    @DisplayName("대회 회차는 학기와 무관하게 전역에서 고유하다")
+    void createHackathonRejectsAnExistingRoundInAnotherSemester() {
+        createDefaultHackathon();
+        LocalDateTime now = LocalDateTime.now();
+
+        assertThatThrownBy(() -> hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                1,
+                "FORIF 아이디어톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.plusDays(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3),
+                now.plusDays(4)
+        ))).hasMessage(ErrorCode.HACKATHON_ALREADY_EXISTS.getMessage());
     }
 
     @Test
@@ -224,7 +243,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2026,
                 1,
                 99,
-                CompetitionType.HACKATHON,
                 "자동 전환 해커톤",
                 "설명",
                 "장소",
@@ -250,7 +268,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2026,
                 1,
                 100,
-                CompetitionType.HACKATHON,
                 "심사 전환 해커톤",
                 "설명",
                 "장소",
@@ -277,7 +294,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
 
         assertThat(hackathonService.getTeamsForParticipant(hackathonId, 1L)).hasSize(1);
         assertThatThrownBy(() -> hackathonService.getTeamsForParticipant(hackathonId, 2L))
@@ -296,7 +313,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.registerParticipant(hackathonId, 2L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
         hackathonService.createJoinRequest(hackathonId, team.hackathonTeamId(), 2L, new CreateJoinRequest("함께하고 싶습니다"));
 
         hackathonService.disbandTeam(hackathonId, team.hackathonTeamId(), 1L);
@@ -304,7 +321,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         assertThat(hackathonRepository.findJoinRequests(team.hackathonTeamId(), JoinRequestStatus.PENDING)).isEmpty();
         assertThat(hackathonRepository.findJoinRequests(team.hackathonTeamId(), JoinRequestStatus.CANCELED)).hasSize(1);
         assertThat(hackathonRepository.findTeamMembers(team.hackathonTeamId())).isEmpty();
-        assertThat(hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 B", null, null, 4)).name())
+        assertThat(hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 B", null, null, CompetitionType.HACKATHON, 4)).name())
                 .isEqualTo("팀 B");
     }
 
@@ -320,7 +337,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
         SubmissionRequest createRequest = new SubmissionRequest(
                 "프로젝트",
@@ -370,7 +387,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
         SubmissionRequest request = new SubmissionRequest(
                 "프로젝트",
@@ -416,7 +433,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
 
         SubmissionRequest request = new SubmissionRequest(
@@ -448,7 +465,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, 4));
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
 
         SubmissionRequest request = new SubmissionRequest(
@@ -486,11 +503,11 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             hackathonService.registerParticipant(hackathonId, userId);
         }
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse normalTeam = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("일반 팀", null, null, 4));
-        TeamResponse excellenceTeam = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("우수상 팀", null, null, 4));
-        TeamResponse grandPrizeTeam = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("대상 팀", null, null, 4));
-        TeamResponse ideathonTeam = hackathonService.createTeam(hackathonId, 4L, new CreateTeamRequest("아이디어톤 팀", null, null, 4));
-        TeamResponse topExcellenceTeam = hackathonService.createTeam(hackathonId, 5L, new CreateTeamRequest("최우수상 팀", null, null, 4));
+        TeamResponse normalTeam = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("일반 팀", null, null, CompetitionType.HACKATHON, 4));
+        TeamResponse excellenceTeam = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("우수상 팀", null, null, CompetitionType.HACKATHON, 4));
+        TeamResponse grandPrizeTeam = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("대상 팀", null, null, CompetitionType.HACKATHON, 4));
+        TeamResponse ideathonTeam = hackathonService.createTeam(hackathonId, 4L, new CreateTeamRequest("아이디어톤 팀", null, null, CompetitionType.IDEATHON, 4));
+        TeamResponse topExcellenceTeam = hackathonService.createTeam(hackathonId, 5L, new CreateTeamRequest("최우수상 팀", null, null, CompetitionType.HACKATHON, 4));
 
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
         createSubmission(hackathonId, normalTeam, 1L, "일반 프로젝트");
@@ -536,8 +553,8 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         hackathonService.registerParticipant(hackathonId, 3L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
 
-        TeamResponse teamA = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("팀 A", null, null, 4));
-        TeamResponse teamB = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("팀 B", null, null, 4));
+        TeamResponse teamA = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
+        TeamResponse teamB = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("팀 B", null, null, CompetitionType.HACKATHON, 4));
 
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
         SubmissionRequest submissionRequest = new SubmissionRequest(
@@ -598,7 +615,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 2025,
                 2,
                 1,
-                CompetitionType.HACKATHON,
                 "FORIF 해커톤",
                 "설명",
                 "장소",
