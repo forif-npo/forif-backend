@@ -483,12 +483,12 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("허용 목록에 없는 해커톤 기술 태그는 저장할 수 없다")
+    @DisplayName("50자를 초과한 해커톤 기술 태그는 저장할 수 없다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
             "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
     })
-    void createSubmissionRejectsInvalidTechStack() {
+    void createSubmissionRejectsTooLongTechStack() {
         Long hackathonId = createDefaultHackathon();
         hackathonService.registerParticipant(hackathonId, 1L);
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
@@ -502,7 +502,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "https://github.com/forif/example",
                 null,
                 null,
-                List.of("Laravel")
+                List.of("a".repeat(51))
         );
 
         assertThatThrownBy(() -> hackathonService.createSubmission(
@@ -512,6 +512,39 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 request,
                 null
         )).hasMessage(ErrorCode.HACKATHON_INVALID_TECH_STACK.getMessage());
+    }
+
+    @Test
+    @DisplayName("기술 스택은 대소문자와 공백을 정규화하고 자유 입력을 저장한다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void createSubmissionNormalizesKnownTechStacksAndAllowsCustomTechStack() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L,
+                new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+
+        SubmissionResponse response = hackathonService.createSubmission(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                new SubmissionRequest(
+                        "프로젝트",
+                        "요약",
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of(" react ", "REACT", "FastAPI")
+                ),
+                null
+        );
+
+        assertThat(response.techStacks()).containsExactly("React", "FastAPI");
     }
 
     @Test
