@@ -4,7 +4,6 @@ public record DuesMember(
         Long userId,
         String userName,
         String department,
-        String currentStudyName,
         boolean duesPaid,
         boolean googleFormSubmitted
 ) {

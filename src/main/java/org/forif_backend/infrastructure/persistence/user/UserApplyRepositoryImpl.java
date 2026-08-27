@@ -19,6 +19,11 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     }
 
     @Override
+    public List<UserApply> findAllByYearSemester(int year, int semester) {
+        return userApplyJpaRepository.findAllByYearSemester(year, semester);
+    }
+
+    @Override
     public List<User> findApplicantsByYearSemester(int year, int semester, String search) {
         return userApplyJpaRepository.findApplicantsByYearSemester(year, semester, search);
     }

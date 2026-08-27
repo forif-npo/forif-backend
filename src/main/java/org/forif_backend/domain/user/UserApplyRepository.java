@@ -12,6 +12,9 @@ public interface UserApplyRepository {
      */
     List<UserApply> findAllUserApplyByUserId(Long userId);
 
+    /** 지정 학기의 모든 신청서. 어드민 신청자 관리 목록에서 1·2순위를 행으로 펼칠 때 사용한다. */
+    List<UserApply> findAllByYearSemester(int year, int semester);
+
     List<User> findApplicantsByYearSemester(int year, int semester, String search);
 
     boolean existsByApplierIdAndYearSemester(Long userId, int year, int semester);

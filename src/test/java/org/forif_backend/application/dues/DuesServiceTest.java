@@ -1,10 +1,11 @@
 package org.forif_backend.application.dues;
 
 import org.forif_backend.application.dues.dto.DuesPageResult;
-import org.forif_backend.application.dues.dto.DuesSort;
 import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.dues.MemberSemesterCheck;
 import org.forif_backend.domain.dues.MemberSemesterCheckRepository;
 import org.forif_backend.domain.study.StudyRepository;
@@ -26,13 +27,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
@@ -72,8 +70,6 @@ class DuesServiceTest {
     @Test
     @DisplayName("상태가 없는 현재 학기 부원은 미납·미제출로 조회하고 확인 필요 순서로 정렬한다")
     void getsCurrentSemesterDuesWithDefaultUncheckedStatus() {
-        when(studyRepository.findCurrentStudyNamesByUserIds(anyList(), anyInt(), anyInt()))
-                .thenReturn(Map.of(1L, "웹 스터디", 2L, "백엔드 스터디"));
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
         completedCheck.update(true, true);
 
@@ -82,7 +78,7 @@ class DuesServiceTest {
         when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
                 .thenReturn(List.of(completedCheck));
 
-        DuesPageResult result = duesService.getCurrentSemesterDues(0, 20, null, DuesSort.NEEDS_ATTENTION);
+        DuesPageResult result = duesService.getCurrentSemesterDues(0, 20, null, List.of());
 
         assertThat(result.content()).extracting(member -> member.userId())
                 .containsExactly(1L, 2L);
@@ -122,10 +118,9 @@ class DuesServiceTest {
                 .thenReturn(List.of(applicant));
         when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L, 3L)))
                 .thenReturn(List.of());
-        when(studyRepository.findCurrentStudyNamesByUserIds(anyList(), anyInt(), anyInt()))
-                .thenReturn(Map.of(1L, "웹 스터디"));
 
-        DuesPageResult result = duesService.getCurrentSemesterDues(0, 20, null, DuesSort.NAME);
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, List.of(new SortCriteria("userName", SortDirection.ASC)));
 
         assertThat(result.content()).extracting(member -> member.userId())
                 .containsExactly(1L, 3L);
