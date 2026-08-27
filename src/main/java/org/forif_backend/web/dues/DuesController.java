@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Set;
 
-@Tag(name = "회비 관리", description = "현재 학기 부원·신청자의 회비·구글폼 제출 상태 관리 API")
+@Tag(name = "회비 관리", description = "현재 학기 합격자의 회비·구글폼 제출 상태 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/dues")

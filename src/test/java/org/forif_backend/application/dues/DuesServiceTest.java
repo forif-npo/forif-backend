@@ -4,6 +4,8 @@ import org.forif_backend.application.dues.dto.DuesPageResult;
 import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.dues.MemberSemesterCheck;
@@ -30,10 +32,12 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class DuesServiceTest {
@@ -68,12 +72,12 @@ class DuesServiceTest {
     }
 
     @Test
-    @DisplayName("상태가 없는 현재 학기 부원은 미납·미제출로 조회하고 확인 필요 순서로 정렬한다")
+    @DisplayName("상태가 없는 현재 학기 합격자는 미납·미제출로 조회하고 확인 필요 순서로 정렬한다")
     void getsCurrentSemesterDuesWithDefaultUncheckedStatus() {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(studyUserRepository.findUsersByYearSemester(2026, 2, null))
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
                 .thenReturn(List.of(completedUser, duesUnpaidUser));
         when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
                 .thenReturn(List.of(completedCheck));
@@ -91,7 +95,7 @@ class DuesServiceTest {
     @Test
     @DisplayName("체크 상태를 처음 수정하면 현재 학기 상태 행을 생성한다")
     void createsMemberCheckWhenUpdatingForTheFirstTime() {
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.empty());
@@ -109,13 +113,11 @@ class DuesServiceTest {
     }
 
     @Test
-    @DisplayName("현재 학기 신청자는 수강생이 아니어도 회비 관리 대상에 포함한다")
-    void includesApplicantsWhoAreNotStudyMembers() {
-        User applicant = User.createUser(3L, "다라마바사", "applicant@hanyang.ac.kr", "01055556666", "소프트웨어학부");
-        when(studyUserRepository.findUsersByYearSemester(2026, 2, null))
-                .thenReturn(List.of(duesUnpaidUser));
-        when(userApplyRepository.findApplicantsByYearSemester(2026, 2, null))
-                .thenReturn(List.of(applicant));
+    @DisplayName("회비 관리 목록은 현재 학기 합격자만 조회한다")
+    void includesOnlyAcceptedApplicants() {
+        User acceptedApplicant = User.createUser(3L, "다라마바사", "applicant@hanyang.ac.kr", "01055556666", "소프트웨어학부");
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(duesUnpaidUser, acceptedApplicant));
         when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L, 3L)))
                 .thenReturn(List.of());
 
@@ -128,10 +130,9 @@ class DuesServiceTest {
     }
 
     @Test
-    @DisplayName("현재 학기 신청자는 수강생이 아니어도 회비 상태를 저장할 수 있다")
-    void updatesDuesForApplicantWhoIsNotStudyMember() {
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(1L, 2026, 2)).thenReturn(false);
-        when(userApplyRepository.existsByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+    @DisplayName("현재 학기 합격자는 수강생 등록 전에도 회비 상태를 저장할 수 있다")
+    void updatesDuesForAcceptedApplicantWhoIsNotStudyMember() {
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.empty());
@@ -146,6 +147,21 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("합격하지 않은 신청자는 회비 상태를 저장할 수 없다")
+    void rejectsDuesUpdateForApplicantWithoutAcceptedStudy() {
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(false);
+
+        assertThatThrownBy(() -> duesService.updateCurrentSemesterDuesBatch(List.of(
+                new UpdateDuesMemberCommand(1L, true, true)
+        )))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND));
+
+        verify(memberSemesterCheckRepository, never()).save(any(MemberSemesterCheck.class));
+    }
+
+    @Test
     @DisplayName("합격자는 회비와 구글폼이 모두 확인될 때에만 수강생으로 등록한다")
     void registersAcceptedApplicantOnlyWhenBothChecksAreComplete() {
         Study acceptedStudy = mock(Study.class);
@@ -153,12 +169,11 @@ class DuesServiceTest {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(1L, 2026, 2)).thenReturn(false);
-        when(userApplyRepository.existsByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(completedCheck));
-        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, duesUnpaidUser))
+        when(userApplyRepository.findByApplierIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(acceptedApplication));
         when(acceptedApplication.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(acceptedApplication.getPrimaryStudy()).thenReturn(10);
@@ -181,11 +196,11 @@ class DuesServiceTest {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(completedCheck));
-        when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, duesUnpaidUser))
+        when(userApplyRepository.findByApplierIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(acceptedApplication));
         when(acceptedApplication.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(acceptedApplication.getPrimaryStudy()).thenReturn(10);

@@ -24,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -102,12 +101,10 @@ public class DuesService {
             SemesterInfo semester
     ) {
         Long userId = command.userId();
-        boolean isMember = studyUserRepository.existsByUserIdAndStudyYearSemester(
+        boolean isAccepted = userApplyRepository.existsAcceptedByApplierIdAndYearSemester(
                 userId, semester.actYear(), semester.actSemester());
-        boolean isApplicant = userApplyRepository.existsByApplierIdAndYearSemester(
-                userId, semester.actYear(), semester.actSemester());
-        if (!isMember && !isApplicant) {
-            throw new ForifException(ErrorCode.USER_NOT_FOUND);
+        if (!isAccepted) {
+            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
         }
 
         User user = userRepository.findById(userId)
@@ -157,8 +154,8 @@ public class DuesService {
             SemesterInfo semester,
             MemberSemesterCheck memberCheck
     ) {
-        userRepository.findUserApplyByYearAndSemesterAndUser(
-                        semester.actYear(), semester.actSemester(), user)
+        userApplyRepository.findByApplierIdAndYearSemester(
+                        user.getId(), semester.actYear(), semester.actSemester())
                 .flatMap(this::acceptedStudyId)
                 .flatMap(studyRepository::findStudyById)
                 .ifPresent(study -> {
@@ -181,12 +178,7 @@ public class DuesService {
     }
 
     private List<User> findDuesTargets(int year, int semester, String search) {
-        Map<Long, User> usersById = new LinkedHashMap<>();
-        studyUserRepository.findUsersByYearSemester(year, semester, search)
-                .forEach(user -> usersById.put(user.getId(), user));
-        userApplyRepository.findApplicantsByYearSemester(year, semester, search)
-                .forEach(user -> usersById.putIfAbsent(user.getId(), user));
-        return List.copyOf(usersById.values());
+        return userApplyRepository.findAcceptedApplicantsByYearSemester(year, semester, search);
     }
 
     private List<DuesMember> toDuesMembers(List<User> users, SemesterInfo semester) {
