@@ -11,9 +11,20 @@ SELECT hackathon_id, held_year, held_semester, event_round, title, deleted_at
 FROM tb_hackathon_event
 ORDER BY hackathon_id;
 
+-- MySQL unique indexes allow multiple NULL values. These generated columns keep
+-- deleted rows out of the key while still allowing only one active event per semester.
+ALTER TABLE tb_hackathon_event
+    ADD COLUMN active_held_year INT GENERATED ALWAYS AS (
+        IF(deleted_at IS NULL, held_year, NULL)
+    ) STORED,
+    ADD COLUMN active_held_semester INT GENERATED ALWAYS AS (
+        IF(deleted_at IS NULL, held_semester, NULL)
+    ) STORED;
+
 ALTER TABLE tb_hackathon_event
     ADD CONSTRAINT uk_hackathon_event_round UNIQUE (event_round),
-    ADD CONSTRAINT uk_hackathon_event_semester UNIQUE (held_year, held_semester);
+    ADD CONSTRAINT uk_hackathon_event_active_semester
+        UNIQUE (active_held_year, active_held_semester);
 
 ALTER TABLE tb_hackathon_team
     ADD COLUMN competition_type VARCHAR(20) NULL AFTER description;

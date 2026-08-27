@@ -13,7 +13,7 @@ public interface HackathonEventJpaRepository extends JpaRepository<HackathonEven
     @Query("SELECT COALESCE(MAX(h.eventRound), 0) FROM HackathonEvent h")
     int findMaxEventRound();
 
-    boolean existsByHeldYearAndHeldSemester(int heldYear, int heldSemester);
+    boolean existsByHeldYearAndHeldSemesterAndDeletedAtIsNull(int heldYear, int heldSemester);
 
     List<HackathonEvent> findByDeletedAtIsNullAndStatusNot(HackathonStatus status);
 

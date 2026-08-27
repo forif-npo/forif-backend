@@ -12,8 +12,7 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "tb_hackathon_event", uniqueConstraints = {
-        @UniqueConstraint(name = "uk_hackathon_event_round", columnNames = "event_round"),
-        @UniqueConstraint(name = "uk_hackathon_event_semester", columnNames = {"held_year", "held_semester"})
+        @UniqueConstraint(name = "uk_hackathon_event_round", columnNames = "event_round")
 })
 public class HackathonEvent extends BaseTimeEntity {
 

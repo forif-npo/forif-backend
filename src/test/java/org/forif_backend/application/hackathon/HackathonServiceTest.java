@@ -224,6 +224,50 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("삭제한 해커톤과 같은 학기에 새 회차를 생성할 수 있다")
+    void createHackathonAllowsRecreationAfterSoftDeletion() {
+        Long deletedHackathonId = createDefaultHackathon();
+        hackathonService.deleteHackathon(deletedHackathonId);
+        LocalDateTime now = LocalDateTime.now();
+
+        Long recreatedHackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2025,
+                2,
+                "수정된 FORIF 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.plusDays(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3),
+                now.plusDays(4)
+        )).hackathonId();
+
+        assertThat(recreatedHackathonId).isNotEqualTo(deletedHackathonId);
+        assertThat(hackathonService.getHackathon(recreatedHackathonId).eventRound()).isEqualTo(2);
+        assertThatThrownBy(() -> hackathonService.getHackathon(deletedHackathonId))
+                .hasMessage(ErrorCode.HACKATHON_NOT_FOUND.getMessage());
+    }
+
+    @Test
+    @DisplayName("삭제된 해커톤 참가자는 수료 요건의 해커톤 참여자로 집계하지 않는다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void deletedHackathonParticipantsAreExcludedFromCertificateEligibility() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+
+        assertThat(hackathonRepository.findRegisteredUserIdsBySemester(2025, 2)).containsExactly(1L);
+
+        hackathonService.deleteHackathon(hackathonId);
+
+        assertThat(hackathonRepository.findRegisteredUserIdsBySemester(2025, 2)).isEmpty();
+    }
+
+    @Test
     @DisplayName("새 대회에는 기존 최대 회차보다 1 큰 회차가 자동으로 부여된다")
     void createHackathonAssignsNextEventRound() {
         createDefaultHackathon();
