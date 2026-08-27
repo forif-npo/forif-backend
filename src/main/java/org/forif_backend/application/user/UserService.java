@@ -350,6 +350,14 @@ public class UserService {
         return user;
     }
 
+    /** 어드민이 부원의 변경 가능한 기본 정보만 수정한다. 학번과 이름은 수정 대상이 아니다. */
+    @Transactional
+    public void updateMemberInfo(Long userId, String department, String phoneNum) {
+        User user = getUserInfo(userId);
+        user.updateProfile(department, null);
+        user.updatePhoneNum(phoneNum);
+    }
+
     public String getProfileImageUrl(String imgUrl) {
         return FileViewUrls.resolveViewUrl(filePort, imgUrl);
     }
