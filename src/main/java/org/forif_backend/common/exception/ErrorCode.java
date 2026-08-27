@@ -107,7 +107,6 @@ public enum ErrorCode {
     STUDENT_ID_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR047-409", "이미 가입된 학번입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR048-409", "이미 가입된 이메일입니다."),
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
-    HACKATHON_ACTIVE_EVENT_EXISTS(HttpStatus.CONFLICT, "FOR076-409", "진행 중인 해커톤이 있어 새 해커톤을 생성할 수 없습니다."),
     AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 자율스터디가 이미 개설되어 있습니다."),
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
 

@@ -1,6 +1,7 @@
 package org.forif_backend.application.hackathon;
 
 import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.domain.hackathon.HackathonEvent;
 import org.forif_backend.domain.hackathon.HackathonRepository;
 import org.forif_backend.domain.hackathon.HackathonStatus;
 import org.forif_backend.domain.hackathon.CompetitionType;
@@ -114,6 +115,30 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("같은 대회에 아이디어톤과 해커톤 팀을 각각 생성할 수 있다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (2, 'pw', '양병현', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void createTeamsWithDifferentCompetitionTypesInSameEvent() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.registerParticipant(hackathonId, 2L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+
+        TeamResponse ideathonTeam = hackathonService.createTeam(
+                hackathonId, 1L, new CreateTeamRequest("아이디어팀", null, null, CompetitionType.IDEATHON, 4));
+        TeamResponse hackathonTeam = hackathonService.createTeam(
+                hackathonId, 2L, new CreateTeamRequest("개발팀", null, null, CompetitionType.HACKATHON, 4));
+
+        assertThat(ideathonTeam.hackathonId()).isEqualTo(hackathonId);
+        assertThat(hackathonTeam.hackathonId()).isEqualTo(hackathonId);
+        assertThat(ideathonTeam.competitionType()).isEqualTo(CompetitionType.IDEATHON);
+        assertThat(hackathonTeam.competitionType()).isEqualTo(CompetitionType.HACKATHON);
+    }
+
+    @Test
     @DisplayName("해커톤 진행 중에도 팀장은 팀 정보를 수정할 수 있다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {
@@ -219,6 +244,42 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         )).hackathonId();
 
         assertThat(hackathonService.getHackathon(hackathonId).eventRound()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("16회차 이벤트가 있으면 다음 대회에는 17회차가 자동 부여된다")
+    void createHackathonAssignsSeventeenthRoundAfterSixteenthEvent() {
+        LocalDateTime now = LocalDateTime.now();
+        hackathonRepository.saveEvent(HackathonEvent.create(
+                2025,
+                2,
+                16,
+                "FORIF 해커톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.plusDays(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3),
+                now.plusDays(4)
+        ));
+
+        Long hackathonId = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026,
+                1,
+                "FORIF 아이디어톤",
+                "설명",
+                "장소",
+                now.minusDays(2),
+                now.plusDays(1),
+                now.plusDays(1),
+                now.plusDays(2),
+                now.plusDays(3),
+                now.plusDays(4)
+        )).hackathonId();
+
+        assertThat(hackathonService.getHackathon(hackathonId).eventRound()).isEqualTo(17);
     }
 
     @Test
