@@ -6,11 +6,9 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.springframework.stereotype.Repository;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -21,9 +19,7 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
 
     @Override
     public Optional<StaffAccount> findByUserId(Long userId) {
-        // 역할이 둘(MENTOR, ADMIN)이면 ADMIN 계정을 대표로 반환
-        return staffAccountJpaRepository.findAllByUserIdWithUser(userId).stream()
-                .max(Comparator.comparing(sa -> sa.getRole() == StaffRole.ADMIN ? 1 : 0));
+        return staffAccountJpaRepository.findByUserIdAndRole(userId, StaffRole.ADMIN);
     }
 
     @Override
@@ -32,21 +28,8 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
     }
 
     @Override
-    public List<StaffAccount> findAllByUserId(Long userId) {
-        return staffAccountJpaRepository.findAllByUserIdWithUser(userId);
-    }
-
-    @Override
     public Map<Long, StaffRole> findStaffRolesByUserIds(List<Long> userIds) {
         return staffAccountQueryRepository.findStaffRolesByUserIds(userIds);
-    }
-
-    @Override
-    public Set<Long> findMentorAccountUserIdsByUserIds(List<Long> userIds) {
-        if (userIds == null || userIds.isEmpty()) {
-            return Set.of();
-        }
-        return Set.copyOf(staffAccountJpaRepository.findUserIdsByUserIdInAndRole(userIds, StaffRole.MENTOR));
     }
 
     @Override
@@ -89,33 +72,4 @@ public class StaffAccountRepositoryImpl implements StaffAccountRepository {
         return staffAccountQueryRepository.findByAffiliation(affiliation);
     }
 
-    @Override
-    public List<StaffAccount> searchWithCursor(Long cursor, int size, String search) {
-        return staffAccountQueryRepository.searchWithCursor(cursor, size, search);
-    }
-
-    @Override
-    public List<StaffAccount> searchMentorsWithOffset(int page, int size, String search) {
-        return staffAccountQueryRepository.searchMentorsWithOffset(page, size, search);
-    }
-
-    @Override
-    public long count(String search) {
-        return staffAccountQueryRepository.count(search);
-    }
-
-    @Override
-    public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
-        return staffAccountQueryRepository.searchMentorsByYearSemester(year, semester, cursor, size, search);
-    }
-
-    @Override
-    public List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
-        return staffAccountQueryRepository.searchMentorsByYearSemesterWithOffset(year, semester, page, size, search);
-    }
-
-    @Override
-    public long countMentorsByYearSemester(int year, int semester, String search) {
-        return staffAccountQueryRepository.countMentorsByYearSemester(year, semester, search);
-    }
 }

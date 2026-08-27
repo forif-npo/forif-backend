@@ -9,6 +9,7 @@ import org.forif_backend.common.exception.ForifException;
 @Getter
 public enum StaffRole {
 
+    /** 기존 tb_staff_account 행을 읽기 위한 호환 값. 새 계정과 토큰에는 사용하지 않는다. */
     MENTOR("MENTOR", "멘토"),
     ADMIN("ADMIN", "운영진");
 
@@ -17,7 +18,6 @@ public enum StaffRole {
 
     public static  StaffRole fromValue(String value) {
         return switch (value) {
-            case "MENTOR" -> MENTOR;
             case "ADMIN" -> ADMIN;
             default -> throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
         };

@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
-import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.study.dto.*;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.type.SortCriteria;

@@ -174,9 +174,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         /**
          * 스태프 계정이 아직 살아 있는지 확인한다.
          *
-         * 멘토는 검사하지 않는다. 멘토 권한은 계정이 아니라 tb_study의 멘토 관계에서
-         * 유도되므로(FOR-116), 여기서 tb_staff_account 존재를 요구하면 멘토 계정 정리 시
-         * 로그인 중인 멘토가 전부 끊긴다.
+         * 멘토는 별도 스태프 역할이 아니다. 일반 부원 토큰으로 들어온 뒤 각 기능에서
+         * tb_study의 멘토 관계를 검사한다.
          *
          * DB 예외는 삼키지 않는다. 조회가 실패한 것과 계정이 없는 것은 다르다.
          * 이를 false로 뭉개면 순간적인 DB 장애가 운영진 전원 강제 로그아웃으로 번진다.
@@ -200,12 +199,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if ("ADMIN".equals(role)) {
                 return List.of(
                         new SimpleGrantedAuthority("ROLE_ADMIN"),
-                        new SimpleGrantedAuthority("ROLE_MENTOR"),
-                        new SimpleGrantedAuthority("ROLE_USER")
-                );
-            }
-            if ("MENTOR".equals(role)) {
-                return List.of(
                         new SimpleGrantedAuthority("ROLE_MENTOR"),
                         new SimpleGrantedAuthority("ROLE_USER")
                 );

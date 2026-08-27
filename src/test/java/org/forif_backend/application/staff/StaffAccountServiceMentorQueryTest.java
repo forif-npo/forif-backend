@@ -19,7 +19,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
@@ -38,19 +37,18 @@ class StaffAccountServiceMentorQueryTest {
     @InjectMocks private StaffAccountService staffAccountService;
 
     @Test
-    void marksOnlyLegacyMentorAccountsAsManageable() {
-        User manageableMentor = User.createUser(1L, "기존 멘토", "legacy@forif.org", "010", "컴퓨터공학과");
-        User studyOnlyMentor = User.createUser(2L, "신규 멘토", "study@forif.org", "010", "컴퓨터공학과");
+    void returnsMentorsFromStudyRelationshipsWithoutStaffAccounts() {
+        User primaryMentor = User.createUser(1L, "대표 멘토", "primary@forif.org", "010", "컴퓨터공학과");
+        User secondaryMentor = User.createUser(2L, "부멘토", "secondary@forif.org", "010", "컴퓨터공학과");
         when(studyRepository.countMentors(null)).thenReturn(2L);
-        when(studyRepository.searchMentors(null, 20, null)).thenReturn(List.of(manageableMentor, studyOnlyMentor));
+        when(studyRepository.searchMentors(null, 20, null)).thenReturn(List.of(primaryMentor, secondaryMentor));
         when(studyRepository.findMentorStudyNamesByUserIds(List.of(1L, 2L), null, null))
-                .thenReturn(Map.of(1L, "기존 스터디", 2L, "신규 스터디"));
-        when(staffAccountRepository.findMentorAccountUserIdsByUserIds(List.of(1L, 2L)))
-                .thenReturn(Set.of(1L));
+                .thenReturn(Map.of(1L, "대표 스터디", 2L, "공동 스터디"));
 
         CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(null, null, 20, null);
 
-        assertThat(result.content()).extracting(MentorSummary::manageable)
-                .containsExactly(true, false);
+        assertThat(result.content())
+                .extracting(MentorSummary::studyName)
+                .containsExactly("대표 스터디", "공동 스터디");
     }
 }

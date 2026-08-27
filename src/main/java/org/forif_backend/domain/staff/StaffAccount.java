@@ -11,7 +11,7 @@ import org.forif_backend.domain.user.User;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "tb_staff_account", uniqueConstraints = {
-        // 한 유저가 역할(MENTOR/ADMIN)별로 계정을 하나씩 가질 수 있다
+        // 기존 MENTOR 행과 운영진 ADMIN 행을 구분하기 위한 복합 키
         @UniqueConstraint(columnNames = {"user_id", "role"})
 })
 public class StaffAccount extends BaseTimeEntity {
@@ -36,7 +36,7 @@ public class StaffAccount extends BaseTimeEntity {
     private StaffRole role;
 
     @Column(length = 100, nullable = false)
-    private String affiliation; // 멘토일 경우 스터디명, 어드민일 경우 팀명 (예: 기획팀, 인공지능 스터디)
+    private String affiliation; // 운영진 팀명 (예: 기획팀)
 
     @Column(length = 300)
     private String signatureObjectKey; // 수료증 합성용 서명 이미지 (파일 저장소 object key)
@@ -77,12 +77,4 @@ public class StaffAccount extends BaseTimeEntity {
         this.signatureObjectKey = signatureObjectKey;
     }
 
-    /**
-     * 멘토 정보 수정
-     */
-    public void updateInfo(String name, String password, String affiliation) {
-        if (name != null) this.name = name;
-        if (password != null) this.password = password;
-        if (affiliation != null) this.affiliation = affiliation;
-    }
 }
