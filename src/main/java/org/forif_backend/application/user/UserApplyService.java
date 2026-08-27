@@ -327,6 +327,27 @@ public class UserApplyService {
         }
     }
 
+    /** 자율스터디 신청은 멘티 수락/거절 기간에 시스템이 합격 처리한다. */
+    @Transactional
+    public int acceptPendingAutonomousStudyApplications(Study study, int year, int semester) {
+        if (!study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+
+        int acceptedCount = 0;
+        for (UserApply apply : userApplyRepository.findAllByYearSemester(year, semester)) {
+            if (apply.getPrimaryStudy() != study.getId()
+                    || apply.getPrimaryStatus() != UserApplyStatus.PENDING) {
+                continue;
+            }
+            apply.updateStatus(study.getId(), UserApplyStatus.ACCEPT);
+            duesService.ensureMemberCheck(study, apply.getApplier());
+            duesService.registerStudyUserIfEligible(study, apply.getApplier());
+            acceptedCount++;
+        }
+        return acceptedCount;
+    }
+
     /**
      * 불합격 처리 메서드
      * @param userId 멘토 유저 id
@@ -482,6 +503,9 @@ public class UserApplyService {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_DECISION_NOT_ALLOWED);
+        }
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         if (study.getStudyStatus() != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
