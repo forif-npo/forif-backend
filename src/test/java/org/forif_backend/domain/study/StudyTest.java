@@ -39,6 +39,22 @@ class StudyTest {
     }
 
     @Test
+    void identifiesBothPrimaryAndSecondaryMentorsFromTheStudyRelationship() {
+        User primaryMentor = Mockito.mock(User.class);
+        User secondaryMentor = Mockito.mock(User.class);
+        given(primaryMentor.getId()).willReturn(1L);
+        given(primaryMentor.getUserName()).willReturn("대표 멘토");
+        given(secondaryMentor.getId()).willReturn(2L);
+
+        Study study = Study.createPendingStudy(primaryMentor, 2026, 2);
+        study.setSecondaryMentor(secondaryMentor);
+
+        assertThat(study.isMentor(1L)).isTrue();
+        assertThat(study.isMentor(2L)).isTrue();
+        assertThat(study.isMentor(3L)).isFalse();
+    }
+
+    @Test
     void startsAnApprovedStudyOnlyOnce() {
         User mentor = Mockito.mock(User.class);
         given(mentor.getUserName()).willReturn("멘토");
