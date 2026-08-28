@@ -159,12 +159,13 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 hackathonId,
                 team.hackathonTeamId(),
                 1L,
-                new UpdateTeamRequest("팀 B", "새 주제", "새 소개", 5)
+                new UpdateTeamRequest("팀 B", "새 주제", "새 소개", CompetitionType.HACKATHON, 5)
         );
 
         assertThat(updated.name()).isEqualTo("팀 B");
         assertThat(updated.topic()).isEqualTo("새 주제");
         assertThat(updated.description()).isEqualTo("새 소개");
+        assertThat(updated.competitionType()).isEqualTo(CompetitionType.HACKATHON);
         assertThat(updated.maxMembers()).isEqualTo(5);
     }
 
@@ -190,7 +191,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 hackathonId,
                 team.hackathonTeamId(),
                 1L,
-                new UpdateTeamRequest("팀 B", null, null, 4)
+                new UpdateTeamRequest("팀 B", null, null, null, 4)
         )).hasMessage(ErrorCode.HACKATHON_INVALID_STATUS.getMessage());
     }
 
@@ -291,13 +292,13 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("16회차 이벤트가 있으면 다음 대회에는 17회차가 자동 부여된다")
-    void createHackathonAssignsSeventeenthRoundAfterSixteenthEvent() {
+    @DisplayName("17회차 이벤트가 있으면 다음 대회에는 18회차가 자동 부여된다")
+    void createHackathonAssignsEighteenthRoundAfterSeventeenthEvent() {
         LocalDateTime now = LocalDateTime.now();
         hackathonRepository.saveEvent(HackathonEvent.create(
                 2025,
                 2,
-                16,
+                17,
                 "FORIF 해커톤",
                 "설명",
                 "장소",
@@ -323,7 +324,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 now.plusDays(4)
         )).hackathonId();
 
-        assertThat(hackathonService.getHackathon(hackathonId).eventRound()).isEqualTo(17);
+        assertThat(hackathonService.getHackathon(hackathonId).eventRound()).isEqualTo(18);
     }
 
     @Test
@@ -589,6 +590,31 @@ public class HackathonServiceTest extends DefaultMockitoTest {
         );
 
         assertThat(response.techStacks()).containsExactly("React", "FastAPI");
+    }
+
+    @Test
+    @DisplayName("공백 기술 스택은 무시하고 제출 결과물을 저장한다")
+    @Sql({"/sql/user-test-data.sql"})
+    @Sql(statements = {
+            "INSERT INTO tb_staff_account (user_id, password, name, role, affiliation, created_at, updated_at) VALUES (1, 'pw', '표준성', 'ADMIN', '운영진', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
+    })
+    void createSubmissionIgnoresBlankTechStacks() {
+        Long hackathonId = createDefaultHackathon();
+        hackathonService.registerParticipant(hackathonId, 1L);
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
+        TeamResponse team = hackathonService.createTeam(hackathonId, 1L,
+                new CreateTeamRequest("팀 A", null, null, CompetitionType.HACKATHON, 4));
+        hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.IN_PROGRESS);
+
+        SubmissionResponse response = hackathonService.createSubmission(
+                hackathonId,
+                team.hackathonTeamId(),
+                1L,
+                new SubmissionRequest("프로젝트", "요약", null, null, null, null, List.of(" ", "\t")),
+                null
+        );
+
+        assertThat(response.techStacks()).isEmpty();
     }
 
     @Test

@@ -363,7 +363,13 @@ public class HackathonService {
             throw new ForifException(ErrorCode.HACKATHON_TEAM_NAME_ALREADY_EXISTS);
         }
 
-        team.update(request.name(), request.topic(), request.description(), request.maxMembers());
+        team.update(
+                request.name(),
+                request.topic(),
+                request.description(),
+                request.competitionType(),
+                request.maxMembers()
+        );
         return toTeamResponse(team);
     }
 
@@ -871,6 +877,7 @@ public class HackathonService {
         List<String> canonicalTechStacks = techStacks.stream()
                 .filter(Objects::nonNull)
                 .map(HackathonTechStackPolicy::canonicalize)
+                .filter(stack -> !stack.isBlank())
                 .toList();
 
         if (canonicalTechStacks.stream().anyMatch(stack -> !HackathonTechStackPolicy.isValid(stack))) {

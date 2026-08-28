@@ -61,10 +61,12 @@ public class HackathonTeam extends BaseTimeEntity {
         return team;
     }
 
-    public void update(String name, String topic, String description, Integer maxMembers) {
+    public void update(String name, String topic, String description, CompetitionType competitionType,
+                       Integer maxMembers) {
         if (name != null) this.name = name;
         if (topic != null) this.topic = topic;
         if (description != null) this.description = description;
+        if (competitionType != null) this.competitionType = competitionType;
         if (maxMembers != null) this.maxMembers = maxMembers;
     }
 
