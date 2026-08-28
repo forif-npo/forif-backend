@@ -16,9 +16,11 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.team.dto.ForifTeamResponse;
 import org.forif_backend.web.team.dto.UpdateForifTeamRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -106,6 +108,17 @@ public class ForifTeamController {
                 request.graduateYear()
         );
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "운영진 프로필 사진 등록·교체",
+            description = "운영진 소개 페이지에 표시할 5MB 이하 JPEG 또는 PNG 프로필 사진을 등록하거나 교체합니다.")
+    @PatchMapping(value = "/api/v1/admin/forif-team/{id}/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ForifTeamResponse>> updateMemberProfileImage(
+            @Parameter(description = "운영진 이력 ID") @PathVariable Long id,
+            @RequestPart("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(forifTeamService.updateMemberProfileImage(id, file)));
     }
 
     @Operation(summary = "운영진 이력 삭제 (어드민 전용)")
