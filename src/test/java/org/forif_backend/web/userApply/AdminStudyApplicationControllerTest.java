@@ -23,6 +23,7 @@ import java.util.List;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -49,7 +50,8 @@ class AdminStudyApplicationControllerTest {
     void forwardsUrlSortConditionsToTheApplicationListService() throws Exception {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         AdminStudyApplicationInfo row = new AdminStudyApplicationInfo(
-                20260001L, "신청자", "컴퓨터학부", "웹 스터디", 1,
+                1L, 20260001L, "신청자", "컴퓨터학부", 10, "웹 스터디", 1,
+                org.forif_backend.domain.user.UserApplyStatus.PENDING, false,
                 LocalDateTime.of(2026, 8, 1, 12, 0));
         when(userApplyService.getAdminApplications(
                 2026, 2, 1, 10, "웹", List.of(
@@ -69,5 +71,15 @@ class AdminStudyApplicationControllerTest {
                 2026, 2, 1, 10, "웹", List.of(
                         new SortCriteria("userName", SortDirection.ASC),
                         new SortCriteria("appliedAt", SortDirection.DESC)));
+    }
+
+    @Test
+    void forwardsAutonomousStudyDecisionToTheService() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/study-applications/10/accept")
+                        .contentType("application/json")
+                        .content("{\"apply_ids\":[100]}") )
+                .andExpect(status().isOk());
+
+        verify(userApplyService).acceptAutonomousStudyApplications(10, List.of(100L));
     }
 }

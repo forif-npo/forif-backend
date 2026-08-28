@@ -7,10 +7,15 @@ import org.forif_backend.application.user.UserApplyService;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.web.userApply.dto.AcceptRequest;
 import org.forif_backend.web.userApply.dto.AdminStudyApplicationResponse;
+import org.forif_backend.web.userApply.dto.RejectRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,5 +45,23 @@ public class AdminStudyApplicationController {
                 userApplyService.getAdminApplications(active.actYear(), active.actSemester(), page, size, search,
                         SortCriteria.parse(sort, Set.of("userId", "userName", "department", "studyName", "priority", "appliedAt")))
         )));
+    }
+
+    @PostMapping("/{studyId}/accept")
+    public ResponseEntity<ApiResponse<Void>> acceptAutonomousApplications(
+            @PathVariable Integer studyId,
+            @jakarta.validation.Valid @RequestBody AcceptRequest request
+    ) {
+        userApplyService.acceptAutonomousStudyApplications(studyId, request.applyIds());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/{studyId}/reject")
+    public ResponseEntity<ApiResponse<Void>> rejectAutonomousApplications(
+            @PathVariable Integer studyId,
+            @jakarta.validation.Valid @RequestBody RejectRequest request
+    ) {
+        userApplyService.rejectAutonomousStudyApplications(studyId, request.applyIds());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -130,6 +130,20 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("매우 큰 페이지 번호는 빈 회비 목록으로 처리한다")
+    void returnsEmptyDuesPageForAnExcessivelyLargePageNumber() {
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L)))
+                .thenReturn(List.of());
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                Integer.MAX_VALUE, 100, null, List.of());
+
+        assertThat(result.content()).isEmpty();
+    }
+
+    @Test
     @DisplayName("현재 학기 합격자는 수강생 등록 전에도 회비 상태를 저장할 수 있다")
     void updatesDuesForAcceptedApplicantWhoIsNotStudyMember() {
         when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);

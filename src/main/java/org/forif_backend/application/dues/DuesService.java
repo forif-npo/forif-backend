@@ -76,7 +76,7 @@ public class DuesService {
         int safeSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         int totalElements = members.size();
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / safeSize);
-        int fromIndex = Math.min(safePage * safeSize, totalElements);
+        int fromIndex = (int) Math.min((long) safePage * safeSize, totalElements);
         int toIndex = Math.min(fromIndex + safeSize, totalElements);
 
         return new DuesPageResult(

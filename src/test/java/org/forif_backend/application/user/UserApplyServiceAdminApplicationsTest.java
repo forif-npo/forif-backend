@@ -23,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -50,6 +51,7 @@ class UserApplyServiceAdminApplicationsTest {
         UserApply first = application(firstApplicant, "최종 Z 스터디", "최종 A 스터디", 11);
         UserApply second = application(secondApplicant, "최종 M 스터디", null, null);
         when(userApplyRepository.findAllByYearSemester(2026, 2)).thenReturn(List.of(first, second));
+        when(studyRepository.findAutonomousStudyByYearSemester(2026, 2)).thenReturn(Optional.empty());
 
         CursorPageResponse<AdminStudyApplicationInfo> firstPage = userApplyService.getAdminApplications(
                 2026, 2, 0, 2, null, List.of(new SortCriteria("studyName", SortDirection.ASC)));
@@ -61,7 +63,17 @@ class UserApplyServiceAdminApplicationsTest {
         assertThat(secondPage.content()).extracting(AdminStudyApplicationInfo::studyName)
                 .containsExactly("최종 Z 스터디");
         assertThat(firstPage.totalElements()).isEqualTo(3);
-        verifyNoInteractions(studyRepository);
+    }
+
+    @Test
+    void returnsAnEmptyPageForAnExcessivelyLargePageNumber() {
+        when(userApplyRepository.findAllByYearSemester(2026, 2)).thenReturn(List.of());
+        when(studyRepository.findAutonomousStudyByYearSemester(2026, 2)).thenReturn(Optional.empty());
+
+        CursorPageResponse<AdminStudyApplicationInfo> page = userApplyService.getAdminApplications(
+                2026, 2, Integer.MAX_VALUE, 100, null, List.of());
+
+        assertThat(page.content()).isEmpty();
     }
 
     private UserApply application(

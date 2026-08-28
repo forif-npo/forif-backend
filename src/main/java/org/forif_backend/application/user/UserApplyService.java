@@ -160,11 +160,14 @@ public class UserApplyService {
             int year, int semester, int page, int size, String search, List<SortCriteria> sorting
     ) {
         List<UserApply> applications = userApplyRepository.findAllByYearSemester(year, semester);
+        Integer autonomousStudyId = studyRepository.findAutonomousStudyByYearSemester(year, semester)
+                .map(Study::getId)
+                .orElse(null);
         List<AdminStudyApplicationInfo> rows = new ArrayList<>();
         for (UserApply apply : applications) {
-            rows.add(AdminStudyApplicationInfo.primary(apply));
+            rows.add(AdminStudyApplicationInfo.primary(apply, autonomousStudyId));
             if (apply.getSecondaryStudy() != null) {
-                rows.add(AdminStudyApplicationInfo.secondary(apply));
+                rows.add(AdminStudyApplicationInfo.secondary(apply, autonomousStudyId));
             }
         }
         String keyword = search == null ? "" : search.trim().toLowerCase();
@@ -177,9 +180,54 @@ public class UserApplyService {
         rows = rows.stream().sorted(adminApplicationComparator(sorting)).toList();
         int safeSize = Math.max(1, Math.min(size, 100));
         int safePage = Math.max(page, 0);
-        int from = Math.min(safePage * safeSize, rows.size());
+        int from = (int) Math.min((long) safePage * safeSize, rows.size());
         int to = Math.min(from + safeSize, rows.size());
         return CursorPageResponse.ofOffset(rows.subList(from, to), to < rows.size(), rows.size(), safePage, safeSize);
+    }
+
+    /** 운영진이 자율스터디 신청을 수동 합격 처리한다. */
+    @Transactional
+    public void acceptAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
+        Study study = getAutonomousStudyForAdminDecision(studyId);
+
+        for (Long applyId : applyIds) {
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
+            requireAutonomousPrimaryApplication(apply, studyId);
+
+            if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+                continue;
+            }
+            apply.updateStatus(studyId, UserApplyStatus.ACCEPT);
+            duesService.ensureMemberCheck(study, apply.getApplier());
+            duesService.registerStudyUserIfEligible(study, apply.getApplier());
+        }
+    }
+
+    /** 운영진이 자율스터디 신청을 수동 불합격 처리한다. */
+    @Transactional
+    public void rejectAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
+        getAutonomousStudyForAdminDecision(studyId);
+
+        for (Long applyId : applyIds) {
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
+            requireAutonomousPrimaryApplication(apply, studyId);
+
+            if (apply.getPrimaryStatus() == UserApplyStatus.REJECT) {
+                continue;
+            }
+            if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+                studyUserRepository.deleteByUserIdAndStudyId(apply.getApplier().getId(), studyId);
+            }
+            apply.updateStatus(studyId, UserApplyStatus.REJECT);
+        }
     }
 
     private boolean contains(String value, String keyword) {
@@ -325,27 +373,6 @@ public class UserApplyService {
             duesService.ensureMemberCheck(study, apply.getApplier());
             duesService.registerStudyUserIfEligible(study, apply.getApplier());
         }
-    }
-
-    /** 자율스터디 신청은 멘티 수락/거절 기간에 시스템이 합격 처리한다. */
-    @Transactional
-    public int acceptPendingAutonomousStudyApplications(Study study, int year, int semester) {
-        if (!study.isAutonomousStudy()) {
-            throw new ForifException(ErrorCode.INVALID_INPUT);
-        }
-
-        int acceptedCount = 0;
-        for (UserApply apply : userApplyRepository.findAllByYearSemester(year, semester)) {
-            if (apply.getPrimaryStudy() != study.getId()
-                    || apply.getPrimaryStatus() != UserApplyStatus.PENDING) {
-                continue;
-            }
-            apply.updateStatus(study.getId(), UserApplyStatus.ACCEPT);
-            duesService.ensureMemberCheck(study, apply.getApplier());
-            duesService.registerStudyUserIfEligible(study, apply.getApplier());
-            acceptedCount++;
-        }
-        return acceptedCount;
     }
 
     /**
@@ -511,6 +538,29 @@ public class UserApplyService {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
         return study;
+    }
+
+    private Study getAutonomousStudyForAdminDecision(Integer studyId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        if (!study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        SemesterInfo active = semesterService.getActive();
+        if (!active.matches(study.getActYear(), study.getActSemester())) {
+            throw new ForifException(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER);
+        }
+        if (study.getStudyStatus() != StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        return study;
+    }
+
+    private void requireAutonomousPrimaryApplication(UserApply apply, Integer studyId) {
+        if (apply.getPrimaryStudy() != studyId) {
+            throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
+        }
     }
 
     /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */
