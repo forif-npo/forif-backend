@@ -51,7 +51,7 @@ public enum ErrorCode {
     HACKATHON_EVALUATION_CRITERIA_REQUIRED(HttpStatus.BAD_REQUEST, "FOR063-400", "평가 기준이 필요합니다."),
     HACKATHON_EVALUATION_CRITERION_HAS_SCORES(HttpStatus.BAD_REQUEST, "FOR075-400", "이미 평가에 사용된 기준은 삭제할 수 없습니다."),
     HACKATHON_REGISTRATION_CLOSED(HttpStatus.BAD_REQUEST, "FOR078-400", "해커톤 참가 모집 기간이 아닙니다."),
-    HACKATHON_INVALID_TECH_STACK(HttpStatus.BAD_REQUEST, "FOR079-400", "허용되지 않는 해커톤 기술 태그입니다."),
+    HACKATHON_INVALID_TECH_STACK(HttpStatus.BAD_REQUEST, "FOR079-400", "해커톤 기술 태그가 유효하지 않습니다."),
 
     // 401 Unauthorized
     MISSING_TOKEN(HttpStatus.UNAUTHORIZED, "FOR017-401", "토큰이 없습니다."),
@@ -107,7 +107,6 @@ public enum ErrorCode {
     STUDENT_ID_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR047-409", "이미 가입된 학번입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR048-409", "이미 가입된 이메일입니다."),
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
-    HACKATHON_ACTIVE_EVENT_EXISTS(HttpStatus.CONFLICT, "FOR076-409", "진행 중인 해커톤이 있어 새 해커톤을 생성할 수 없습니다."),
     AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 자율스터디가 이미 개설되어 있습니다."),
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
 
