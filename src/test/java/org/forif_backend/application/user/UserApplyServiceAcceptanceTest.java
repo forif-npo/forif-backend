@@ -13,6 +13,8 @@ import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyRepository;
+import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +47,8 @@ class UserApplyServiceAcceptanceTest {
     private DuesService duesService;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private UserApplyRepository userApplyRepository;
     @Mock
     private StudyRepository studyRepository;
     @Mock
@@ -111,5 +115,82 @@ class UserApplyServiceAcceptanceTest {
 
         verify(userRepository, never()).findUserApplyById(anyLong());
         verifyNoInteractions(duesService, studyUserRepository);
+    }
+
+    @Test
+    void adminAcceptsARejectedAutonomousStudyApplicationWithMembershipSynchronization() {
+        Study autonomousStudy = mock(Study.class);
+        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
+        UserApply application = mock(UserApply.class);
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(autonomousStudy.getActYear()).thenReturn(2026);
+        when(autonomousStudy.getActSemester()).thenReturn(2);
+        when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(autonomousStudy));
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(application.getPrimaryStudy()).thenReturn(10);
+        when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
+        when(application.getApplier()).thenReturn(applicant);
+
+        userApplyService.acceptAutonomousStudyApplications(10, List.of(100L));
+
+        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(application).updateStatus(10, UserApplyStatus.ACCEPT);
+        verify(duesService).ensureMemberCheck(autonomousStudy, applicant);
+        verify(duesService).registerStudyUserIfEligible(autonomousStudy, applicant);
+    }
+
+    @Test
+    void adminRejectsAnAcceptedAutonomousStudyApplicationAndRemovesTheMembership() {
+        Study autonomousStudy = mock(Study.class);
+        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
+        UserApply application = mock(UserApply.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(autonomousStudy));
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(autonomousStudy.getActYear()).thenReturn(2026);
+        when(autonomousStudy.getActSemester()).thenReturn(2);
+        when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(application.getPrimaryStudy()).thenReturn(10);
+        when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
+        when(application.getApplier()).thenReturn(applicant);
+
+        userApplyService.rejectAutonomousStudyApplications(10, List.of(100L));
+
+        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
+        verify(application).updateStatus(10, UserApplyStatus.REJECT);
+    }
+
+    @Test
+    void rejectsMentorDecisionForAnAutonomousStudy() {
+        Study autonomousStudy = mock(Study.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(autonomousStudy));
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+
+        assertThatThrownBy(() -> userApplyService.acceptApplications(99L, 10, List.of(100L)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_DECISION_NOT_ALLOWED));
+
+        verifyNoInteractions(semesterPhaseGuard, userRepository, duesService, studyUserRepository);
+    }
+
+    @Test
+    void rejectsAdminAutonomousDecisionForARegularStudy() {
+        Study regularStudy = mock(Study.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(regularStudy));
+        when(regularStudy.isAutonomousStudy()).thenReturn(false);
+
+        assertThatThrownBy(() -> userApplyService.acceptAutonomousStudyApplications(10, List.of(100L)))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.INVALID_INPUT));
+
+        verifyNoInteractions(userRepository, duesService);
     }
 }

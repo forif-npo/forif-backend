@@ -284,6 +284,18 @@ public class StaffAccountController {
         ))));
     }
 
+    @Operation(summary = "부원 정보 수정 (어드민 전용)",
+            description = "부원의 학과와 전화번호를 수정합니다. 학번과 이름은 수정할 수 없습니다.")
+    @PatchMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateMemberInfo(
+            @Parameter(description = "수정할 부원의 유저 ID") @PathVariable Long userId,
+            @Valid @RequestBody UpdateMemberInfoRequest request
+    ) {
+        userService.updateMemberInfo(userId, request.department(), request.phoneNum());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
     /**
      * [운영진 전용] 현재 활동 학기 부원 삭제
      */

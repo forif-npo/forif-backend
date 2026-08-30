@@ -8,7 +8,6 @@ import java.time.LocalDateTime;
 public record CreateHackathonRequest(
         @NotNull Integer heldYear,
         @NotNull Integer heldSemester,
-        @NotNull Integer eventRound,
         @NotBlank String title,
         String description,
         String location,

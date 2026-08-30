@@ -1,6 +1,7 @@
 package org.forif_backend.web.hackathon.dto;
 
 import org.forif_backend.domain.hackathon.HackathonTeam;
+import org.forif_backend.domain.hackathon.CompetitionType;
 import org.forif_backend.domain.hackathon.TeamStatus;
 
 import java.util.List;
@@ -11,6 +12,7 @@ public record TeamResponse(
         String name,
         String topic,
         String description,
+        CompetitionType competitionType,
         Long leaderId,
         String leaderName,
         Integer maxMembers,
@@ -25,6 +27,7 @@ public record TeamResponse(
                 team.getName(),
                 team.getTopic(),
                 team.getDescription(),
+                team.getCompetitionType(),
                 team.getLeader().getId(),
                 team.getLeader().getUserName(),
                 team.getMaxMembers(),

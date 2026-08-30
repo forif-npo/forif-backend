@@ -13,9 +13,9 @@ public interface HackathonRepository {
 
     List<HackathonEvent> findEvents(Integer year, Integer semester, HackathonStatus status);
 
-    boolean existsActiveEvent();
+    int findNextEventRound();
 
-    boolean existsEventRound(int heldYear, int heldSemester, int eventRound);
+    boolean existsEventSemester(int heldYear, int heldSemester);
 
     HackathonParticipant saveParticipant(HackathonParticipant participant);
 
