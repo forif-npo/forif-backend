@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
-import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
@@ -31,7 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.file.TransactionalFileCleanup;
 
@@ -52,27 +50,14 @@ public class StaffAccountService {
     private final ForifTeamRepository forifTeamRepository;
     private final FilePort filePort;
 
-    /**
-     * 스태프(멘토/운영진) 로그인
-     * 같은 유저가 MENTOR/ADMIN 계정을 모두 가질 수 있으므로, role이 지정되면 해당 역할 계정으로,
-     * 지정되지 않으면 비밀번호가 일치하는 계정(둘 다 일치 시 ADMIN 우선)으로 로그인한다.
-     */
+    /** 운영진 스태프 로그인 */
     public StaffSignInResult staffSignIn(StaffSignInCommand command) {
-        List<StaffAccount> accounts = command.role() != null
-                ? staffAccountRepository.findByUserIdAndRole(command.userId(), command.role())
-                        .map(List::of).orElse(List.of())
-                : staffAccountRepository.findAllByUserId(command.userId()).stream()
-                        .sorted((a, b) -> Boolean.compare(b.getRole() == StaffRole.ADMIN, a.getRole() == StaffRole.ADMIN))
-                        .toList();
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(command.userId(), StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        if (accounts.isEmpty()) {
-            throw new ForifException(ErrorCode.STAFF_NOT_FOUND);
+        if (!passwordEncoder.matches(command.password(), staffAccount.getPassword())) {
+            throw new ForifException(ErrorCode.PASSWORD_MISMATCH);
         }
-
-        StaffAccount staffAccount = accounts.stream()
-                .filter(account -> passwordEncoder.matches(command.password(), account.getPassword()))
-                .findFirst()
-                .orElseThrow(() -> new ForifException(ErrorCode.PASSWORD_MISMATCH));
 
         String affiliation = staffAccount.getAffiliation();
         String role = staffAccount.getRole().getValue();
@@ -107,67 +92,6 @@ public class StaffAccountService {
 
         staffAccount.updatePassword(passwordEncoder.encode(newPassword));
         refreshTokenService.deleteRefreshToken(userId.toString(), StaffRole.ADMIN.getValue());
-    }
-
-    /**
-     * 멘토 계정 생성 (운영진 전용)
-     */
-    @Transactional
-    public void createMentorAccount(CreateMentorCommand command) {
-        if (staffAccountRepository.existsByUserIdAndRole(command.userId(), StaffRole.MENTOR)) {
-            throw new ForifException(ErrorCode.STAFF_ALREADY_EXISTS);
-        }
-        PasswordUtils.validate(command.password());
-
-        User user = userRepository.findById(command.userId())
-                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
-
-        String encodedPassword = passwordEncoder.encode(command.password());
-
-        StaffAccount staffAccount = StaffAccount.createStaffAccount(
-                user,
-                encodedPassword,
-                user.getUserName(),
-                StaffRole.MENTOR,
-                command.affiliation()
-        );
-
-        staffAccountRepository.save(staffAccount);
-    }
-
-    /**
-     * 멘토 정보 수정 (운영진 전용)
-     */
-    @Transactional
-    public void updateMentorAccount(Long userId, String name, String password, String affiliation) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.MENTOR)
-                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        if (name != null) {
-            staffAccount.getUser().updateUserName(name);
-        }
-
-        if (password != null) {
-            PasswordUtils.validate(password);
-        }
-        String encodedPassword = password != null ? passwordEncoder.encode(password) : null;
-        staffAccount.updateInfo(name, encodedPassword, affiliation);
-
-        if (password != null) {
-            // 운영진 재설정 경로도 유출 대응이므로 기존 MENTOR 세션을 끊는다 (updateAdmin과 동일 정책)
-            refreshTokenService.deleteRefreshToken(userId.toString(), StaffRole.MENTOR.getValue());
-        }
-    }
-
-    /**
-     * 멘토 계정 삭제 (운영진 전용)
-     */
-    @Transactional
-    public void deleteMentorAccount(Long userId) {
-        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.MENTOR)
-                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        staffAccountRepository.delete(staffAccount);
     }
 
     /**
@@ -210,12 +134,10 @@ public class StaffAccountService {
     ) {
         List<Long> userIds = page.content().stream().map(User::getId).toList();
         Map<Long, String> studyNames = studyRepository.findMentorStudyNamesByUserIds(userIds, year, semester);
-        Set<Long> manageableUserIds = staffAccountRepository.findMentorAccountUserIdsByUserIds(userIds);
         return page.withContent(page.content().stream()
                 .map(user -> MentorSummary.from(
                         user,
-                        studyNames.get(user.getId()),
-                        manageableUserIds.contains(user.getId())
+                        studyNames.get(user.getId())
                 ))
                 .toList());
     }
@@ -224,12 +146,8 @@ public class StaffAccountService {
      * 현재 로그인한 스태프 정보 조회
      */
     @Transactional(readOnly = true)
-    public StaffAccount getStaffInfo(Long userId, StaffRole role) {
-        if (role != null) {
-            return staffAccountRepository.findByUserIdAndRole(userId, role)
-                    .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-        }
-        return staffAccountRepository.findByUserId(userId)
+    public StaffAccount getStaffInfo(Long userId) {
+        return staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
     }
 

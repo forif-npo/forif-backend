@@ -20,7 +20,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -91,11 +90,11 @@ class JwtAuthenticationFilterStaffCheckTest {
     }
 
     /**
-     * 멘토 권한은 계정이 아니라 tb_study의 멘토 관계에서 유도된다(FOR-116).
-     * 여기서 스태프 계정을 요구하면 멘토 계정 정리 시 로그인 중인 멘토가 전부 끊긴다.
+     * 기존 MENTOR 토큰은 별도 역할을 얻지 않는다. 멘토 접근은 일반 USER 토큰과 같이
+     * 각 기능에서 tb_study의 멘토 관계로 검사한다.
      */
     @Test
-    void 멘토_토큰은_스태프_계정을_조회하지_않는다() throws Exception {
+    void 기존_멘토_토큰은_일반_부원_권한으로만_인증된다() throws Exception {
         when(request.getServletPath()).thenReturn("/api/v1/studies/1/attendance");
         when(request.getHeader("Authorization")).thenReturn("Bearer " + TOKEN);
         when(jwtProvider.isTokenExpired(TOKEN)).thenReturn(false);
@@ -107,8 +106,9 @@ class JwtAuthenticationFilterStaffCheckTest {
 
         filter.doFilter(request, response, chain);
 
-        verify(staffAccountRepository, never()).existsByUserIdAndRole(USER_ID, StaffRole.MENTOR);
-        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting(authority -> authority.getAuthority())
+                .containsExactly("ROLE_USER");
     }
 
     @Test
@@ -124,7 +124,6 @@ class JwtAuthenticationFilterStaffCheckTest {
 
         filter.doFilter(request, response, chain);
 
-        verify(staffAccountRepository, never()).existsByUserIdAndRole(USER_ID, StaffRole.ADMIN);
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
     }
 }

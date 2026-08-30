@@ -8,7 +8,6 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.team.ForifTeamRepository;
-import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -91,16 +90,4 @@ class StaffAccountServicePasswordResetTest {
         verify(refreshTokenService, never()).deleteRefreshToken(TARGET_ID.toString(), StaffRole.ADMIN.getValue());
     }
 
-    @Test
-    void 멘토_비밀번호_재설정은_대상자의_MENTOR_세션을_무효화한다() {
-        StaffAccount mentor = mock(StaffAccount.class);
-        when(mentor.getUser()).thenReturn(mock(User.class));
-        when(staffAccountRepository.findByUserIdAndRole(TARGET_ID, StaffRole.MENTOR))
-                .thenReturn(Optional.of(mentor));
-        when(passwordEncoder.encode(NEW_PASSWORD)).thenReturn("encoded");
-
-        staffAccountService.updateMentorAccount(TARGET_ID, null, NEW_PASSWORD, null);
-
-        verify(refreshTokenService).deleteRefreshToken(TARGET_ID.toString(), StaffRole.MENTOR.getValue());
-    }
 }

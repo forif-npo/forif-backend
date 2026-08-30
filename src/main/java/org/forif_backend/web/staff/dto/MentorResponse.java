@@ -9,8 +9,7 @@ public record MentorResponse(
     String name,
     String department,
     String phoneNum,
-    String studyName,
-    boolean manageable
+    String studyName
 ) {
     public static MentorResponse from(MentorSummary mentor) {
         return MentorResponse.builder()
@@ -19,7 +18,6 @@ public record MentorResponse(
                 .department(mentor.department())
                 .phoneNum(mentor.phoneNum())
                 .studyName(mentor.studyName())
-                .manageable(mentor.manageable())
                 .build();
     }
 }

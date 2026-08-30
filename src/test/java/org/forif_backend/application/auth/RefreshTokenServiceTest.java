@@ -58,27 +58,15 @@ class RefreshTokenServiceTest {
     }
 
     @Test
-    @DisplayName("MENTOR 세션 refresh는 해당 유저의 MENTOR 계정이 존재할 때만 MENTOR로 재발급된다")
-    void mentorRefreshTokenKeepsMentorRole() {
+    @DisplayName("기존 MENTOR 세션은 refresh할 수 없다")
+    void legacyMentorRefreshTokenIsRejected() {
         String refreshToken = jwtProvider.generateRefreshToken("1", "MENTOR");
         refreshTokenService.saveRefreshToken("1", "MENTOR", refreshToken);
-        when(staffAccountRepository.existsByUserIdAndRole(1L, StaffRole.MENTOR)).thenReturn(true);
-
-        RefreshTokenService.TokenPair tokenPair = refreshTokenService.rotateRefreshToken(refreshToken);
-
-        assertThat(jwtProvider.getRoleFromToken(tokenPair.accessToken())).isEqualTo("MENTOR");
-    }
-
-    @Test
-    @DisplayName("MENTOR 계정이 삭제된 세션은 refresh되지 않는다 (ADMIN 계정만 남아 있어도 실패)")
-    void mentorRefreshTokenFailsWhenMentorAccountRemoved() {
-        String refreshToken = jwtProvider.generateRefreshToken("1", "MENTOR");
-        refreshTokenService.saveRefreshToken("1", "MENTOR", refreshToken);
-        when(staffAccountRepository.existsByUserIdAndRole(1L, StaffRole.MENTOR)).thenReturn(false);
 
         assertThatThrownBy(() -> refreshTokenService.rotateRefreshToken(refreshToken))
                 .isInstanceOfSatisfying(ForifException.class,
                         e -> assertThat(e.getErrorCode()).isEqualTo(ErrorCode.INVALID_TOKEN));
+        verifyNoInteractions(staffAccountRepository);
     }
 
     @Test
