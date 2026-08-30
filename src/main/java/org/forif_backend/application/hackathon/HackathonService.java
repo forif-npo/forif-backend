@@ -71,18 +71,15 @@ public class HackathonService {
                 request.endsAt()
         );
 
-        if (hackathonRepository.existsEventRound(request.heldYear(), request.heldSemester(), request.eventRound())) {
+        if (hackathonRepository.existsEventSemester(request.heldYear(), request.heldSemester())) {
             throw new ForifException(ErrorCode.HACKATHON_ALREADY_EXISTS);
         }
 
-        if (hackathonRepository.existsActiveEvent()) {
-            throw new ForifException(ErrorCode.HACKATHON_ACTIVE_EVENT_EXISTS);
-        }
-
+        int eventRound = hackathonRepository.findNextEventRound();
         HackathonEvent event = HackathonEvent.create(
                 request.heldYear(),
                 request.heldSemester(),
-                request.eventRound(),
+                eventRound,
                 request.title(),
                 request.description(),
                 request.location(),
@@ -309,6 +306,7 @@ public class HackathonService {
                 request.name(),
                 request.topic(),
                 request.description(),
+                request.competitionType(),
                 request.maxMembers()
         );
         HackathonTeam savedTeam = hackathonRepository.saveTeam(team);
@@ -365,7 +363,13 @@ public class HackathonService {
             throw new ForifException(ErrorCode.HACKATHON_TEAM_NAME_ALREADY_EXISTS);
         }
 
-        team.update(request.name(), request.topic(), request.description(), request.maxMembers());
+        team.update(
+                request.name(),
+                request.topic(),
+                request.description(),
+                request.competitionType(),
+                request.maxMembers()
+        );
         return toTeamResponse(team);
     }
 
@@ -698,11 +702,13 @@ public class HackathonService {
         HackathonEvent event = getEvent(hackathonId);
         assertStatus(event, HackathonStatus.ENDED);
         List<HackathonSubmission> submissions = hackathonRepository.findSubmissions(hackathonId);
-        Map<Long, List<String>> techStacks = techStacksBySubmissionId(submissions);
+        Map<Long, List<HackathonSubmissionTechStack>> techStackEntities = techStackEntitiesBySubmissionId(submissions);
+        Map<Long, List<String>> techStacks = techStackNamesBySubmissionId(techStackEntities);
         Map<Long, Integer> awardPriorityByTeamId = archiveAwardPriorityByTeamId(hackathonId);
         return submissions.stream()
                 .filter(submission -> matchesSubmissionSearch(submission, search))
-                .filter(submission -> matchesTechStack(techStacks.getOrDefault(submission.getId(), List.of()), techStack))
+                .filter(submission -> matchesTechStack(
+                        techStackEntities.getOrDefault(submission.getId(), List.of()), techStack))
                 .sorted(Comparator
                         .comparingInt((HackathonSubmission submission) ->
                                 awardPriorityByTeamId.getOrDefault(submission.getTeam().getId(), Integer.MAX_VALUE))
@@ -868,23 +874,37 @@ public class HackathonService {
             return;
         }
 
-        List<String> normalizedTechStacks = techStacks.stream()
+        List<String> canonicalTechStacks = techStacks.stream()
                 .filter(Objects::nonNull)
-                .map(String::trim)
+                .map(HackathonTechStackPolicy::canonicalize)
                 .filter(stack -> !stack.isBlank())
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toCollection(LinkedHashSet::new),
-                        ArrayList::new
+                .toList();
+
+        if (canonicalTechStacks.stream().anyMatch(stack -> !HackathonTechStackPolicy.isValid(stack))) {
+            throw new ForifException(ErrorCode.HACKATHON_INVALID_TECH_STACK);
+        }
+
+        Map<String, String> techStackNameByNormalized = canonicalTechStacks.stream()
+                .collect(Collectors.toMap(
+                        HackathonTechStackPolicy::normalize,
+                        Function.identity(),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new
                 ));
 
-        if (normalizedTechStacks.size() > HackathonTechStackPolicy.MAX_COUNT
-                || normalizedTechStacks.stream().anyMatch(stack -> !HackathonTechStackPolicy.isAllowed(stack))) {
+        if (techStackNameByNormalized.size() > HackathonTechStackPolicy.MAX_COUNT) {
             throw new ForifException(ErrorCode.HACKATHON_INVALID_TECH_STACK);
         }
 
         List<HackathonSubmissionTechStack> entities = new ArrayList<>();
-        for (int i = 0; i < normalizedTechStacks.size(); i++) {
-            entities.add(HackathonSubmissionTechStack.create(submission, normalizedTechStacks.get(i), i + 1));
+        int displayOrder = 1;
+        for (Map.Entry<String, String> entry : techStackNameByNormalized.entrySet()) {
+            entities.add(HackathonSubmissionTechStack.create(
+                    submission,
+                    entry.getValue(),
+                    entry.getKey(),
+                    displayOrder++
+            ));
         }
         hackathonRepository.saveTechStacks(entities);
     }
@@ -1157,11 +1177,14 @@ public class HackathonService {
                 || containsIgnoreCase(submission.getSummary(), search);
     }
 
-    private boolean matchesTechStack(List<String> techStacks, String techStack) {
+    private boolean matchesTechStack(List<HackathonSubmissionTechStack> techStacks, String techStack) {
         if (techStack == null || techStack.isBlank()) {
             return true;
         }
-        return techStacks.stream().anyMatch(stack -> stack.equalsIgnoreCase(techStack));
+        String normalizedTechStack = HackathonTechStackPolicy.normalize(techStack);
+        return techStacks.stream()
+                .map(HackathonSubmissionTechStack::getNormalizedName)
+                .anyMatch(normalizedTechStack::equals);
     }
 
     private Map<Long, Integer> archiveAwardPriorityByTeamId(Long hackathonId) {
@@ -1224,11 +1247,26 @@ public class HackathonService {
     }
 
     private Map<Long, List<String>> techStacksBySubmissionId(List<HackathonSubmission> submissions) {
+        return techStackNamesBySubmissionId(techStackEntitiesBySubmissionId(submissions));
+    }
+
+    private Map<Long, List<HackathonSubmissionTechStack>> techStackEntitiesBySubmissionId(
+            List<HackathonSubmission> submissions
+    ) {
         List<Long> submissionIds = submissions.stream().map(HackathonSubmission::getId).toList();
         return hackathonRepository.findTechStacksBySubmissionIds(submissionIds).stream()
                 .collect(Collectors.groupingBy(
-                        techStack -> techStack.getSubmission().getId(),
-                        Collectors.mapping(HackathonSubmissionTechStack::getName, Collectors.toList())
+                        techStack -> techStack.getSubmission().getId()
+                ));
+    }
+
+    private Map<Long, List<String>> techStackNamesBySubmissionId(
+            Map<Long, List<HackathonSubmissionTechStack>> techStackEntities
+    ) {
+        return techStackEntities.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().stream().map(HackathonSubmissionTechStack::getName).toList()
                 ));
     }
 
