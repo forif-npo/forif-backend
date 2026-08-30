@@ -16,6 +16,8 @@ public interface StudyJpaRepository extends JpaRepository<Study, Integer> {
 
     boolean existsByActYearAndActSemesterAndAutonomousFlagTrue(int actYear, int actSemester);
 
+    Optional<Study> findByActYearAndActSemesterAndAutonomousFlagTrue(int actYear, int actSemester);
+
     @Query("SELECT DISTINCT s FROM Study s LEFT JOIN FETCH s.tags WHERE s.id = :studyId")
     Optional<Study> findByIdWithTags(@Param("studyId") Integer studyId);
 

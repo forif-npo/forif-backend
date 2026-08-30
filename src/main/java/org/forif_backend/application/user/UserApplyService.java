@@ -4,7 +4,9 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.common.dto.response.ApiErrorData;
+import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.application.user.dto.ApplyDetailInfo;
+import org.forif_backend.application.user.dto.AdminStudyApplicationInfo;
 import org.forif_backend.application.user.dto.UserApplyInfo;
 import org.forif_backend.application.semester.SemesterPhaseGuard;
 import org.forif_backend.application.semester.SemesterService;
@@ -14,6 +16,7 @@ import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.domain.study.Study;
@@ -25,6 +28,7 @@ import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.application.study.dto.StudyDto;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,6 +37,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Optional;
 import org.forif_backend.application.user.dto.ApplyStatusInfo;
 import org.forif_backend.application.user.dto.UserApplyCommand;
@@ -46,6 +52,7 @@ public class UserApplyService {
     private final StudyMentorAccess studyMentorAccess;
     private final DuesService duesService;
     private final UserRepository userRepository;
+    private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
     private final Validator validator;
@@ -146,6 +153,117 @@ public class UserApplyService {
         } else {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public CursorPageResponse<AdminStudyApplicationInfo> getAdminApplications(
+            int year, int semester, int page, int size, String search, List<SortCriteria> sorting
+    ) {
+        List<UserApply> applications = userApplyRepository.findAllByYearSemester(year, semester);
+        Integer autonomousStudyId = studyRepository.findAutonomousStudyByYearSemester(year, semester)
+                .map(Study::getId)
+                .orElse(null);
+        List<AdminStudyApplicationInfo> rows = new ArrayList<>();
+        for (UserApply apply : applications) {
+            rows.add(AdminStudyApplicationInfo.primary(apply, autonomousStudyId));
+            if (apply.getSecondaryStudy() != null) {
+                rows.add(AdminStudyApplicationInfo.secondary(apply, autonomousStudyId));
+            }
+        }
+        String keyword = search == null ? "" : search.trim().toLowerCase();
+        if (!keyword.isEmpty()) {
+            rows = rows.stream().filter(row -> contains(row.userName(), keyword)
+                            || contains(row.department(), keyword) || contains(row.studyName(), keyword)
+                            || String.valueOf(row.userId()).contains(keyword))
+                    .toList();
+        }
+        rows = rows.stream().sorted(adminApplicationComparator(sorting)).toList();
+        int safeSize = Math.max(1, Math.min(size, 100));
+        int safePage = Math.max(page, 0);
+        int from = (int) Math.min((long) safePage * safeSize, rows.size());
+        int to = Math.min(from + safeSize, rows.size());
+        return CursorPageResponse.ofOffset(rows.subList(from, to), to < rows.size(), rows.size(), safePage, safeSize);
+    }
+
+    /** 운영진이 자율스터디 신청을 수동 합격 처리한다. */
+    @Transactional
+    public void acceptAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
+        Study study = getAutonomousStudyForAdminDecision(studyId);
+
+        for (Long applyId : applyIds) {
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
+            requireAutonomousPrimaryApplication(apply, studyId);
+
+            if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+                continue;
+            }
+            apply.updateStatus(studyId, UserApplyStatus.ACCEPT);
+            duesService.ensureMemberCheck(study, apply.getApplier());
+            duesService.registerStudyUserIfEligible(study, apply.getApplier());
+        }
+    }
+
+    /** 운영진이 자율스터디 신청을 수동 불합격 처리한다. */
+    @Transactional
+    public void rejectAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
+        getAutonomousStudyForAdminDecision(studyId);
+
+        for (Long applyId : applyIds) {
+            Optional<UserApply> applyOpt = findApplication(applyId);
+            if (applyOpt.isEmpty()) {
+                continue;
+            }
+            UserApply apply = applyOpt.get();
+            requireAutonomousPrimaryApplication(apply, studyId);
+
+            if (apply.getPrimaryStatus() == UserApplyStatus.REJECT) {
+                continue;
+            }
+            if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+                studyUserRepository.deleteByUserIdAndStudyId(apply.getApplier().getId(), studyId);
+            }
+            apply.updateStatus(studyId, UserApplyStatus.REJECT);
+        }
+    }
+
+    private boolean contains(String value, String keyword) {
+        return value != null && value.toLowerCase().contains(keyword);
+    }
+
+    private Comparator<AdminStudyApplicationInfo> adminApplicationComparator(List<SortCriteria> sorting) {
+        if (sorting == null || sorting.isEmpty()) {
+            return Comparator.comparing(AdminStudyApplicationInfo::appliedAt,
+                            Comparator.nullsLast(Comparator.reverseOrder()))
+                    .thenComparing(AdminStudyApplicationInfo::userId)
+                    .thenComparing(AdminStudyApplicationInfo::priority);
+        }
+
+        Comparator<AdminStudyApplicationInfo> result = null;
+        for (SortCriteria criteria : sorting) {
+            Comparator<AdminStudyApplicationInfo> next = switch (criteria.field()) {
+                case "userId" -> Comparator.comparing(AdminStudyApplicationInfo::userId);
+                case "userName" -> Comparator.comparing(AdminStudyApplicationInfo::userName,
+                        Comparator.nullsLast(String::compareTo));
+                case "department" -> Comparator.comparing(AdminStudyApplicationInfo::department,
+                        Comparator.nullsLast(String::compareTo));
+                case "studyName" -> Comparator.comparing(AdminStudyApplicationInfo::studyName,
+                        Comparator.nullsLast(String::compareTo));
+                case "priority" -> Comparator.comparing(AdminStudyApplicationInfo::priority);
+                case "appliedAt" -> Comparator.comparing(AdminStudyApplicationInfo::appliedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder()));
+                default -> throw new ForifException(ErrorCode.INVALID_INPUT);
+            };
+            if (criteria.direction() == SortDirection.DESC) {
+                next = next.reversed();
+            }
+            result = result == null ? next : result.thenComparing(next);
+        }
+        return result.thenComparing(AdminStudyApplicationInfo::userId)
+                .thenComparing(AdminStudyApplicationInfo::priority);
     }
 
     /**
@@ -412,11 +530,37 @@ public class UserApplyService {
         Study study = studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
 
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_DECISION_NOT_ALLOWED);
+        }
         studyMentorAccess.requireMentorOfActiveSemester(study, userId);
         if (study.getStudyStatus() != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
         return study;
+    }
+
+    private Study getAutonomousStudyForAdminDecision(Integer studyId) {
+        Study study = studyRepository.findStudyById(studyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+        if (!study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        SemesterInfo active = semesterService.getActive();
+        if (!active.matches(study.getActYear(), study.getActSemester())) {
+            throw new ForifException(ErrorCode.STUDY_NOT_IN_ACTIVE_SEMESTER);
+        }
+        if (study.getStudyStatus() != StudyStatus.APPROVED) {
+            throw new ForifException(ErrorCode.BAD_REQUEST);
+        }
+        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        return study;
+    }
+
+    private void requireAutonomousPrimaryApplication(UserApply apply, Integer studyId) {
+        if (apply.getPrimaryStudy() != studyId) {
+            throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
+        }
     }
 
     /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */

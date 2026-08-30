@@ -24,6 +24,7 @@ public enum ErrorCode {
     PRIMARY_NOT_APPLIED(HttpStatus.BAD_REQUEST, "FOR037-400", "1순위 스터디에 먼저 지원해야 합니다."),
     AUTONOMOUS_STUDY_APPLY_CONFLICT(HttpStatus.BAD_REQUEST, "FOR140-400", "자율스터디는 정규스터디와 중복 신청할 수 없습니다."),
     AUTONOMOUS_STUDY_APPLICATION_UPDATE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR142-400", "자율스터디 신청서는 수정할 수 없습니다."),
+    AUTONOMOUS_STUDY_APPLICATION_DECISION_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "FOR143-400", "자율스터디 신청은 운영진이 처리합니다."),
     REJECT_REASON_REQUIRED(HttpStatus.BAD_REQUEST, "FOR012-400", "거절 사유는 필수입니다."),
     APPLY_NOT_PENDING(HttpStatus.BAD_REQUEST, "FOR038-400", "대기중(PENDING) 상태의 신청서만 수정하거나 취소할 수 있습니다."),
     CERTIFICATE_SIGNATURE_NOT_FOUND(HttpStatus.BAD_REQUEST, "FOR039-400", "현재 회장의 서명이 등록되지 않았습니다. 인증서 발급 페이지에서 서명을 먼저 등록해주세요."),
