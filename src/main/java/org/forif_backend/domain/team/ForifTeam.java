@@ -44,9 +44,6 @@ public class ForifTeam extends BaseTimeEntity {
     @Column(length = 100)
     private String selfIntro;
 
-    @Column(length = 300)
-    private String profImgUrl;
-
     public static ForifTeam create(User user, int actYear, int actSemester, String clubDepartment) {
         ForifTeam team = new ForifTeam();
         team.user = user;
@@ -56,12 +53,11 @@ public class ForifTeam extends BaseTimeEntity {
         return team;
     }
 
-    public void update(String userTitle, String clubDepartment, String introTag, String selfIntro, String profImgUrl, Integer graduateYear) {
+    public void update(String userTitle, String clubDepartment, String introTag, String selfIntro, Integer graduateYear) {
         if (userTitle != null) this.userTitle = userTitle;
         if (clubDepartment != null) this.clubDepartment = clubDepartment;
         if (introTag != null) this.introTag = introTag;
         if (selfIntro != null) this.selfIntro = selfIntro;
-        if (profImgUrl != null) this.profImgUrl = profImgUrl;
         if (graduateYear != null) this.graduateYear = graduateYear;
     }
 }

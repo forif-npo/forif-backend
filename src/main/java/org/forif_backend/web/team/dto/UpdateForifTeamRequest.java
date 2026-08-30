@@ -5,7 +5,6 @@ public record UpdateForifTeamRequest(
         String clubDepartment,
         String introTag,
         String selfIntro,
-        String profImgUrl,
         Integer graduateYear
 ) {
 }

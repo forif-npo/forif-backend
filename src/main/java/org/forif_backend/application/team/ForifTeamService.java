@@ -5,6 +5,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.application.user.UserService;
 import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.User;
@@ -12,6 +13,7 @@ import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.web.team.dto.ForifTeamResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -22,18 +24,19 @@ public class ForifTeamService {
     private final ForifTeamRepository forifTeamRepository;
     private final UserRepository userRepository;
     private final SemesterService semesterService;
+    private final UserService userService;
 
     @Transactional(readOnly = true)
     public List<ForifTeamResponse> getAllMembers() {
         return forifTeamRepository.findAll().stream()
-                .map(ForifTeamResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<ForifTeamResponse> getMembersByYearAndSemester(int actYear, int actSemester) {
         return forifTeamRepository.findByYearAndSemester(actYear, actSemester).stream()
-                .map(ForifTeamResponse::from)
+                .map(this::toResponse)
                 .toList();
     }
 
@@ -57,18 +60,26 @@ public class ForifTeamService {
 
         ForifTeam forifTeam = ForifTeam.create(user, year, semester, clubDepartment);
         if (userTitle != null && !userTitle.isBlank()) {
-            forifTeam.update(userTitle, null, null, null, null, null);
+            forifTeam.update(userTitle, null, null, null, null);
         }
-        return ForifTeamResponse.from(forifTeamRepository.save(forifTeam));
+        return toResponse(forifTeamRepository.save(forifTeam));
     }
 
     @Transactional
     public ForifTeamResponse updateMember(Long id, String userTitle, String clubDepartment,
-                                          String introTag, String selfIntro, String profImgUrl, Integer graduateYear) {
+                                          String introTag, String selfIntro, Integer graduateYear) {
         ForifTeam forifTeam = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
-        forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, profImgUrl, graduateYear);
-        return ForifTeamResponse.from(forifTeam);
+        forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
+        return toResponse(forifTeam);
+    }
+
+    @Transactional
+    public ForifTeamResponse updateMemberProfileImage(Long id, MultipartFile profileImage) {
+        ForifTeam forifTeam = forifTeamRepository.findById(id)
+                .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
+        userService.updateUserProfileImage(forifTeam.getUser().getId(), profileImage);
+        return toResponse(forifTeam);
     }
 
     @Transactional
@@ -76,5 +87,12 @@ public class ForifTeamService {
         forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
         forifTeamRepository.deleteById(id);
+    }
+
+    private ForifTeamResponse toResponse(ForifTeam forifTeam) {
+        return ForifTeamResponse.from(
+                forifTeam,
+                userService.getProfileImageUrl(forifTeam.getUser().getImgUrl())
+        );
     }
 }

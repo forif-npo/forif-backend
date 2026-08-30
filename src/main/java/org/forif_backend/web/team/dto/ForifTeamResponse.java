@@ -16,7 +16,7 @@ public record ForifTeamResponse(
         String profImgUrl,
         Integer graduateYear
 ) {
-    public static ForifTeamResponse from(ForifTeam forIfTeam) {
+    public static ForifTeamResponse from(ForifTeam forIfTeam, String profImgUrl) {
         return new ForifTeamResponse(
                 forIfTeam.getId(),
                 forIfTeam.getUser().getId(),
@@ -28,7 +28,7 @@ public record ForifTeamResponse(
                 forIfTeam.getClubDepartment(),
                 forIfTeam.getIntroTag(),
                 forIfTeam.getSelfIntro(),
-                forIfTeam.getProfImgUrl(),
+                profImgUrl,
                 forIfTeam.getGraduateYear()
         );
     }

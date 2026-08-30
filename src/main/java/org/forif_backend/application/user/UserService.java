@@ -331,15 +331,15 @@ public class UserService {
     @Transactional
     public User updateUserProfile(Long userId, String department, MultipartFile profileImage) {
         User user = getUserInfo(userId);
+        user.updateProfile(department, uploadProfileImage(user, profileImage));
+        return user;
+    }
 
-        String profileImageObjectKey = null;
-        if (profileImage != null && !profileImage.isEmpty()) {
-            validateProfileImage(profileImage);
-            profileImageObjectKey = filePort.uploadFile(profileImage, PROFILE_IMAGE_DIRECTORY);
-            registerProfileImageCleanup(user.getImgUrl(), profileImageObjectKey);
-        }
-
-        user.updateProfile(department, profileImageObjectKey);
+    /** 운영진 관리 등 다른 경로에서도 같은 부원 프로필 사진을 갱신한다. */
+    @Transactional
+    public User updateUserProfileImage(Long userId, MultipartFile profileImage) {
+        User user = getUserInfo(userId);
+        user.updateProfile(null, uploadProfileImage(user, profileImage));
         return user;
     }
 
@@ -367,6 +367,17 @@ public class UserService {
                 || !PROFILE_IMAGE_CONTENT_TYPES.contains(file.getContentType())) {
             throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
+    }
+
+    private String uploadProfileImage(User user, MultipartFile profileImage) {
+        if (profileImage == null || profileImage.isEmpty()) {
+            return null;
+        }
+
+        validateProfileImage(profileImage);
+        String profileImageObjectKey = filePort.uploadFile(profileImage, PROFILE_IMAGE_DIRECTORY);
+        registerProfileImageCleanup(user.getImgUrl(), profileImageObjectKey);
+        return profileImageObjectKey;
     }
 
     private void registerProfileImageCleanup(String previousObjectKey, String uploadedObjectKey) {
