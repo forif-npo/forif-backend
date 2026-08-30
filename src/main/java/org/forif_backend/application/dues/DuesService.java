@@ -6,6 +6,8 @@ import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.dues.MemberSemesterCheck;
 import org.forif_backend.domain.dues.MemberSemesterCheckRepository;
 import org.forif_backend.domain.study.Study;
@@ -22,7 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -42,11 +43,21 @@ public class DuesService {
     private final UserApplyRepository userApplyRepository;
     private final MemberSemesterCheckRepository memberSemesterCheckRepository;
 
+    /** 표의 컬럼 정렬용. 정렬이 없으면 기존 확인 필요 우선 정렬을 유지한다. */
     public DuesPageResult getCurrentSemesterDues(
             int page,
             int size,
             String search,
-            DuesSort sort
+            List<SortCriteria> sorting
+    ) {
+        return getCurrentSemesterDues(page, size, search, comparatorFor(sorting));
+    }
+
+    private DuesPageResult getCurrentSemesterDues(
+            int page,
+            int size,
+            String search,
+            Comparator<DuesMember> comparator
     ) {
         SemesterInfo semester = semesterService.getActive();
         List<User> users = findDuesTargets(
@@ -57,7 +68,7 @@ public class DuesService {
 
         List<DuesMember> members = toDuesMembers(users, semester);
         members = members.stream()
-                .sorted(comparatorFor(sort))
+                .sorted(comparator)
                 .toList();
 
         DuesSummary summary = summarize(members);
@@ -65,7 +76,7 @@ public class DuesService {
         int safeSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         int totalElements = members.size();
         int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / safeSize);
-        int fromIndex = Math.min(safePage * safeSize, totalElements);
+        int fromIndex = (int) Math.min((long) safePage * safeSize, totalElements);
         int toIndex = Math.min(fromIndex + safeSize, totalElements);
 
         return new DuesPageResult(
@@ -90,12 +101,10 @@ public class DuesService {
             SemesterInfo semester
     ) {
         Long userId = command.userId();
-        boolean isMember = studyUserRepository.existsByUserIdAndStudyYearSemester(
+        boolean isAccepted = userApplyRepository.existsAcceptedByApplierIdAndYearSemester(
                 userId, semester.actYear(), semester.actSemester());
-        boolean isApplicant = userApplyRepository.existsByApplierIdAndYearSemester(
-                userId, semester.actYear(), semester.actSemester());
-        if (!isMember && !isApplicant) {
-            throw new ForifException(ErrorCode.USER_NOT_FOUND);
+        if (!isAccepted) {
+            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
         }
 
         User user = userRepository.findById(userId)
@@ -145,8 +154,8 @@ public class DuesService {
             SemesterInfo semester,
             MemberSemesterCheck memberCheck
     ) {
-        userRepository.findUserApplyByYearAndSemesterAndUser(
-                        semester.actYear(), semester.actSemester(), user)
+        userApplyRepository.findByApplierIdAndYearSemester(
+                        user.getId(), semester.actYear(), semester.actSemester())
                 .flatMap(this::acceptedStudyId)
                 .flatMap(studyRepository::findStudyById)
                 .ifPresent(study -> {
@@ -169,12 +178,7 @@ public class DuesService {
     }
 
     private List<User> findDuesTargets(int year, int semester, String search) {
-        Map<Long, User> usersById = new LinkedHashMap<>();
-        studyUserRepository.findUsersByYearSemester(year, semester, search)
-                .forEach(user -> usersById.put(user.getId(), user));
-        userApplyRepository.findApplicantsByYearSemester(year, semester, search)
-                .forEach(user -> usersById.putIfAbsent(user.getId(), user));
-        return List.copyOf(usersById.values());
+        return userApplyRepository.findAcceptedApplicantsByYearSemester(year, semester, search);
     }
 
     private List<DuesMember> toDuesMembers(List<User> users, SemesterInfo semester) {
@@ -187,46 +191,52 @@ public class DuesService {
                 .findAllByYearSemesterAndUserIds(semester.actYear(), semester.actSemester(), userIds)
                 .stream()
                 .collect(Collectors.toMap(memberCheck -> memberCheck.getUser().getId(), Function.identity()));
-        Map<Long, String> studyNames = studyRepository.findCurrentStudyNamesByUserIds(
-                userIds,
-                semester.actYear(),
-                semester.actSemester()
-        );
-
         return users.stream()
-                .map(user -> toDuesMember(user, studyNames.get(user.getId()), memberChecks.get(user.getId())))
+                .map(user -> toDuesMember(user, memberChecks.get(user.getId())))
                 .toList();
     }
 
-    private DuesMember toDuesMember(User user, String studyName, MemberSemesterCheck memberCheck) {
+    private DuesMember toDuesMember(User user, MemberSemesterCheck memberCheck) {
         return new DuesMember(
                 user.getId(),
                 user.getUserName(),
                 user.getDepartment(),
-                studyName,
                 memberCheck != null && memberCheck.isDuesPaid(),
                 memberCheck != null && memberCheck.isGoogleFormSubmitted()
         );
     }
 
-    private Comparator<DuesMember> comparatorFor(DuesSort sort) {
-        DuesSort effectiveSort = sort == null ? DuesSort.NEEDS_ATTENTION : sort;
+    private Comparator<DuesMember> defaultComparator() {
         Comparator<DuesMember> byName = Comparator
                 .comparing(DuesMember::userName, Comparator.nullsLast(String::compareTo))
                 .thenComparing(DuesMember::userId);
 
-        return switch (effectiveSort) {
-            case GOOGLE_FORM_SUBMITTED -> Comparator
-                    .comparing(DuesMember::googleFormSubmitted)
-                    .thenComparing(byName);
-            case DUES_PAID -> Comparator
-                    .comparing(DuesMember::duesPaid)
-                    .thenComparing(byName);
-            case NAME -> byName;
-            case NEEDS_ATTENTION -> Comparator
-                    .comparingInt(this::attentionPriority)
-                    .thenComparing(byName);
-        };
+        return Comparator.comparingInt(this::attentionPriority)
+                .thenComparing(byName);
+    }
+
+    private Comparator<DuesMember> comparatorFor(List<SortCriteria> sorting) {
+        if (sorting == null || sorting.isEmpty()) {
+            return defaultComparator();
+        }
+        Comparator<DuesMember> result = null;
+        for (SortCriteria criteria : sorting) {
+            Comparator<DuesMember> next = switch (criteria.field()) {
+                case "userId" -> Comparator.comparing(DuesMember::userId);
+                case "userName" -> Comparator.comparing(DuesMember::userName,
+                        Comparator.nullsLast(String::compareTo));
+                case "department" -> Comparator.comparing(DuesMember::department,
+                        Comparator.nullsLast(String::compareTo));
+                case "googleFormSubmitted" -> Comparator.comparing(DuesMember::googleFormSubmitted);
+                case "duesPaid" -> Comparator.comparing(DuesMember::duesPaid);
+                default -> throw new ForifException(ErrorCode.INVALID_INPUT);
+            };
+            if (criteria.direction() == SortDirection.DESC) {
+                next = next.reversed();
+            }
+            result = result == null ? next : result.thenComparing(next);
+        }
+        return result.thenComparing(DuesMember::userId);
     }
 
     private int attentionPriority(DuesMember member) {

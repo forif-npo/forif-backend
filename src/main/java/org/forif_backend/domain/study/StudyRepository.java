@@ -10,6 +10,7 @@ import org.forif_backend.domain.user.User;
 public interface StudyRepository {
     Optional<Study> findStudyById(Integer studyId);
     boolean existsByActYearAndActSemesterAndAutonomousFlagTrue(int actYear, int actSemester);
+    Optional<Study> findAutonomousStudyByYearSemester(int actYear, int actSemester);
     List<StudyTag> findAllStudyTagById(List<Long> tagIds);
     List<StudyTag> findAllStudyTagByName(List<String> tagNames);
     List<Study> getStudies(StudySearchCond cond, Integer cursor, int size);

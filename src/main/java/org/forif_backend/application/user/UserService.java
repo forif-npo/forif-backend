@@ -350,6 +350,14 @@ public class UserService {
         return user;
     }
 
+    /** 어드민이 부원의 변경 가능한 기본 정보만 수정한다. 학번과 이름은 수정 대상이 아니다. */
+    @Transactional
+    public void updateMemberInfo(Long userId, String department, String phoneNum) {
+        User user = getUserInfo(userId);
+        user.updateProfile(department, null);
+        user.updatePhoneNum(phoneNum);
+    }
+
     public String getProfileImageUrl(String imgUrl) {
         return FileViewUrls.resolveViewUrl(filePort, imgUrl);
     }
@@ -431,8 +439,8 @@ public class UserService {
      *
      * 수강 관계만 지우면 삭제가 유지되지 않는다. 지원서가 합격 상태로 남아 있는 한
      * 회비 확인 시 그 지원서를 근거로 수강생이 다시 등록되기 때문이다(DuesService).
-     * 그래서 지원서의 합격도 함께 되돌린다. 이렇게 해야 멘토가 다시 합격시켜 복구하는
-     * 정상 경로도 열린다.
+     * 그래서 지원서의 합격도 함께 되돌린다. 이렇게 해야 운영진이 다시 합격시켜 복구하는
+     * 정상 경로도 열린다. 자율스터디는 운영진 전용 합불 처리 경로로 복구한다.
      */
     @Transactional
     public void deleteCurrentSemesterMember(Long userId) {

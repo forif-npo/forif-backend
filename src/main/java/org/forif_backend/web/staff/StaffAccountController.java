@@ -10,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
-import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
@@ -31,7 +30,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Set;
 
-@Tag(name = "스태프", description = "멘토 및 운영진 계정 관리 API")
+@Tag(name = "스태프", description = "운영진 계정 관리 API")
 @Slf4j
 @RestController
 @RequiredArgsConstructor
@@ -40,10 +39,7 @@ public class StaffAccountController {
     private final StaffAccountService staffAccountService;
     private final UserService userService;
 
-    /**
-     * 스태프(멘토/운영진) 로그인
-     */
-    @Operation(summary = "스태프 로그인", description = "멘토 또는 운영진 계정으로 로그인합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
+    @Operation(summary = "운영진 로그인", description = "운영진 계정으로 로그인합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
     @PostMapping("/api/v1/staff/signin")
     public ResponseEntity<ApiResponse<StaffSignInResponse>> staffSignIn(
             @RequestBody StaffSignInRequest request,
@@ -59,22 +55,13 @@ public class StaffAccountController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    /**
-     * 현재 로그인한 스태프 정보 조회
-     */
-    @Operation(summary = "내 스태프 정보 조회", description = "현재 로그인한 스태프의 이름, 역할, 소속 정보를 조회합니다. 한 유저가 멘토/운영진 계정을 모두 가진 경우 로그인한 세션의 역할 계정을 반환합니다.")
+    @Operation(summary = "내 운영진 정보 조회", description = "현재 로그인한 운영진의 이름, 역할, 소속 정보를 조회합니다.")
     @GetMapping("/api/v1/staff/me")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<StaffInfoResponse>> getStaffInfo(
-            @AuthenticationPrincipal Long userId,
-            Authentication authentication
+            @AuthenticationPrincipal Long userId
     ) {
-        // 토큰 권한으로 로그인 세션의 역할 판별 (ADMIN 토큰은 ROLE_ADMIN 포함)
-        StaffRole sessionRole = authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()))
-                ? StaffRole.ADMIN
-                : StaffRole.MENTOR;
-
-        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId, sessionRole);
+        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
         StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
@@ -191,7 +178,6 @@ public class StaffAccountController {
             - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
             - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
             둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
-            - manageable: 기존 멘토 계정이 있어 수정·삭제 API를 사용할 수 있는지 여부입니다.
             """)
     @GetMapping("/api/v1/admin/mentors")
     @PreAuthorize("hasRole('ADMIN')")
@@ -222,7 +208,6 @@ public class StaffAccountController {
             - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
             - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
             둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
-            - manageable: 기존 멘토 계정이 있어 수정·삭제 API를 사용할 수 있는지 여부입니다.
             """)
     @GetMapping("/api/v1/admin/mentors/{year}/{semester}")
     @PreAuthorize("hasRole('ADMIN')")
@@ -245,47 +230,6 @@ public class StaffAccountController {
                 .toList();
 
         return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
-    }
-
-    /**
-     * 멘토 계정 생성 (운영진 전용)
-     */
-    @Operation(summary = "멘토 계정 생성 (어드민 전용)", description = "새 멘토 계정을 수동으로 생성합니다. 스터디 승인 시 자동 생성도 지원됩니다.")
-    @PostMapping("/api/v1/admin/mentors")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> createMentor(
-            @Valid @RequestBody CreateMentorRequest request
-    ) {
-        CreateMentorCommand command = StaffDtoMapper.toCommand(request);
-        staffAccountService.createMentorAccount(command);
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
-    /**
-     * 멘토 정보 수정 (운영진 전용)
-     */
-    @Operation(summary = "멘토 정보 수정 (어드민 전용)", description = "멘토의 이름, 비밀번호, 소속 스터디를 수정합니다.")
-    @PatchMapping("/api/v1/admin/mentors/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> updateMentor(
-            @Parameter(description = "수정할 멘토의 유저 ID") @PathVariable Long userId,
-            @RequestBody UpdateMentorRequest request
-    ) {
-        staffAccountService.updateMentorAccount(userId, request.name(), request.password(), request.affiliation());
-        return ResponseEntity.ok(ApiResponse.success(null));
-    }
-
-    /**
-     * 멘토 계정 삭제 (운영진 전용)
-     */
-    @Operation(summary = "멘토 계정 삭제 (어드민 전용)", description = "멘토 계정을 삭제합니다.")
-    @DeleteMapping("/api/v1/admin/mentors/{userId}")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> deleteMentor(
-            @Parameter(description = "삭제할 멘토의 유저 ID") @PathVariable Long userId
-    ) {
-        staffAccountService.deleteMentorAccount(userId);
-        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     // ==================== 어드민 부원 관리 API ====================
@@ -338,6 +282,18 @@ public class StaffAccountController {
                 year, semester, cursor, page, size, search,
                 SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
         ))));
+    }
+
+    @Operation(summary = "부원 정보 수정 (어드민 전용)",
+            description = "부원의 학과와 전화번호를 수정합니다. 학번과 이름은 수정할 수 없습니다.")
+    @PatchMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateMemberInfo(
+            @Parameter(description = "수정할 부원의 유저 ID") @PathVariable Long userId,
+            @Valid @RequestBody UpdateMemberInfoRequest request
+    ) {
+        userService.updateMemberInfo(userId, request.department(), request.phoneNum());
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     /**

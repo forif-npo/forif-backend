@@ -1,6 +1,7 @@
 package org.forif_backend.web.hackathon.dto;
 
 import org.forif_backend.domain.hackathon.HackathonSubmission;
+import org.forif_backend.domain.hackathon.CompetitionType;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -10,6 +11,7 @@ public record ArchiveSubmissionDetailResponse(
         Long hackathonId,
         Long teamId,
         String teamName,
+        CompetitionType competitionType,
         String projectName,
         String summary,
         String description,
@@ -41,6 +43,7 @@ public record ArchiveSubmissionDetailResponse(
                 submission.getHackathon().getId(),
                 submission.getTeam().getId(),
                 submission.getTeam().getName(),
+                submission.getTeam().getCompetitionType(),
                 submission.getProjectName(),
                 submission.getSummary(),
                 submission.getDescription(),

@@ -22,6 +22,7 @@ public interface HackathonParticipantJpaRepository extends JpaRepository<Hackath
             WHERE p.status = org.forif_backend.domain.hackathon.ParticipantStatus.REGISTERED
               AND p.hackathon.heldYear = :heldYear
               AND p.hackathon.heldSemester = :heldSemester
+              AND p.hackathon.deletedAt IS NULL
             """)
     List<Long> findRegisteredUserIdsBySemester(@Param("heldYear") int heldYear,
                                                @Param("heldSemester") int heldSemester);

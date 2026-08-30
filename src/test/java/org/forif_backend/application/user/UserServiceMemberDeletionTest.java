@@ -80,7 +80,7 @@ class UserServiceMemberDeletionTest {
 
     /**
      * 합격 상태를 남겨두면 회비 확인 시 그 지원서를 근거로 수강생이 되살아나고,
-     * 멘토가 다시 합격시켜 복구하는 정상 경로도 막힌다.
+     * 정규스터디 멘토 또는 자율스터디 운영진이 다시 합격시켜 복구하는 정상 경로도 막힌다.
      */
     @Test
     void revertsTheAcceptanceSoTheDeletionSticks() {

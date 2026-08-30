@@ -6,16 +6,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
 import java.util.Optional;
 
 public interface StaffAccountJpaRepository extends JpaRepository<StaffAccount, Long> {
 
     @Query("SELECT sa FROM StaffAccount sa JOIN FETCH sa.user WHERE sa.user.id = :userId AND sa.role = :role")
     Optional<StaffAccount> findByUserIdAndRole(@Param("userId") Long userId, @Param("role") StaffRole role);
-
-    @Query("SELECT sa FROM StaffAccount sa JOIN FETCH sa.user WHERE sa.user.id = :userId")
-    List<StaffAccount> findAllByUserIdWithUser(@Param("userId") Long userId);
 
     @Query("""
             SELECT CASE WHEN COUNT(sa) > 0 THEN true ELSE false END
@@ -29,6 +25,4 @@ public interface StaffAccountJpaRepository extends JpaRepository<StaffAccount, L
             """)
     boolean existsByUserIdAndRole(@Param("userId") Long userId, @Param("role") StaffRole role);
 
-    @Query("SELECT sa.user.id FROM StaffAccount sa WHERE sa.user.id IN :userIds AND sa.role = :role")
-    List<Long> findUserIdsByUserIdInAndRole(@Param("userIds") List<Long> userIds, @Param("role") StaffRole role);
 }

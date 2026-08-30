@@ -1,13 +1,11 @@
 package org.forif_backend.infrastructure.persistence.staff;
 
 import com.querydsl.core.types.dsl.BooleanExpression;
-import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import org.forif_backend.domain.staff.QStaffAccount;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffRole;
-import org.forif_backend.domain.study.QStudy;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -19,7 +17,6 @@ public class StaffAccountQueryRepository {
 
     private final JPAQueryFactory queryFactory;
     private final QStaffAccount staffAccount = QStaffAccount.staffAccount;
-    private final QStudy study = QStudy.study;
 
     public StaffAccountQueryRepository(EntityManager em) {
         this.queryFactory = new JPAQueryFactory(em);
@@ -63,96 +60,12 @@ public class StaffAccountQueryRepository {
                 .fetch();
     }
 
-    // ==================== 멘토(MENTOR) ====================
-
-    public List<StaffAccount> searchWithCursor(Long cursor, int size, String search) {
-        return queryFactory
-                .selectFrom(staffAccount)
-                .join(staffAccount.user).fetchJoin()
-                .where(
-                        staffAccount.role.eq(StaffRole.MENTOR),
-                        cursorLt(cursor),
-                        searchKeyword(search)
-                )
-                .orderBy(staffAccount.user.id.desc())
-                .limit(size + 1)
-                .fetch();
-    }
-
-    public long count(String search) {
-        Long count = queryFactory
-                .select(staffAccount.count())
-                .from(staffAccount)
-                .where(staffAccount.role.eq(StaffRole.MENTOR), searchKeyword(search))
-                .fetchOne();
-        return count != null ? count : 0L;
-    }
-
-    // ==================== 학기별 멘토 조회 ====================
-
-    public List<StaffAccount> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search) {
-        return queryFactory
-                .selectFrom(staffAccount)
-                .join(staffAccount.user).fetchJoin()
-                .where(
-                        staffAccount.role.eq(StaffRole.MENTOR),
-                        mentorsStudyInSemester(year, semester),
-                        cursorLt(cursor),
-                        searchKeyword(search)
-                )
-                .orderBy(staffAccount.user.id.desc())
-                .limit(size + 1)
-                .fetch();
-    }
-
-    public long countMentorsByYearSemester(int year, int semester, String search) {
-        Long count = queryFactory
-                .select(staffAccount.count())
-                .from(staffAccount)
-                .where(
-                        staffAccount.role.eq(StaffRole.MENTOR),
-                        mentorsStudyInSemester(year, semester),
-                        searchKeyword(search)
-                )
-                .fetchOne();
-        return count != null ? count : 0L;
-    }
-
     public List<StaffAccount> searchAdminsWithOffset(int page, int size, String search) {
         return queryFactory
                 .selectFrom(staffAccount)
                 .join(staffAccount.user).fetchJoin()
                 .where(
                         staffAccount.role.eq(StaffRole.ADMIN),
-                        searchKeyword(search)
-                )
-                .orderBy(staffAccount.user.id.desc())
-                .offset((long) page * size)
-                .limit(size)
-                .fetch();
-    }
-
-    public List<StaffAccount> searchMentorsWithOffset(int page, int size, String search) {
-        return queryFactory
-                .selectFrom(staffAccount)
-                .join(staffAccount.user).fetchJoin()
-                .where(
-                        staffAccount.role.eq(StaffRole.MENTOR),
-                        searchKeyword(search)
-                )
-                .orderBy(staffAccount.user.id.desc())
-                .offset((long) page * size)
-                .limit(size)
-                .fetch();
-    }
-
-    public List<StaffAccount> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search) {
-        return queryFactory
-                .selectFrom(staffAccount)
-                .join(staffAccount.user).fetchJoin()
-                .where(
-                        staffAccount.role.eq(StaffRole.MENTOR),
-                        mentorsStudyInSemester(year, semester),
                         searchKeyword(search)
                 )
                 .orderBy(staffAccount.user.id.desc())
@@ -170,15 +83,16 @@ public class StaffAccountQueryRepository {
 
         List<StaffAccount> staffAccounts = queryFactory
                 .selectFrom(staffAccount)
-                .where(staffAccount.user.id.in(userIds))
+                .where(
+                        staffAccount.user.id.in(userIds),
+                        staffAccount.role.eq(StaffRole.ADMIN)
+                )
                 .fetch();
 
         return staffAccounts.stream()
                 .collect(Collectors.toMap(
                         StaffAccount::getUserId,
-                        StaffAccount::getRole,
-                        // 역할이 둘(MENTOR, ADMIN)이면 ADMIN을 대표 역할로
-                        (a, b) -> a == StaffRole.ADMIN || b == StaffRole.ADMIN ? StaffRole.ADMIN : a
+                        StaffAccount::getRole
                 ));
     }
 
@@ -189,23 +103,6 @@ public class StaffAccountQueryRepository {
             return null;
         }
         return staffAccount.user.id.lt(cursor.longValue());
-    }
-
-    private BooleanExpression mentorsStudyInSemester(int year, int semester) {
-        return JPAExpressions
-                .selectOne()
-                .from(study)
-                .where(
-                        study.actYear.eq(year),
-                        study.actSemester.eq(semester),
-                        study.primaryMentor.id.eq(staffAccount.user.id)
-                                .or(study.secondaryMentor.id.eq(staffAccount.user.id))
-                )
-                .exists();
-    }
-
-    private BooleanExpression cursorLt(Long cursor) {
-        return cursor != null ? staffAccount.user.id.lt(cursor) : null;
     }
 
     private BooleanExpression searchKeyword(String search) {

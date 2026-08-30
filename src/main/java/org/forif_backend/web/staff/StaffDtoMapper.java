@@ -1,15 +1,12 @@
 package org.forif_backend.web.staff;
 
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
-import org.forif_backend.application.staff.dto.CreateMentorCommand;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.domain.staff.StaffAccount;
-import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.web.staff.dto.AdminResponse;
 import org.forif_backend.web.staff.dto.CreateAdminRequest;
-import org.forif_backend.web.staff.dto.CreateMentorRequest;
 import org.forif_backend.web.staff.dto.StaffInfoResponse;
 import org.forif_backend.web.staff.dto.StaffSignInRequest;
 import org.forif_backend.web.staff.dto.StaffSignInResponse;
@@ -23,21 +20,9 @@ public class StaffDtoMapper {
      * Web DTO → Application Command
      */
     public static StaffSignInCommand toCommand(StaffSignInRequest request) {
-        StaffRole role = request.role() != null && !request.role().isBlank()
-                ? StaffRole.fromValue(request.role())
-                : null;
         return new StaffSignInCommand(
             request.userId(),
-            request.password(),
-            role
-        );
-    }
-
-    public static CreateMentorCommand toCommand(CreateMentorRequest request) {
-        return new CreateMentorCommand(
-            request.userId(),
-            request.password(),
-            request.affiliation()
+            request.password()
         );
     }
 
