@@ -11,6 +11,7 @@ public record ProductResponse(
         String name,
         String oneLiner,
         String status,
+        String operationStatus,
         String sourceType,
         String sourceLabel,
         List<String> tags,
@@ -23,6 +24,7 @@ public record ProductResponse(
                 .name(info.name())
                 .oneLiner(info.oneLiner())
                 .status(info.status())
+                .operationStatus(info.operationStatus())
                 .sourceType(info.sourceType())
                 .sourceLabel(info.sourceLabel())
                 .tags(info.tags())

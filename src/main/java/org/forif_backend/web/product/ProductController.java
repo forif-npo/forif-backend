@@ -28,10 +28,10 @@ public class ProductController {
 
     private final ProductService productService;
 
-    @Operation(summary = "서비스 목록 조회", description = "게시된(승인된) 서비스 목록을 조회합니다. 인증 없이 접근 가능합니다.")
+    @Operation(summary = "서비스 목록 조회", description = "승인 및 운영 중인 서비스 목록을 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<ProductResponse>>> getProducts() {
-        List<ProductInfo> products = productService.getPublishedProducts();
+        List<ProductInfo> products = productService.getLiveProducts();
         return ResponseEntity.ok(ApiResponse.success(ProductResponse.fromList(products)));
     }
 
@@ -89,12 +89,12 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @Operation(summary = "서비스 상세 조회", description = "게시된 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
+    @Operation(summary = "서비스 상세 조회", description = "승인 및 운영 중인 서비스의 상세 정보를 조회합니다. 인증 없이 접근 가능합니다.")
     @GetMapping("/{slug}")
     public ResponseEntity<ApiResponse<ProductDetailResponse>> getProduct(
             @Parameter(description = "서비스 슬러그(서브도메인)") @PathVariable String slug
     ) {
-        ProductInfo product = productService.getPublishedProduct(slug);
+        ProductInfo product = productService.getLiveProduct(slug);
         return ResponseEntity.ok(ApiResponse.success(ProductDetailResponse.from(product)));
     }
 }

@@ -10,6 +10,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.product.Product;
 import org.forif_backend.domain.product.ProductMember;
+import org.forif_backend.domain.product.ProductOperationStatus;
 import org.forif_backend.domain.product.ProductRepository;
 import org.forif_backend.domain.product.ProductStatus;
 import org.forif_backend.domain.user.User;
@@ -48,17 +49,18 @@ public class ProductService {
     private final UserRepository userRepository;
     private final FilePort filePort;
 
-    /** 게시된 서비스 목록 (공개) */
-    public List<ProductInfo> getPublishedProducts() {
-        return productRepository.findAllPublished().stream()
+    /** 승인 및 운영 중인 서비스 목록 (공개) */
+    public List<ProductInfo> getLiveProducts() {
+        return productRepository.findAllLive().stream()
                 .map(this::toInfo)
                 .toList();
     }
 
-    /** 게시된 서비스 상세 (공개) */
-    public ProductInfo getPublishedProduct(String slug) {
+    /** 승인 및 운영 중인 서비스 상세 (공개) */
+    public ProductInfo getLiveProduct(String slug) {
         Product product = productRepository.findBySlug(slug)
-                .filter(p -> p.getStatus().isPublished())
+                .filter(p -> p.getStatus().isAccepted()
+                        && p.getOperationStatus() == ProductOperationStatus.LIVE)
                 .orElseThrow(() -> new ForifException(ErrorCode.PRODUCT_NOT_FOUND));
         return toInfo(product);
     }
@@ -184,8 +186,8 @@ public class ProductService {
     }
 
     @Transactional
-    public void changeProductStatus(Integer productId, ProductStatus status) {
-        getProductById(productId).changeStatus(status);
+    public void changeProductOperationStatus(Integer productId, ProductOperationStatus status) {
+        getProductById(productId).changeOperationStatus(status);
     }
 
     /** 서비스 정보 수정 (운영진) — null 필드는 변경하지 않는다 */

@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * 부원이 만든 서비스.
- * 등록 신청(PENDING/REJECTED)과 승인 후 게시(LIVE/DEV/PAUSED/RETIRED)를 하나의 엔티티로 관리한다.
+ * 등록 신청 상태와 승인 후 운영 상태를 분리해 관리한다.
  */
 @Entity
 @Getter
@@ -43,6 +43,11 @@ public class Product extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ProductStatus status;
+
+    /** 승인된 서비스의 운영 상태. 승인 전에는 null이다. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operation_status", length = 20)
+    private ProductOperationStatus operationStatus;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "source_type", nullable = false, length = 20)
@@ -110,7 +115,8 @@ public class Product extends BaseTimeEntity {
         if (status != ProductStatus.PENDING) {
             throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
         }
-        this.status = ProductStatus.LIVE;
+        this.status = ProductStatus.ACCEPTED;
+        this.operationStatus = ProductOperationStatus.LIVE;
         this.rejectReason = null;
     }
 
@@ -119,14 +125,15 @@ public class Product extends BaseTimeEntity {
             throw new ForifException(ErrorCode.PRODUCT_NOT_PENDING);
         }
         this.status = ProductStatus.REJECTED;
+        this.operationStatus = null;
         this.rejectReason = reason;
     }
 
-    public void changeStatus(ProductStatus newStatus) {
-        if (!this.status.isPublished() || !newStatus.isPublished()) {
+    public void changeOperationStatus(ProductOperationStatus newStatus) {
+        if (!this.status.isAccepted()) {
             throw new ForifException(ErrorCode.PRODUCT_STATUS_NOT_CHANGEABLE);
         }
-        this.status = newStatus;
+        this.operationStatus = newStatus;
     }
 
     public void updateSourceLabel(String sourceLabel) {

@@ -34,13 +34,11 @@ public interface ProductJpaRepository extends JpaRepository<Product, Integer> {
             SELECT DISTINCT p FROM Product p
             JOIN FETCH p.applicant
             LEFT JOIN FETCH p.members
-            WHERE p.status IN (org.forif_backend.domain.product.ProductStatus.LIVE,
-                               org.forif_backend.domain.product.ProductStatus.DEV,
-                               org.forif_backend.domain.product.ProductStatus.PAUSED,
-                               org.forif_backend.domain.product.ProductStatus.RETIRED)
+            WHERE p.status = org.forif_backend.domain.product.ProductStatus.ACCEPTED
+              AND p.operationStatus = org.forif_backend.domain.product.ProductOperationStatus.LIVE
             ORDER BY p.actYear DESC, p.id DESC
             """)
-    List<Product> findAllPublished();
+    List<Product> findAllLive();
 
     @Query("""
             SELECT DISTINCT p FROM Product p

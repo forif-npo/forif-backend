@@ -22,8 +22,8 @@ public interface ProductRepository {
     /** 신청자의 특정 상태 서비스 수 (검토 대기 제한 검사용) */
     long countByApplicantIdAndStatus(Long userId, ProductStatus status);
 
-    /** 게시된(승인 이후) 서비스 목록 — 최신 연도순 */
-    List<Product> findAllPublished();
+    /** 승인 및 운영 중인 공개 서비스 목록 — 최신 연도순 */
+    List<Product> findAllLive();
 
     /** 신청자 기준 전체 신청/게시 목록 — 최신 신청순 */
     List<Product> findAllByApplicantId(Long userId);

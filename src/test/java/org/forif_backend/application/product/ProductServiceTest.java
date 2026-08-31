@@ -6,7 +6,9 @@ import org.forif_backend.application.product.dto.CreateProductApplicationCommand
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.product.Product;
+import org.forif_backend.domain.product.ProductOperationStatus;
 import org.forif_backend.domain.product.ProductRepository;
+import org.forif_backend.domain.product.ProductStatus;
 import org.forif_backend.domain.product.ProductSourceType;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -156,6 +158,42 @@ class ProductServiceTest {
                 .isEqualTo(ErrorCode.PRODUCT_NOT_PENDING);
 
         verify(productRepository, never()).delete(any());
+    }
+
+    @Test
+    void approvesAPendingApplicationAsAcceptedAndLive() {
+        productService.approveProduct(1);
+
+        assertThat(pendingProduct.getStatus()).isEqualTo(ProductStatus.ACCEPTED);
+        assertThat(pendingProduct.getOperationStatus())
+                .isEqualTo(ProductOperationStatus.LIVE);
+    }
+
+    @Test
+    void changesOperationStatusOnlyAfterAcceptance() {
+        assertThatThrownBy(() -> productService.changeProductOperationStatus(1, ProductOperationStatus.PAUSED))
+                .isInstanceOf(ForifException.class)
+                .extracting(error -> ((ForifException) error).getErrorCode())
+                .isEqualTo(ErrorCode.PRODUCT_STATUS_NOT_CHANGEABLE);
+
+        productService.approveProduct(1);
+        productService.changeProductOperationStatus(1, ProductOperationStatus.PAUSED);
+
+        assertThat(pendingProduct.getStatus()).isEqualTo(ProductStatus.ACCEPTED);
+        assertThat(pendingProduct.getOperationStatus())
+                .isEqualTo(ProductOperationStatus.PAUSED);
+    }
+
+    @Test
+    void doesNotExposePausedProductsThroughThePublicDetailEndpoint() {
+        productService.approveProduct(1);
+        productService.changeProductOperationStatus(1, ProductOperationStatus.PAUSED);
+        when(productRepository.findBySlug("before-service")).thenReturn(Optional.of(pendingProduct));
+
+        assertThatThrownBy(() -> productService.getLiveProduct("before-service"))
+                .isInstanceOf(ForifException.class)
+                .extracting(error -> ((ForifException) error).getErrorCode())
+                .isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
     }
 
     private CreateProductApplicationCommand updateCommand() {
