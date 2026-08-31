@@ -16,6 +16,7 @@ public record ProductInfo(
         String oneLiner,
         String description,
         String status,
+        String operationStatus,
         String sourceType,
         String sourceLabel,
         String thumbnailUrl,
@@ -52,6 +53,9 @@ public record ProductInfo(
                 .oneLiner(product.getOneLiner())
                 .description(product.getDescription())
                 .status(product.getStatus().name())
+                .operationStatus(product.getOperationStatus() != null
+                        ? product.getOperationStatus().name()
+                        : null)
                 .sourceType(product.getSourceType().name())
                 .sourceLabel(product.getSourceLabel())
                 .tags(splitCsv(product.getTags()))

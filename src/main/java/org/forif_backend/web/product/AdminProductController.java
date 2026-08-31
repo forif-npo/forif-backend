@@ -15,7 +15,7 @@ import org.forif_backend.application.product.ProductService;
 import org.forif_backend.application.product.dto.UpdateProductCommand;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.application.product.dto.ProductInfo;
-import org.forif_backend.domain.product.ProductStatus;
+import org.forif_backend.domain.product.ProductOperationStatus;
 import org.forif_backend.web.product.dto.AdminProductResponse;
 import org.hibernate.validator.constraints.Length;
 import org.springframework.http.MediaType;
@@ -42,7 +42,7 @@ public class AdminProductController {
                 ApiResponse.success(AdminProductResponse.fromList(productService.getAllProducts())));
     }
 
-    @Operation(summary = "등록 신청 승인", description = "검토 대기 신청을 승인해 서비스 중 상태로 게시합니다.")
+    @Operation(summary = "등록 신청 승인", description = "검토 대기 신청을 승인하고 운영 상태를 LIVE로 설정합니다.")
     @PatchMapping("/{productId}/approve")
     public ResponseEntity<ApiResponse<Void>> approveProduct(
             @Parameter(description = "서비스 ID") @PathVariable Integer productId
@@ -61,13 +61,13 @@ public class AdminProductController {
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
-    @Operation(summary = "게시 상태 변경", description = "게시된 서비스의 상태(LIVE/DEV/PAUSED/RETIRED)를 변경합니다.")
-    @PatchMapping("/{productId}/status")
-    public ResponseEntity<ApiResponse<Void>> changeProductStatus(
+    @Operation(summary = "운영 상태 변경", description = "승인된 서비스의 운영 상태(LIVE/PAUSED)를 변경합니다.")
+    @PatchMapping("/{productId}/operation-status")
+    public ResponseEntity<ApiResponse<Void>> changeProductOperationStatus(
             @Parameter(description = "서비스 ID") @PathVariable Integer productId,
-            @Valid @RequestBody UpdateProductStatusRequest request
+            @Valid @RequestBody UpdateProductOperationStatusRequest request
     ) {
-        productService.changeProductStatus(productId, request.getStatus());
+        productService.changeProductOperationStatus(productId, request.getOperationStatus());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 
@@ -158,8 +158,8 @@ public class AdminProductController {
     @Getter
     @Setter
     @NoArgsConstructor
-    public static class UpdateProductStatusRequest {
+    public static class UpdateProductOperationStatusRequest {
         @NotNull
-        private ProductStatus status;
+        private ProductOperationStatus operationStatus;
     }
 }

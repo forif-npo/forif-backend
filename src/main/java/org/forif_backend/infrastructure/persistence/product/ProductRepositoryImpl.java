@@ -51,8 +51,8 @@ public class ProductRepositoryImpl implements ProductRepository {
     }
 
     @Override
-    public List<Product> findAllPublished() {
-        return productJpaRepository.findAllPublished();
+    public List<Product> findAllLive() {
+        return productJpaRepository.findAllLive();
     }
 
     @Override

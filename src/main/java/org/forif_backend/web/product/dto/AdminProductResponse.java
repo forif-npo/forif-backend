@@ -13,6 +13,7 @@ public record AdminProductResponse(
         String oneLiner,
         String description,
         String status,
+        String operationStatus,
         String sourceType,
         String sourceLabel,
         String thumbnailUrl,
@@ -34,6 +35,7 @@ public record AdminProductResponse(
                 .oneLiner(info.oneLiner())
                 .description(info.description())
                 .status(info.status())
+                .operationStatus(info.operationStatus())
                 .sourceType(info.sourceType())
                 .sourceLabel(info.sourceLabel())
                 .thumbnailUrl(info.thumbnailUrl())
