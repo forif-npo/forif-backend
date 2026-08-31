@@ -22,6 +22,7 @@ public class AdminStudyDto {
     private final List<StudyTagDto> tags;
     private final String oneLiner;
     private final long menteeCount;
+    private final boolean hasApplications;
     private final RecruitStatus recruitStatus;
     private final Integer weekDay;
     private final StudyDifficulty difficulty;
@@ -30,7 +31,7 @@ public class AdminStudyDto {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public static AdminStudyDto of(Study study, long menteeCount) {
+    public static AdminStudyDto of(Study study, long menteeCount, boolean hasApplications) {
         return AdminStudyDto.builder()
                 .id(study.getId())
                 .studyName(study.getStudyName())
@@ -39,6 +40,7 @@ public class AdminStudyDto {
                 .tags(study.getTags().stream().map(StudyTagDto::from).toList())
                 .oneLiner(study.getOneLiner())
                 .menteeCount(menteeCount)
+                .hasApplications(hasApplications)
                 .recruitStatus(study.getRecruitStatus())
                 .weekDay(study.getWeekDay())
                 .difficulty(study.getDifficulty())

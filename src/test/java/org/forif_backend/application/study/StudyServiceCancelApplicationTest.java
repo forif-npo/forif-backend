@@ -146,4 +146,20 @@ class StudyServiceCancelApplicationTest {
         inOrder.verify(mentorConfirmationRepository).deleteByStudyId(STUDY_ID);
         inOrder.verify(studyRepository).deleteStudyById(STUDY_ID);
     }
+
+    @Test
+    void 신청_내역이_있는_스터디는_관리자가_삭제할_수_없다() {
+        when(userApplyRepository.existsByStudyId(STUDY_ID)).thenReturn(true);
+
+        assertThatThrownBy(() -> studyService.deleteStudy(STUDY_ID))
+                .isInstanceOf(ForifException.class)
+                .extracting("errorCode").isEqualTo(ErrorCode.STUDY_DELETE_HAS_APPLICATIONS);
+
+        verify(studyRepository, never()).deleteStudyPlansByStudyId(STUDY_ID);
+        verify(studyRepository, never()).deleteStudyReferencesByStudyId(STUDY_ID);
+        verify(studyRepository, never()).deleteStudyUsersByStudyId(STUDY_ID);
+        verify(studyRepository, never()).deleteMentorStudiesByStudyId(STUDY_ID);
+        verify(mentorConfirmationRepository, never()).deleteByStudyId(STUDY_ID);
+        verify(studyRepository, never()).deleteStudyById(STUDY_ID);
+    }
 }
