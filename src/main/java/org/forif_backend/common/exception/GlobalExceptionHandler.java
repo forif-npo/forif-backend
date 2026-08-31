@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
@@ -39,6 +40,17 @@ public class GlobalExceptionHandler {
             ObjectOptimisticLockingFailureException e) {
         log.warn("동시 수정 충돌: {}", e.getMessage());
         ErrorCode errorCode = ErrorCode.STUDY_APPLICATION_UPDATE_CONFLICT;
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
+    }
+
+    /**
+     * FK·UNIQUE 등 DB 제약 위반은 상태 경합으로도 발생할 수 있으므로 500 대신 409로 응답한다.
+     * DB 제약명과 SQL은 클라이언트에 노출하지 않는다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        log.warn("데이터 무결성 제약 위반: {}", e.getMostSpecificCause().getMessage());
+        ErrorCode errorCode = ErrorCode.DATA_INTEGRITY_VIOLATION;
         return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
     }
 

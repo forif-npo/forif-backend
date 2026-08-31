@@ -18,6 +18,7 @@ public enum ErrorCode {
     PRIMARY_STUDY_REQUIRED(HttpStatus.BAD_REQUEST, "FOR007-400", "1순위 스터디를 무조건 선택해야 합니다."),
     USER_NOT_APPLIED_TO_STUDY(HttpStatus.BAD_REQUEST, "FOR008-400", "해당 스터디에 지원하지 않은 유저입니다."),
     STUDY_APPLICATION_PERIOD_ENDED(HttpStatus.BAD_REQUEST, "FOR009-400", "스터디 지원 기간이 아닙니다."),
+    STUDY_DELETE_HAS_APPLICATIONS(HttpStatus.BAD_REQUEST, "FOR144-400", "신청 내역이 있는 스터디는 삭제할 수 없습니다."),
     ALREADY_APPLIED_PRIMARY(HttpStatus.BAD_REQUEST, "FOR010-400", "이미 1순위 스터디에 지원했습니다."),
     ALREADY_APPLIED_SECONDARY(HttpStatus.BAD_REQUEST, "FOR011-400", "이미 2순위 스터디에 지원했습니다."),
     DUPLICATE_STUDY_PRIORITY(HttpStatus.BAD_REQUEST, "FOR141-400", "1순위와 2순위에 동일한 스터디를 지원할 수 없습니다."),
@@ -110,6 +111,7 @@ public enum ErrorCode {
     HACKATHON_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR074-409", "이미 등록된 해커톤입니다."),
     AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 자율스터디가 이미 개설되어 있습니다."),
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
+    DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
 
     // Product (서비스 쇼케이스)
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 서비스를 찾을 수 없습니다."),

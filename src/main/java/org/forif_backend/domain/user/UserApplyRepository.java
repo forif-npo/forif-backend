@@ -2,6 +2,7 @@ package org.forif_backend.domain.user;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.forif_backend.domain.user.User;
 
@@ -29,4 +30,7 @@ public interface UserApplyRepository {
 
     /** 해당 스터디를 1·2순위로 지원한 신청서가 하나라도 있는지 */
     boolean existsByStudyId(Integer studyId);
+
+    /** 목록에 표시된 스터디 중 1·2순위 신청 내역이 하나라도 있는 스터디 ID 집합 */
+    Set<Integer> findStudyIdsWithApplications(List<Integer> studyIds);
 }

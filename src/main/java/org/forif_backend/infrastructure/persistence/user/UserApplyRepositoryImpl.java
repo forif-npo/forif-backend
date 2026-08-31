@@ -7,8 +7,10 @@ import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.User;
 import org.springframework.stereotype.Repository;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -55,5 +57,17 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     @Override
     public boolean existsByStudyId(Integer studyId) {
         return userApplyJpaRepository.existsByStudyId(studyId);
+    }
+
+    @Override
+    public Set<Integer> findStudyIdsWithApplications(List<Integer> studyIds) {
+        if (studyIds == null || studyIds.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<Integer> result = new HashSet<>(
+                userApplyJpaRepository.findPrimaryStudyIdsWithApplications(studyIds));
+        result.addAll(userApplyJpaRepository.findSecondaryStudyIdsWithApplications(studyIds));
+        return result;
     }
 }
