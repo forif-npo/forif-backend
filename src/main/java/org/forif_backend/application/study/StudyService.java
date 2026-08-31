@@ -227,8 +227,13 @@ public class StudyService {
 
         List<Integer> studyIds = studies.content().stream().map(Study::getId).toList();
         Map<Integer, Long> menteeCountMap = studyRepository.countMenteesByStudyIds(studyIds);
+        Set<Integer> studyIdsWithApplications = userApplyRepository.findStudyIdsWithApplications(studyIds);
         return studies.withContent(studies.content().stream()
-                .map(s -> AdminStudyDto.of(s, menteeCountMap.getOrDefault(s.getId(), 0L)))
+                .map(s -> AdminStudyDto.of(
+                        s,
+                        menteeCountMap.getOrDefault(s.getId(), 0L),
+                        studyIdsWithApplications.contains(s.getId())
+                ))
                 .toList());
     }
 
@@ -339,6 +344,10 @@ public class StudyService {
     public void deleteStudy(Integer studyId) {
         studyRepository.findStudyById(studyId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STUDY_NOT_FOUND));
+
+        if (userApplyRepository.existsByStudyId(studyId)) {
+            throw new ForifException(ErrorCode.STUDY_DELETE_HAS_APPLICATIONS);
+        }
 
         studyRepository.deleteStudyPlansByStudyId(studyId);
         studyRepository.deleteStudyReferencesByStudyId(studyId);

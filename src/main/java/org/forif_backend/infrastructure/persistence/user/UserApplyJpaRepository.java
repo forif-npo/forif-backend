@@ -32,6 +32,18 @@ public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
     boolean existsByStudyId(@Param("studyId") Integer studyId);
 
     @Query("""
+            SELECT DISTINCT ua.primaryStudy FROM UserApply ua
+            WHERE ua.primaryStudy IN :studyIds
+            """)
+    List<Integer> findPrimaryStudyIdsWithApplications(@Param("studyIds") List<Integer> studyIds);
+
+    @Query("""
+            SELECT DISTINCT ua.secondaryStudy FROM UserApply ua
+            WHERE ua.secondaryStudy IN :studyIds
+            """)
+    List<Integer> findSecondaryStudyIdsWithApplications(@Param("studyIds") List<Integer> studyIds);
+
+    @Query("""
             SELECT u FROM User u
             WHERE EXISTS (
                 SELECT 1 FROM UserApply ua
