@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -26,9 +28,24 @@ public class StudyPlan extends BaseTimeEntity {
     @Column(nullable = false)
     private int weekNum;
 
+    @Column
+    private LocalDateTime date;
+
     @Column(length = 300)
     private String section;
 
     @Column(length = 500)
     private String content;
+
+    public StudyPlan(Study study, int weekNum, LocalDateTime date, String topic, String content) {
+        this.study = study;
+        this.weekNum = weekNum;
+        this.date = date;
+        this.section = topic;
+        this.content = content;
+    }
+
+    public static StudyPlan create(int weekNum, LocalDateTime date, String topic, String content, Study study) {
+        return new StudyPlan(study, weekNum, date, topic, content);
+    }
 }

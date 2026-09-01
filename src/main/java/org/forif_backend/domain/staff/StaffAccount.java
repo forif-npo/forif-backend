@@ -10,7 +10,10 @@ import org.forif_backend.domain.user.User;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "tb_staff_account")
+@Table(name = "tb_staff_account", uniqueConstraints = {
+        // 기존 MENTOR 행과 운영진 ADMIN 행을 구분하기 위한 복합 키
+        @UniqueConstraint(columnNames = {"user_id", "role"})
+})
 public class StaffAccount extends BaseTimeEntity {
 
     @Id
@@ -18,12 +21,9 @@ public class StaffAccount extends BaseTimeEntity {
     @Column(name = "staff_account_id")
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
     private User user;
-
-    @Column(length = 50, nullable = false, unique = true)
-    private String loginId;
 
     @Column(length = 100, nullable = false)
     private String password;
@@ -31,6 +31,50 @@ public class StaffAccount extends BaseTimeEntity {
     @Column(length = 50, nullable = false)
     private String name;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 30, nullable = false)
-    private String role;
+    private StaffRole role;
+
+    @Column(length = 100, nullable = false)
+    private String affiliation; // 운영진 팀명 (예: 기획팀)
+
+    @Column(length = 300)
+    private String signatureObjectKey; // 수료증 합성용 서명 이미지 (파일 저장소 object key)
+
+    private StaffAccount(User user, String password, String name, StaffRole role, String affiliation) {
+        this.user = user;
+        this.password = password;
+        this.name = name;
+        this.role = role;
+        this.affiliation = affiliation;
+    }
+
+    public static StaffAccount createStaffAccount(User user, String password, String name, StaffRole role, String affiliation) {
+        return new StaffAccount(user, password, name, role, affiliation);
+    }
+
+    /**
+     * User ID 반환
+     * StaffAccountService에서 사용
+     */
+    public Long getUserId() {
+        return this.user.getId();
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePassword(String password) {
+        this.password = password;
+    }
+
+    public void updateAffiliation(String affiliation) {
+        this.affiliation = affiliation;
+    }
+
+    public void updateSignature(String signatureObjectKey) {
+        this.signatureObjectKey = signatureObjectKey;
+    }
+
 }

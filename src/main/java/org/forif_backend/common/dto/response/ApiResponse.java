@@ -1,6 +1,6 @@
 package org.forif_backend.common.dto.response;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import org.forif_backend.common.exception.ErrorCode;
 
 /**
  * 모든 API 응답을 위한 표준 형식 Record
@@ -10,7 +10,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
  * @param message 성공 또는 실패 메시지
  * @param <T> 데이터의 타입
  */
-@JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiResponse<T>(
         long timestamp,
         T data,
@@ -28,13 +27,12 @@ public record ApiResponse<T>(
         return new ApiResponse<>(System.currentTimeMillis(), null, null, message);
     }
 
-    // 실패 응답 (메시지만 포함)
-    public static <T> ApiResponse<T> error(String errorCode, String message) {
-        return new ApiResponse<>(System.currentTimeMillis(), null, errorCode, message);
+    public static <T> ApiResponse<T> error(ErrorCode errorCode) {
+        return new ApiResponse<>(System.currentTimeMillis(), null, errorCode.getCode(), errorCode.getMessage());
     }
 
-    // 실패 응답 (상세 데이터 포함, 예: 유효성 검사 실패 목록)
-    public static <T> ApiResponse<T> error(String errorCode, String message, T data) {
-        return new ApiResponse<>(System.currentTimeMillis(), data, errorCode, message);
+    // 실패 응답 (ErrorCode + 상세 데이터 포함, 예: 유효성 검사 실패 목록)
+    public static <T> ApiResponse<T> error(ErrorCode errorCode, T data) {
+        return new ApiResponse<>(System.currentTimeMillis(), data, errorCode.getCode(), errorCode.getMessage());
     }
 }

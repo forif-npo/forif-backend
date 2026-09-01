@@ -20,7 +20,7 @@ public enum AttendanceStatus {
         return switch (value) {
             case "present" -> PRESENT;
             case "absent" -> ABSENT;
-            default -> throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR, "해당 출석 상태가 존재하지 않습니다: " + value);
+            default -> throw new ForifException(ErrorCode.INVALID_STATUS_VALUE);
         };
 
     }

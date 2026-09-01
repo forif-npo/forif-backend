@@ -1,0 +1,49 @@
+package org.forif_backend.web.hackathon.dto;
+
+import org.forif_backend.domain.hackathon.HackathonSubmission;
+import org.forif_backend.domain.hackathon.CompetitionType;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record SubmissionResponse(
+        Long submissionId,
+        Long hackathonId,
+        Long teamId,
+        String teamName,
+        CompetitionType competitionType,
+        String projectName,
+        String summary,
+        String description,
+        String githubUrl,
+        String deployUrl,
+        String imageUrl,
+        String presentationFile,
+        List<String> techStacks,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
+    public static SubmissionResponse of(HackathonSubmission submission, List<String> techStacks) {
+        return of(submission, techStacks, submission.getPresentationFile());
+    }
+
+    public static SubmissionResponse of(HackathonSubmission submission, List<String> techStacks, String presentationFile) {
+        return new SubmissionResponse(
+                submission.getId(),
+                submission.getHackathon().getId(),
+                submission.getTeam().getId(),
+                submission.getTeam().getName(),
+                submission.getTeam().getCompetitionType(),
+                submission.getProjectName(),
+                submission.getSummary(),
+                submission.getDescription(),
+                submission.getGithubUrl(),
+                submission.getDeployUrl(),
+                submission.getImageUrl(),
+                presentationFile,
+                techStacks,
+                submission.getCreatedAt(),
+                submission.getUpdatedAt()
+        );
+    }
+}

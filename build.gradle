@@ -28,6 +28,30 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Solapi sdk
+    implementation 'com.solapi:sdk:1.0.3'
+
+    // Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+
+    // Netty
+    implementation 'io.netty:netty-all:4.1.100.Final'
+
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // DB 마이그레이션 (Flyway)
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
 
     // QueryDSL
     implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
@@ -37,10 +61,14 @@ dependencies {
 
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.h2database:h2'
     annotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    // 마이그레이션 검증용 실제 MySQL (Testcontainers)
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
     testImplementation 'org.springframework.security:spring-security-test'
-    runtimeOnly 'com.h2database:h2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
@@ -65,4 +93,41 @@ clean {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+/*
+ * 로컬 실행 편의: bootRun에 한해 .env를 환경변수로 주입한다.
+ * `set -a; source .env; set +a` 를 매번 치지 않아도 되게 하는 것이 목적이다.
+ *
+ * bootRun에만 적용하므로 빌드 산출물(java -jar)과 CI 동작은 그대로다.
+ * 서버는 컨테이너가 넘겨주는 환경변수를 쓰며 .env 자체가 없다.
+ */
+tasks.named('bootRun') {
+    def envFile = rootProject.file('.env')
+    if (!envFile.exists()) {
+        return
+    }
+
+    envFile.eachLine { line ->
+        def trimmed = line.trim()
+        if (trimmed.isEmpty() || trimmed.startsWith('#') || !trimmed.contains('=')) {
+            return
+        }
+
+        def separator = trimmed.indexOf('=')
+        def key = trimmed.substring(0, separator).trim()
+        def value = trimmed.substring(separator + 1).trim()
+
+        // KEY="value" / KEY='value' 형태의 감싸는 따옴표만 벗긴다
+        if (value.length() >= 2
+                && ((value.startsWith('"') && value.endsWith('"'))
+                || (value.startsWith("'") && value.endsWith("'")))) {
+            value = value.substring(1, value.length() - 1)
+        }
+
+        // 셸에서 export한 값이 있으면 그쪽을 우선한다 (일회성 오버라이드 허용)
+        if (System.getenv(key) == null) {
+            environment key, value
+        }
+    }
 }

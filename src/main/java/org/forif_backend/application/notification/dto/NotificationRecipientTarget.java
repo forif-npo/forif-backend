@@ -1,0 +1,10 @@
+package org.forif_backend.application.notification.dto;
+
+public enum NotificationRecipientTarget {
+    CURRENT_SEMESTER_MEMBERS,
+    CURRENT_SEMESTER_APPLICANTS,
+    PREVIOUS_SEMESTER_MEMBERS,
+    ALL_MEMBERS,
+    ACCEPTED_DUES_UNPAID,
+    ACCEPTED_GOOGLE_FORM_NOT_SUBMITTED
+}

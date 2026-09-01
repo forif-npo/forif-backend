@@ -1,4 +1,126 @@
 package org.forif_backend.common.auth;
 
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.io.Decoders;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+
+/**
+ * JWT 토큰 생성 및 검증을 담당하는 유틸리티 클래스
+ * Access Token과 Refresh Token의 생성, 검증, 정보 추출 기능을 제공합니다.
+ */
+@Slf4j
+@Component
 public class JwtProvider {
+    private static final long ACCESS_TOKEN_EXPIRATION_TIME = 3600_000; // 1 hour
+    private static final long REFRESH_TOKEN_EXPIRATION_TIME = 30 * 24 * 60 * 60 * 1000L; // 30 days
+    private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String ACCESS_TOKEN_TYPE = "ACCESS";
+    private static final String REFRESH_TOKEN_TYPE = "REFRESH";
+    private final SecretKey key;
+
+    public JwtProvider(@Value("${jwt.secret}") String key) {
+        this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(key));
+    }
+
+    // 액세스 토큰 발급
+    public String generateAccessToken(String userId, String role) {
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("role", role)
+                .claim(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TIME))
+                .signWith(key)
+                .compact();
+    }
+
+    // 리프레시 토큰 발급
+    public String generateRefreshToken(String userId, String role) {
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("role", role)
+                .claim(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_TIME))
+                .signWith(key)
+                .compact();
+    }
+
+    // 토큰 유효성 검증 (서명 및 만료 여부 체크 포함)
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return true;
+        } catch (Exception e) {
+            log.error("토큰 유효성 검증 실패: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    // 토큰에서 사용자 ID 가져오기
+    public String getUserIdFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    // 토큰에서 role 가져오기
+    public String getRoleFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+    }
+
+    public boolean isAccessToken(String token) {
+        return ACCESS_TOKEN_TYPE.equals(getTokenTypeFromToken(token));
+    }
+
+    public boolean isRefreshToken(String token) {
+        return REFRESH_TOKEN_TYPE.equals(getTokenTypeFromToken(token));
+    }
+
+    private String getTokenTypeFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get(TOKEN_TYPE_CLAIM, String.class);
+    }
+
+    // 토큰 만료 여부 확인 (ExpiredJwtException만 true, 그 외 예외는 false)
+    public boolean isTokenExpired(String token) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
+            return false;
+        } catch (ExpiredJwtException e) {
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    // 토큰 만료 시간 가져오기
+    public Date getExpirationDate(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getExpiration();
+    }
 }

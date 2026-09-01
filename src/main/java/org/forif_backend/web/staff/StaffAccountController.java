@@ -1,4 +1,312 @@
 package org.forif_backend.web.staff;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.forif_backend.application.staff.StaffAccountService;
+import org.forif_backend.application.user.UserService;
+import org.forif_backend.application.staff.dto.CreateAdminCommand;
+import org.forif_backend.application.staff.dto.MentorSummary;
+import org.forif_backend.application.staff.dto.StaffSignInCommand;
+import org.forif_backend.application.staff.dto.StaffSignInResult;
+import org.forif_backend.common.dto.response.ApiResponse;
+import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.domain.staff.StaffAccount;
+import org.forif_backend.domain.staff.StaffRole;
+import org.forif_backend.web.staff.dto.*;
+import org.forif_backend.web.user.dto.MemberResponse;
+import org.forif_backend.common.util.CookieUtils;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.Set;
+
+@Tag(name = "스태프", description = "운영진 계정 관리 API")
+@Slf4j
+@RestController
+@RequiredArgsConstructor
 public class StaffAccountController {
+
+    private final StaffAccountService staffAccountService;
+    private final UserService userService;
+
+    @Operation(summary = "운영진 로그인", description = "운영진 계정으로 로그인합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
+    @PostMapping("/api/v1/staff/signin")
+    public ResponseEntity<ApiResponse<StaffSignInResponse>> staffSignIn(
+            @RequestBody StaffSignInRequest request,
+            HttpServletResponse httpResponse
+    ) {
+        StaffSignInCommand command = StaffDtoMapper.toCommand(request);
+        StaffSignInResult result = staffAccountService.staffSignIn(command);
+
+        CookieUtils.addRefreshTokenCookie(httpResponse, result.refreshToken());
+
+        StaffSignInResponse response = StaffDtoMapper.toResponse(result);
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 운영진 정보 조회", description = "현재 로그인한 운영진의 이름, 역할, 소속 정보를 조회합니다.")
+    @GetMapping("/api/v1/staff/me")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<StaffInfoResponse>> getStaffInfo(
+            @AuthenticationPrincipal Long userId
+    ) {
+        StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
+        StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 운영진 비밀번호 변경", description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다. 변경 후 이 계정의 운영진 세션이 만료되어 다시 로그인해야 합니다.")
+    @PatchMapping("/api/v1/staff/me/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> changeAdminPassword(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody @Valid ChangeAdminPasswordRequest request
+    ) {
+        staffAccountService.changeAdminPassword(userId, request.currentPassword(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // ==================== 회장단 운영진 관리 API ====================
+
+    /**
+     * [회장단 전용] 운영진 목록 조회 (커서 페이지네이션)
+     */
+    @Operation(summary = "운영진 목록 조회 (회장단 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
+    @GetMapping("/api/v1/president/admins")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<AdminResponse>>> getAdmins(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "이전 페이지의 마지막 운영진 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 검색어") @RequestParam(required = false) String search
+    ) {
+        CursorPageResponse<StaffAccount> result = staffAccountService.getAdmins(userId, cursor, page, size, search);
+
+        List<AdminResponse> content = result.content().stream()
+                .map(StaffDtoMapper::toAdminResponse)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
+    }
+
+    /**
+     * [회장단 전용] 운영진 계정 생성
+     */
+    @Operation(summary = "운영진 계정 생성 (회장단 전용)", description = "새 운영진 계정을 생성합니다.")
+    @PostMapping("/api/v1/president/admins")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AdminResponse>> createAdmin(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody CreateAdminRequest request
+    ) {
+        CreateAdminCommand command = StaffDtoMapper.toCommand(request);
+        StaffAccount staffAccount = staffAccountService.createAdmin(userId, command);
+        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * [회장단 전용] 운영진 정보 수정
+     */
+    @Operation(summary = "운영진 정보 수정 (회장단 전용)", description = "운영진의 이름, 비밀번호, 소속을 수정합니다.")
+    @PatchMapping("/api/v1/president/admins/{targetUserId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<AdminResponse>> updateAdmin(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "수정할 운영진의 유저 ID") @PathVariable Long targetUserId,
+            @RequestBody UpdateAdminRequest request
+    ) {
+        StaffAccount staffAccount = staffAccountService.updateAdmin(
+                userId, targetUserId, request.name(), request.password(), request.affiliation()
+        );
+        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    /**
+     * [회장단 전용] 운영진 계정 삭제
+     */
+    @Operation(summary = "운영진 계정 삭제 (회장단 전용)", description = "운영진 계정을 삭제합니다.")
+    @DeleteMapping("/api/v1/president/admins/{targetUserId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteAdmin(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "삭제할 운영진의 유저 ID") @PathVariable Long targetUserId
+    ) {
+        staffAccountService.deleteAdmin(userId, targetUserId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [회장 전용] 회장/부회장 위임
+     */
+    @Operation(summary = "회장/부회장 위임 (회장 전용)", description = "회장 또는 부회장 권한을 다른 운영진에게 위임합니다.")
+    @PostMapping("/api/v1/president/delegate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> delegate(
+            @AuthenticationPrincipal Long userId,
+            @RequestBody DelegateRequest request
+    ) {
+        staffAccountService.delegate(userId, request.userId(), request.affiliation());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // ==================== 어드민 멘토 관리 API ====================
+
+    /**
+     * 멘토 전체 목록 조회 (운영진 전용, 커서 페이지네이션)
+     */
+    @Operation(summary = "멘토 전체 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
+    @GetMapping("/api/v1/admin/mentors")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentors(
+            @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
+    ) {
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
+                cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "name"))
+        );
+
+        List<MentorResponse> content = result.content().stream()
+                .map(MentorResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
+    }
+
+    /**
+     * 학기별 멘토 목록 조회 (운영진 전용, 커서/오프셋 페이지네이션)
+     */
+    @Operation(summary = "학기별 멘토 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
+    @GetMapping("/api/v1/admin/mentors/{year}/{semester}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MentorResponse>>> getMentorsByYearSemester(
+            @Parameter(description = "활동 연도") @PathVariable int year,
+            @Parameter(description = "활동 학기") @PathVariable int semester,
+            @Parameter(description = "이전 페이지의 마지막 멘토 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "멘토 이름 또는 스터디 이름 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
+    ) {
+        CursorPageResponse<MentorSummary> result = staffAccountService.getMentors(
+                year, semester, cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "name"))
+        );
+
+        List<MentorResponse> content = result.content().stream()
+                .map(MentorResponse::from)
+                .toList();
+
+        return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
+    }
+
+    // ==================== 어드민 부원 관리 API ====================
+
+    /**
+     * [운영진 전용] 전체 부원 목록 조회 (커서 기반 페이지네이션)
+     */
+    @Operation(summary = "전체 부원 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
+    @GetMapping("/api/v1/admin/users")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getAllMembers(
+            @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
+                cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
+        ))));
+    }
+
+    /**
+     * [운영진 전용] 학기별 부원 목록 조회 (커서/오프셋 페이지네이션)
+     */
+    @Operation(summary = "학기별 부원 목록 조회 (어드민 전용)", description = """
+            cursor 또는 page 중 하나를 사용하세요.
+            - cursor: 커서 기반 페이지네이션 (무한 스크롤). next_cursor 값을 다음 요청의 cursor로 전달.
+            - page: 오프셋 기반 페이지네이션 (0부터 시작). cursor와 함께 사용 불가.
+            둘 다 생략 시 cursor 모드로 첫 페이지를 반환합니다.
+            """)
+    @GetMapping("/api/v1/admin/users/{year}/{semester}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<CursorPageResponse<MemberResponse>>> getMembersByYearSemester(
+            @Parameter(description = "활동 연도") @PathVariable int year,
+            @Parameter(description = "활동 학기") @PathVariable int semester,
+            @Parameter(description = "이전 페이지의 마지막 부원 ID (cursor 모드)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드, cursor와 함께 사용 불가)") @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "정렬 조건. page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.") @RequestParam(value = "sort", required = false) List<String> sort
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(MemberResponse.fromPage(userService.getAllMembers(
+                year, semester, cursor, page, size, search,
+                SortCriteria.parse(sort, Set.of("userId", "department", "userName"))
+        ))));
+    }
+
+    @Operation(summary = "부원 정보 수정 (어드민 전용)",
+            description = "부원의 학과와 전화번호를 수정합니다. 학번과 이름은 수정할 수 없습니다.")
+    @PatchMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> updateMemberInfo(
+            @Parameter(description = "수정할 부원의 유저 ID") @PathVariable Long userId,
+            @Valid @RequestBody UpdateMemberInfoRequest request
+    ) {
+        userService.updateMemberInfo(userId, request.department(), request.phoneNum());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    /**
+     * [운영진 전용] 현재 활동 학기 부원 삭제
+     */
+    @Operation(summary = "현재 학기 부원 삭제 (어드민 전용)",
+            description = "부원 계정과 과거 학기 이력은 보존하고, 현재 활동 학기의 수강 관계만 하드 삭제합니다.")
+    @DeleteMapping("/api/v1/admin/users/{userId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> deleteCurrentSemesterMember(
+            @Parameter(description = "현재 활동 학기에서 삭제할 부원의 유저 ID") @PathVariable Long userId
+    ) {
+        userService.deleteCurrentSemesterMember(userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }
