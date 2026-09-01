@@ -1,0 +1,168 @@
+package org.forif_backend.domain.study;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.domain.user.User;
+
+public interface StudyRepository {
+    Optional<Study> findStudyById(Integer studyId);
+    boolean existsByActYearAndActSemesterAndAutonomousFlagTrue(int actYear, int actSemester);
+    Optional<Study> findAutonomousStudyByYearSemester(int actYear, int actSemester);
+    List<StudyTag> findAllStudyTagById(List<Long> tagIds);
+    List<StudyTag> findAllStudyTagByName(List<String> tagNames);
+    List<Study> getStudies(StudySearchCond cond, Integer cursor, int size);
+    List<Study> getStudiesWithOffset(StudySearchCond cond, int page, int size);
+    long countStudiesForUser(StudySearchCond cond);
+    List<Study> findStudiesByUserId(Long userId);
+
+    /**
+     * 여러 사용자의 현재 학기 스터디명을 배치 조회
+     */
+    Map<Long, String> findCurrentStudyNamesByUserIds(List<Long> userIds, int year, int semester);
+
+    /** 주·부멘토 관계를 기준으로 멘토별 스터디명을 배치 조회한다. */
+    Map<Long, String> findMentorStudyNamesByUserIds(List<Long> userIds, Integer year, Integer semester);
+
+    /** 주·부멘토 관계를 기준으로 멘토를 조회한다. */
+    List<User> searchMentors(Long cursor, int size, String search);
+    List<User> searchMentorsWithOffset(int page, int size, String search, List<SortCriteria> sorting);
+    long countMentors(String search);
+    List<User> searchMentorsByYearSemester(int year, int semester, Long cursor, int size, String search);
+    List<User> searchMentorsByYearSemesterWithOffset(int year, int semester, int page, int size, String search, List<SortCriteria> sorting);
+    long countMentorsByYearSemester(int year, int semester, String search);
+
+    /**
+     * 여러 사용자의 해당 학기 수강 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
+     * 여러 사용자의 해당 학기 멘토 스터디를 배치 조회
+     */
+    Map<Long, List<Study>> findCurrentMentorStudiesByUserIds(List<Long> userIds, int year, int semester);
+
+    /**
+     * 스터디 ID로 스터디 정보 조회 (태그 정보 포함)
+     * @param studyId 스터디 ID
+     * @return 스터디 정보 (태그 포함)
+     */
+    Optional<Study> findStudyByIdWithTags(Integer studyId);
+
+    /**
+     * 여러 스터디 ID로 스터디 정보 배치 조회 (태그 정보 포함)
+     */
+    Map<Integer, Study> findStudiesByIdsWithTags(List<Integer> studyIds);
+
+    /**
+     * 스터디 저장
+     */
+    void saveStudy(Study study);
+
+    /**
+     * 스터디 플랜 일괄 저장
+     */
+    void saveAllStudyPlan(List<StudyPlan> plans);
+
+    /**
+     * 스터디 참고자료 일괄 저장
+     */
+    void saveAllStudyReference(List<StudyReference> references);
+
+    /** 승인된 스터디의 모집 상태를 학기 단위로 일괄 변경한다. */
+    int updateRecruitStatusForApprovedStudies(int actYear, int actSemester, RecruitStatus recruitStatus);
+
+    /** 활동 학기가 아닌 실제 스터디의 모집을 모두 마감한다. */
+    int closeRecruitmentForNonActiveStudies(int activeYear, int activeSemester);
+
+    /** 현재 학기의 승인 스터디를 실제 개설 상태로 일괄 전환한다. */
+    int startApprovedStudies(int actYear, int actSemester);
+
+    /** 기존 데이터와 미전환 학기를 위해 과거 학기의 승인 스터디를 일괄 전환한다. */
+    int startPastApprovedStudies(int activeYear, int activeSemester);
+
+    /**
+     * 멘토 ID로 스터디 신청 목록 조회
+     */
+    List<Study> findAllStudiesByMentorId(Long mentorId);
+
+    /**
+     * 커서 기반 스터디 목록 조회 (Admin용)
+     */
+    List<Study> searchStudiesWithCursor(Integer cursor, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
+    List<Study> searchAdminStudiesWithOffset(int page, int size, Integer year, Integer semester, String search, List<StudyStatus> studyStatuses, List<SortCriteria> sorting);
+
+    /**
+     * 조건에 맞는 스터디 총 건수
+     */
+    long countStudies(Integer year, Integer semester, String search, List<StudyStatus> studyStatuses);
+
+    /**
+     * 스터디 ID 목록에 해당하는 멘티 수 조회
+     */
+    Map<Integer, Long> countMenteesByStudyIds(List<Integer> studyIds);
+
+    /**
+     * 스터디 ID로 스터디 플랜 목록 조회
+     */
+    List<StudyPlan> findStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 스터디 참고자료 목록 조회
+     */
+    List<StudyReference> findStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID로 멘토-스터디 매핑 목록 조회
+     */
+    List<MentorStudy> findMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 해당 학기에 멘토로 참여한 이력이 있는지 확인
+     */
+    boolean existsMentorStudyByMentorIdAndStudyYearSemester(Long mentorId, int year, int semester);
+
+    /** 해당 학기에 멘토로 등록된 유저 ID를 한 번에 추린다 */
+    java.util.Set<Long> findMentorUserIdsByUserIds(java.util.List<Long> userIds, int year, int semester);
+
+    /**
+     * 스터디 삭제
+     */
+    void deleteStudyById(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 커리큘럼 전체 삭제
+     */
+    void deleteStudyPlansByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 참고자료 전체 삭제
+     */
+    void deleteStudyReferencesByStudyId(Integer studyId);
+
+    /**
+     * 지정한 참고자료만 삭제한다.
+     */
+    void deleteStudyReferencesByIds(List<UUID> referenceIds);
+
+    /**
+     * 스터디 ID에 해당하는 수강생 전체 삭제
+     */
+    void deleteStudyUsersByStudyId(Integer studyId);
+
+    /**
+     * 스터디 ID에 해당하는 멘토-스터디 매핑 전체 삭제
+     */
+    void deleteMentorStudiesByStudyId(Integer studyId);
+
+    /**
+     * 멘토 아이디로 스터디와 태그들을 함께 조회한다.
+     *
+     * @param mentorId 멘토 아이디
+     * @return 스터디 리스트
+     */
+    List<Study> findStudiesByMentorId(Long mentorId);
+    List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester);
+}

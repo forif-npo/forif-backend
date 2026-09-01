@@ -38,4 +38,22 @@ public class StudyAttendance extends BaseTimeEntity {
 
     @Column(length = 10)
     private String studyDate;
+
+    public static StudyAttendance create(Study study, User user, int weekNum,
+                                         AttendanceStatus attendanceStatus, String studyDate) {
+        StudyAttendance attendance = new StudyAttendance();
+        attendance.study = study;
+        attendance.user = user;
+        attendance.weekNum = weekNum;
+        attendance.attendanceStatus = attendanceStatus;
+        attendance.studyDate = studyDate;
+        return attendance;
+    }
+
+    public void updateStatus(AttendanceStatus attendanceStatus, String studyDate) {
+        this.attendanceStatus = attendanceStatus;
+        if (studyDate != null) {
+            this.studyDate = studyDate;
+        }
+    }
 }

@@ -31,4 +31,13 @@ public class PostFile extends BaseTimeEntity {
 
     @Column(length = 300)
     private String fileUrl;
+
+    public static PostFile createPostFile(Post post, int fileNum, String fileType, String fileUrl) {
+        PostFile postFile = new PostFile();
+        postFile.post = post;
+        postFile.fileNum = fileNum;
+        postFile.fileType = fileType;
+        postFile.fileUrl = fileUrl;
+        return postFile;
+    }
 }

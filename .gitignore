@@ -17,6 +17,7 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
+
 ### IntelliJ IDEA ###
 .idea
 *.iws
@@ -38,3 +39,25 @@ out/
 
 forif-web.pem
 .env
+.claude
+
+# API Specification
+apiSpecification.md
+
+##
+.claude-code-style.md
+DB_structure.md
+
+# Local database migration dumps
+*.sql
+!docs/*.sql
+!src/test/resources/sql/*.sql
+!src/main/resources/db/migration/*.sql
+migration-output/
+/docs/legacy-db-migration-plan.md
+/docs/legacy-non-hackathon-migration.sql
+/docs/s3-to-local-storage-migration.md
+/docs/local-file-url-normalization.sql
+
+# 로컬 파일 저장소 (업로드/생성 파일)
+/storage/

@@ -1,4 +1,113 @@
 package org.forif_backend.common.config;
 
+import lombok.RequiredArgsConstructor;
+import org.forif_backend.common.auth.JwtAccessDeniedHandler;
+import org.forif_backend.common.auth.JwtAuthenticationEntryPoint;
+import org.forif_backend.common.auth.JwtAuthenticationFilter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
+    private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(AbstractHttpConfigurer::disable)
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/webjars/**",
+                    "/v3/api-docs",
+                    "/v3/api-docs/**",
+                    "/scalar",
+                    "/scalar/**",
+                    "/favicon.ico",
+                    "/api/v1/auth/**",
+                    "/api/v1/users/signup",
+                    "/api/v1/users/signin",
+                    "/api/v1/users/refresh",
+                    "/api/v1/users/google/userinfo",
+                    "/api/v1/staff/signin"
+                ).permitAll()
+                .requestMatchers(HttpMethod.HEAD,
+                    "/api/v1/files/**"
+                ).permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/v1/studies",
+                    "/api/v1/studies/{studyId}",
+                    "/api/v1/products",
+                    "/api/v1/products/{slug}",
+                    "/api/v1/semesters",
+                    "/api/v1/semesters/current",
+                    "/api/v1/semester-schedules/current",
+                    "/api/v1/semester-schedules/{year}/{semester}",
+                    "/api/v1/hackathons",
+                    "/api/v1/hackathons/{hackathonId}",
+                    "/api/v1/hackathons/{hackathonId}/submissions/**",
+                    "/api/v1/hackathons/{hackathonId}/awards",
+                    "/api/v1/archive/**",
+                    "/api/v1/files/**",
+                    "/api/v1/forif-team",
+                    "/api/v1/forif-team/{year}/{semester}",
+                    "/api/v1/posts/faqs/**",
+                    "/api/v1/posts/announcements/**"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(e -> e
+                .authenticationEntryPoint(jwtAuthenticationEntryPoint)
+                .accessDeniedHandler(jwtAccessDeniedHandler)
+            )
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // TODO: 프로덕션 환경에서는 특정 도메인만 허용하도록 변경 필요
+        // 예시: configuration.setAllowedOrigins(List.of("https://forif.org", "https://admin.forif.org"));
+        // 현재는 개발 환경을 위해 모든 origin 허용
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }
