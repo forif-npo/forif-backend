@@ -16,6 +16,19 @@ spring:
         jdbc:
           batch_size: 100
 
+  flyway:
+    # 기본은 꺼둔다. 테스트는 H2 인메모리라 MySQL 전용 베이스라인을 실행할 수 없고,
+    # @DataJpaTest 처럼 프로파일을 지정하지 않는 테스트도 이 기본값을 그대로 쓴다.
+    # 실제 MySQL을 쓰는 프로파일에서만 명시적으로 켠다.
+    enabled: false
+    locations: classpath:db/migration
+    # 이미 스키마가 존재하는 기존 DB는 V1을 실행하지 않고 베이스라인으로만 기록한다.
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: baseline_schema
+    validate-on-migrate: true
+    out-of-order: false
+
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher

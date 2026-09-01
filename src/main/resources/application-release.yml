@@ -9,6 +9,11 @@ spring:
       data-source-properties:
         rewriteBatchedStatements: true
 
+  flyway:
+    # 운영 DB가 스키마의 기준이다. 부팅 시 마이그레이션을 적용한 뒤
+    # 아래 ddl-auto: validate 가 엔티티와의 일치를 재확인한다.
+    enabled: true
+
   jpa:
     show-sql: false # 운영 환경에서 로그 폭발 방지
     hibernate:

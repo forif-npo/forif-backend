@@ -52,6 +52,7 @@ DB_structure.md
 *.sql
 !docs/*.sql
 !src/test/resources/sql/*.sql
+!src/main/resources/db/migration/*.sql
 migration-output/
 /docs/legacy-db-migration-plan.md
 /docs/legacy-non-hackathon-migration.sql
