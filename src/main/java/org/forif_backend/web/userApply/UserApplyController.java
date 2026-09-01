@@ -42,7 +42,7 @@ public class UserApplyController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @Operation(summary = "수강 신청서 수정", description = "본인의 정규스터디 수강 신청서를 수정합니다. 자율스터디 신청서는 수정할 수 없으며, 정규스터디는 PENDING 상태인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.")
+    @Operation(summary = "수강 신청서 수정", description = "본인의 정규스터디 수강 신청서를 수정합니다. 자율부원 신청서는 수정할 수 없으며, 정규스터디는 PENDING 상태인 경우에만 스터디 변경 및 지원 동기 수정이 가능합니다.")
     @PatchMapping("/{applyId}")
     public ResponseEntity<ApiResponse<Void>> updateApplication(@AuthenticationPrincipal Long userId,
                                                                @Parameter(description = "신청서 ID") @PathVariable("applyId") Long applyId,

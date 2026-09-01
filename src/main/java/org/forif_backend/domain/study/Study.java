@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,13 +30,15 @@ import org.forif_backend.domain.user.User;
 )
 public class Study extends BaseTimeEntity {
 
-    public static final String AUTONOMOUS_STUDY_NAME = "자율스터디";
+    public static final String AUTONOMOUS_STUDY_NAME = "자율부원";
+    private static final Set<String> RESERVED_STUDY_NAMES =
+            Set.of(AUTONOMOUS_STUDY_NAME, "자율스터디");
     private static final String AUTONOMOUS_STUDY_ONE_LINER =
-            "공통의 관심사로 원하는 분야를 자유롭게 공부하는 스터디";
+            "정규 스터디 외 FORIF 활동에 참여하는 자율부원";
     private static final String AUTONOMOUS_STUDY_EXPLANATION =
-            "자율스터디는 공통의 관심사를 가진 부원들이 모여 자유롭게 원하는 분야를 공부하는 스터디입니다. "
-                    + "자율스터디는 FORIF 인증서가 발급되지 않으며, 출석 체크 대상에도 포함되지 않고 정해진 수업 회차나 일정이 없습니다. "
-                    + "자율부원은 정규 스터디를 수강하지 않고 FORIF에 등록한 부원으로, 정규스터디 영역 외에는 FORIF 부원으로서 다양한 혜택을 누릴 수 있습니다.";
+            "자율부원은 정규 스터디를 수강하지 않고 FORIF 활동에 참여하는 부원입니다. "
+                    + "자율부원에게는 FORIF 인증서가 발급되지 않으며, 출석 체크 대상에도 포함되지 않고 정해진 수업 회차나 일정이 없습니다. "
+                    + "자율부원은 정규스터디 영역 외에는 FORIF 부원으로서 다양한 혜택을 누릴 수 있습니다.";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -156,8 +159,14 @@ public class Study extends BaseTimeEntity {
         return Boolean.TRUE.equals(this.autonomousFlag);
     }
 
+    /**
+     * 예약된 자율부원 이름인지 확인한다.
+     *
+     * <p>부분 수정에서는 이름을 보내지 않는 요청이 정상이므로 null을 허용한다.
+     * Set.of로 만든 불변 집합은 contains(null)에서 NPE를 던지기 때문에 먼저 걸러낸다.
+     */
     public static boolean isAutonomousStudyName(String studyName) {
-        return AUTONOMOUS_STUDY_NAME.equals(studyName);
+        return studyName != null && RESERVED_STUDY_NAMES.contains(studyName);
     }
 
     /**

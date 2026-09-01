@@ -92,4 +92,25 @@ class AutonomousStudyOperationTest {
 
         verify(studyUserRepository, never()).findAllByStudyId(1);
     }
+
+    @Test
+    void blocksManualCertificatesForTheLegacyAutonomousStudyName() {
+        CertificateService service = new CertificateService(
+                mock(StudyRepository.class),
+                mock(StudyUserRepository.class),
+                mock(StudyAttendanceRepository.class),
+                mock(HackathonRepository.class),
+                mock(StaffAccountRepository.class),
+                mock(CertificateImageGenerator.class),
+                mock(FilePort.class)
+        );
+
+        assertThatThrownBy(() -> service.issueManualCertificate(
+                "홍길동", "20260001", "컴퓨터공학과", " 자율스터디 ",
+                "2026. 03. 01. ~ 2026. 06. 30.", "2026. 07. 01.", "회장"))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> org.assertj.core.api.Assertions.assertThat(
+                        ((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED));
+    }
 }

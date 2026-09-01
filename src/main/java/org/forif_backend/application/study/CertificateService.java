@@ -159,7 +159,8 @@ public class CertificateService {
     public String issueManualCertificate(String userName, String studentNumber, String department,
                                          String studyName, String activityPeriod, String issueDate,
                                          String presidentName) {
-        if (Study.AUTONOMOUS_STUDY_NAME.equals(studyName == null ? null : studyName.trim())) {
+        String normalizedStudyName = studyName == null ? null : studyName.trim();
+        if (Study.isAutonomousStudyName(normalizedStudyName)) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
         }
 

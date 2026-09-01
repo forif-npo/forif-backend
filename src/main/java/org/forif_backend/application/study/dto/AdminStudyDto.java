@@ -28,6 +28,7 @@ public class AdminStudyDto {
     private final StudyDifficulty difficulty;
     private final StudyStatus studyStatus;
     private final String rejectReason;
+    private final boolean autonomousStudy;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -46,6 +47,7 @@ public class AdminStudyDto {
                 .difficulty(study.getDifficulty())
                 .studyStatus(study.getStudyStatus())
                 .rejectReason(study.getRejectReason())
+                .autonomousStudy(study.isAutonomousStudy())
                 .createdAt(study.getCreatedAt())
                 .updatedAt(study.getUpdatedAt())
                 .build();
