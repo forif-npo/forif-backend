@@ -4,72 +4,213 @@ on:
   push:
     branches: [ "main", "release", "dev", "feature/**" ]
   pull_request:
-    branches: [ "main", "release", "dev", "feature/**" ]
+    branches: [ "main", "release", "dev" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  APP_DIR: /srv/forif/app
+  JAR_PATH: /srv/forif/app/forif-backend-dev.jar
+  CONTAINER: forif-backend-dev
+  SERVICE: backend
+  HEALTH_URL: http://127.0.0.1:8080/api/v1/semesters/current
+  KEEP_BACKUPS: 5
 
 jobs:
+  # ────────────────────────────────────────────────────────────────
   # 1. 빌드 및 테스트 (모든 브랜치 공통)
+  #    Testcontainers 로 실제 MySQL 에 마이그레이션을 적용해 보는 테스트가 여기 포함된다.
+  #    마이그레이션 오류는 운영 부팅이 아니라 이 단계에서 걸러져야 한다.
+  # ────────────────────────────────────────────────────────────────
   build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: JDK 17 설치
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
+      - name: gradlew 실행 권한
         run: chmod +x ./gradlew
 
-      - name: Setup Gradle
+      - name: Gradle 설정
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Build and Test with Gradle
+      - name: 빌드 및 테스트
         run: ./gradlew build --no-daemon
 
-  # 2. 배포 (release 브랜치에 push 되었을 때만 실행)
+      - name: 테스트 리포트 보관
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: build/reports/tests/test
+          retention-days: 7
+
+      - name: 배포용 JAR 보관
+        if: github.ref == 'refs/heads/release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: build/libs/*-SNAPSHOT.jar
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────────────
+  # 2. 배포 (release 브랜치 push 또는 수동 실행)
+  #    실패 시 직전 JAR 로 자동 롤백한다.
+  # ────────────────────────────────────────────────────────────────
   deploy:
     needs: build-test
-    # 오직 release 브랜치에 push 이벤트가 발생했을 때만 배포 진행
-    if: github.event_name == 'push' && github.ref == 'refs/heads/release'
+    if: github.ref == 'refs/heads/release' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    # 배포가 겹치면 JAR 교체와 컨테이너 재생성이 서로를 덮어쓴다.
+    # 직렬화하되 진행 중인 배포를 중간에 죽이지는 않는다.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Push Docker Image
+      - name: 필수 시크릿 확인
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+          KEY: ${{ secrets.EC2_SSH_KEY }}
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/forif-app:latest .
-          docker push ${{ secrets.DOCKER_USERNAME }}/forif-app:latest
+          missing=""
+          [ -n "$HOST" ] || missing="$missing EC2_HOST"
+          [ -n "$USER" ] || missing="$missing EC2_USER"
+          [ -n "$KEY" ]  || missing="$missing EC2_SSH_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::필수 시크릿 누락:$missing"
+            exit 1
+          fi
 
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@v0.1.10
+      - name: JAR 내려받기
+        uses: actions/download-artifact@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd ~/forif-backend
-            
-            # 환경변수 주입
-            echo "SPRING_PROFILES_ACTIVE=release" > .env
-            echo "RDS_URL=${{ secrets.RDS_URL }}" >> .env
-            echo "RDS_USERNAME=${{ secrets.RDS_USERNAME }}" >> .env
-            echo "RDS_PASSWORD=${{ secrets.RDS_PASSWORD }}" >> .env
-            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-            echo "SMS_API_KEY=${{ secrets.SMS_API_KEY }}" >> .env
-            echo "SMS_API_SECRET=${{ secrets.SMS_API_SECRET }}" >> .env
-            echo "SMS_PF_ID=${{ secrets.SMS_PF_ID }}" >> .env
-            echo "SMS_SENDER_NUMBER=${{ secrets.SMS_SENDER_NUMBER }}" >> .env
-            echo "DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}" >> .env
-            
-            chmod 600 .env
-            
-            docker-compose pull
-            docker-compose up -d
+          name: app-jar
+          path: ./dist
+
+      - name: SSH 키 준비
+        env:
+          KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: JAR 전송 및 체크섬 검증
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          JAR=$(ls ./dist/*-SNAPSHOT.jar | head -1)
+          SUM=$(sha256sum "$JAR" | awk '{print $1}')
+          echo "SUM=$SUM" >> "$GITHUB_ENV"
+          echo "빌드 산출물: $JAR ($SUM)"
+
+          REMOTE_TMP="/tmp/forif-deploy-${GITHUB_SHA}.jar"
+          echo "REMOTE_TMP=$REMOTE_TMP" >> "$GITHUB_ENV"
+
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "$JAR" "$USER@$HOST:$REMOTE_TMP"
+
+          # 전송 중 손상되면 여기서 멈춘다. 교체 이전에 확인하는 것이 핵심이다.
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" \
+            "echo '$SUM  $REMOTE_TMP' | sha256sum -c -"
+
+      - name: 배포 및 헬스체크 (실패 시 자동 롤백)
+        id: deploy
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/deploy_key "$USER@$HOST" \
+            APP_DIR="$APP_DIR" JAR_PATH="$JAR_PATH" CONTAINER="$CONTAINER" \
+            SERVICE="$SERVICE" HEALTH_URL="$HEALTH_URL" KEEP_BACKUPS="$KEEP_BACKUPS" \
+            NEW_JAR="$REMOTE_TMP" EXPECTED_SUM="$SUM" 'bash -seuo pipefail' <<'REMOTE'
+          cd "$APP_DIR"
+          STAMP=$(date +%Y%m%d-%H%M%S)
+          BACKUP="${JAR_PATH}.bak-${STAMP}"
+
+          # 어느 단계에서 실패하든 직전 JAR 로 되돌리고 서비스가 살아있는지까지 확인한다.
+          rollback() {
+            echo "── JAR 롤백: $(basename "$BACKUP")"
+            sudo cp "$BACKUP" "$JAR_PATH"
+            docker compose up -d --force-recreate "$SERVICE" || true
+
+            recovered=0
+            for i in $(seq 1 24); do
+              code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$HEALTH_URL" || true)
+              if [ "$code" = "200" ]; then recovered=1; break; fi
+              sleep 5
+            done
+            rm -f "$NEW_JAR"
+
+            if [ "$recovered" = "1" ]; then
+              echo "::error::배포 실패. 이전 버전으로 롤백했고 서비스는 정상이다."
+            else
+              echo "::error::배포 실패했고 롤백 후에도 헬스체크가 통과하지 않는다. 수동 확인이 필요하다."
+            fi
+            exit 1
+          }
+
+          echo "── 현재 JAR 백업: $(basename "$BACKUP")"
+          sudo cp -p "$JAR_PATH" "$BACKUP"
+
+          # 바인드 마운트된 파일이라 mv 로 바꾸면 inode 가 달라져 컨테이너가 옛 파일을 계속 본다.
+          # 반드시 cp 로 내용만 덮어써야 한다. JAR 은 root 소유라 sudo 가 필요하다.
+          echo "── JAR 교체"
+          sudo cp "$NEW_JAR" "$JAR_PATH" || { echo "::error::JAR 교체 실패"; rollback; }
+
+          # 교체된 파일이 의도한 산출물인지 확인한다. 어긋나면 컨테이너를 건드리기 전에 되돌린다.
+          echo "$EXPECTED_SUM  $JAR_PATH" | sudo sha256sum -c - \
+            || { echo "::error::교체된 JAR 체크섬 불일치"; rollback; }
+
+          echo "── 컨테이너 재생성"
+          docker compose up -d --force-recreate "$SERVICE" \
+            || { echo "::error::컨테이너 재생성 실패"; rollback; }
+
+          echo "── 헬스체크 (최대 180초)"
+          healthy=0
+          for i in $(seq 1 36); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$HEALTH_URL" || true)
+            if [ "$code" = "200" ]; then healthy=1; echo "   ${i}회차: 200 OK"; break; fi
+            # 부팅이 이미 실패했다면 180초를 채울 이유가 없다.
+            if docker logs --tail 200 "$CONTAINER" 2>&1 | grep -q 'APPLICATION FAILED TO START'; then
+              echo "   부팅 실패 감지"; break
+            fi
+            echo "   ${i}회차: $code"
+            sleep 5
+          done
+
+          if [ "$healthy" != "1" ]; then
+            echo "── 실패 직전 로그 ─────────────────────"
+            docker logs --tail 60 "$CONTAINER" 2>&1 || true
+            echo "──────────────────────────────────────"
+            # Flyway 가 스키마를 바꾼 뒤 실패했다면 JAR 롤백만으로는 복구되지 않는다.
+            if docker logs --tail 400 "$CONTAINER" 2>&1 | grep -qi 'flyway'; then
+              echo "::warning::로그에 Flyway 출력이 있다. DB 스키마가 이미 변경됐을 수 있고 JAR 롤백으로는 되돌아가지 않는다. flyway_schema_history 를 직접 확인할 것."
+            fi
+            rollback
+          fi
+
+          echo "── 배포 성공"
+          echo "── 오래된 백업 정리 (최신 ${KEEP_BACKUPS}개 유지)"
+          { ls -1t "${JAR_PATH}".bak-* 2>/dev/null || true; } | tail -n +$((KEEP_BACKUPS + 1)) | while read -r old; do
+            echo "   삭제: $(basename "$old")"
+            sudo rm -f "$old"
+          done
+          rm -f "$NEW_JAR"
+          REMOTE
+
+      - name: SSH 키 삭제
+        if: always()
+        run: rm -f ~/.ssh/deploy_key
