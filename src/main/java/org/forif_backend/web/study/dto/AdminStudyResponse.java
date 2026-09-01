@@ -20,6 +20,7 @@ public record AdminStudyResponse(
         String difficulty,
         String studyStatus,
         String rejectReason,
+        boolean autonomousStudy,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -54,6 +55,7 @@ public record AdminStudyResponse(
                 difficultyValue,
                 studyStatusValue,
                 dto.getRejectReason(),
+                dto.isAutonomousStudy(),
                 dto.getCreatedAt(),
                 dto.getUpdatedAt()
         );

@@ -193,7 +193,7 @@ class UserApplyServiceApplyTest {
     void rejectsUpdatingAnAutonomousStudyApplicationWithItsDedicatedError() {
         Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
         when(autonomousStudy.getId()).thenReturn(999);
-        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.getStudyName()).thenReturn("자율부원");
         when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
         UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
         when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
@@ -212,7 +212,7 @@ class UserApplyServiceApplyTest {
     void rejectsAnAutonomousStudyApplicationBeforeValidatingItsEmptyApplyReason() {
         Study autonomousStudy = org.mockito.Mockito.mock(Study.class);
         when(autonomousStudy.getId()).thenReturn(999);
-        when(autonomousStudy.getStudyName()).thenReturn("자율스터디");
+        when(autonomousStudy.getStudyName()).thenReturn("자율부원");
         when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
         UserApply application = UserApply.applyStudy(user, autonomousStudy, null, 2026, 2);
         when(userRepository.findUserApplyById(77L)).thenReturn(Optional.of(application));
@@ -287,7 +287,7 @@ class UserApplyServiceApplyTest {
     void appliesToAnAutonomousStudyWithoutPriorityOrApplyReason() {
         Study study = applicableStudy(2026, 2, StudyStatus.APPROVED, RecruitStatus.APPLICABLE);
         when(study.getId()).thenReturn(STUDY_ID);
-        when(study.getStudyName()).thenReturn("자율스터디");
+        when(study.getStudyName()).thenReturn("자율부원");
         when(study.isAutonomousStudy()).thenReturn(true);
         when(studyRepository.findStudyById(STUDY_ID)).thenReturn(java.util.Optional.of(study));
         when(userRepository.findUserApplyByYearAndSemesterAndUser(2026, 2, user))
