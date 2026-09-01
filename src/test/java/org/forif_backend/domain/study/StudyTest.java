@@ -39,6 +39,13 @@ class StudyTest {
     }
 
     @Test
+    void reservesBothCurrentAndLegacyAutonomousStudyNames() {
+        assertThat(Study.isAutonomousStudyName("자율부원")).isTrue();
+        assertThat(Study.isAutonomousStudyName("자율스터디")).isTrue();
+        assertThat(Study.isAutonomousStudyName("일반 스터디")).isFalse();
+    }
+
+    @Test
     void identifiesBothPrimaryAndSecondaryMentorsFromTheStudyRelationship() {
         User primaryMentor = Mockito.mock(User.class);
         User secondaryMentor = Mockito.mock(User.class);

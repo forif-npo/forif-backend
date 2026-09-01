@@ -488,9 +488,9 @@ class StudyServiceApplicationUpdateTest {
     }
 
     @Test
-    void preventsUsingTheReservedNameWhenCreatingAStudyApplication() {
+    void preventsUsingTheLegacyReservedNameWhenCreatingAStudyApplication() {
         CreateStudyApplyRequest request = new CreateStudyApplyRequest();
-        request.setTitle(Study.AUTONOMOUS_STUDY_NAME);
+        request.setTitle("자율스터디");
 
         assertThatThrownBy(() -> studyService.createStudyApply(10L, request.toCommand(), null, null))
                 .isInstanceOf(ForifException.class)

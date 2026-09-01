@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -30,6 +31,8 @@ import org.forif_backend.domain.user.User;
 public class Study extends BaseTimeEntity {
 
     public static final String AUTONOMOUS_STUDY_NAME = "자율부원";
+    private static final Set<String> RESERVED_STUDY_NAMES =
+            Set.of(AUTONOMOUS_STUDY_NAME, "자율스터디");
     private static final String AUTONOMOUS_STUDY_ONE_LINER =
             "정규 스터디 외 FORIF 활동에 참여하는 자율부원";
     private static final String AUTONOMOUS_STUDY_EXPLANATION =
@@ -157,7 +160,7 @@ public class Study extends BaseTimeEntity {
     }
 
     public static boolean isAutonomousStudyName(String studyName) {
-        return AUTONOMOUS_STUDY_NAME.equals(studyName);
+        return RESERVED_STUDY_NAMES.contains(studyName);
     }
 
     /**

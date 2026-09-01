@@ -160,8 +160,7 @@ public class CertificateService {
                                          String studyName, String activityPeriod, String issueDate,
                                          String presidentName) {
         String normalizedStudyName = studyName == null ? null : studyName.trim();
-        if (Study.AUTONOMOUS_STUDY_NAME.equals(normalizedStudyName)
-                || "자율스터디".equals(normalizedStudyName)) {
+        if (Study.isAutonomousStudyName(normalizedStudyName)) {
             throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_OPERATION_NOT_ALLOWED);
         }
 
