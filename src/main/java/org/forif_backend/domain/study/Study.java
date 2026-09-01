@@ -159,8 +159,14 @@ public class Study extends BaseTimeEntity {
         return Boolean.TRUE.equals(this.autonomousFlag);
     }
 
+    /**
+     * 예약된 자율부원 이름인지 확인한다.
+     *
+     * <p>부분 수정에서는 이름을 보내지 않는 요청이 정상이므로 null을 허용한다.
+     * Set.of로 만든 불변 집합은 contains(null)에서 NPE를 던지기 때문에 먼저 걸러낸다.
+     */
     public static boolean isAutonomousStudyName(String studyName) {
-        return RESERVED_STUDY_NAMES.contains(studyName);
+        return studyName != null && RESERVED_STUDY_NAMES.contains(studyName);
     }
 
     /**

@@ -43,6 +43,8 @@ class StudyTest {
         assertThat(Study.isAutonomousStudyName("자율부원")).isTrue();
         assertThat(Study.isAutonomousStudyName("자율스터디")).isTrue();
         assertThat(Study.isAutonomousStudyName("일반 스터디")).isFalse();
+        // 이름을 보내지 않는 부분 수정에서 null이 들어온다. 예약어 집합이 NPE를 던지면 안 된다.
+        assertThat(Study.isAutonomousStudyName(null)).isFalse();
     }
 
     @Test
