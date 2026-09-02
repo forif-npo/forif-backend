@@ -1174,8 +1174,7 @@ public class HackathonService {
             return true;
         }
         return containsIgnoreCase(submission.getProjectName(), search)
-                || containsIgnoreCase(submission.getSummary(), search)
-                || containsIgnoreCase(submission.getTeam().getName(), search);
+                || containsIgnoreCase(submission.getSummary(), search);
     }
 
     private boolean matchesTechStack(List<HackathonSubmissionTechStack> techStacks, String techStack) {

@@ -665,7 +665,7 @@ public class HackathonServiceTest extends DefaultMockitoTest {
             hackathonService.registerParticipant(hackathonId, userId);
         }
         hackathonService.changeHackathonStatus(hackathonId, HackathonStatus.TEAM_BUILDING);
-        TeamResponse normalTeam = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("코드 조립단", null, null, CompetitionType.HACKATHON, 4));
+        TeamResponse normalTeam = hackathonService.createTeam(hackathonId, 1L, new CreateTeamRequest("일반 팀", null, null, CompetitionType.HACKATHON, 4));
         TeamResponse excellenceTeam = hackathonService.createTeam(hackathonId, 2L, new CreateTeamRequest("우수상 팀", null, null, CompetitionType.HACKATHON, 4));
         TeamResponse grandPrizeTeam = hackathonService.createTeam(hackathonId, 3L, new CreateTeamRequest("대상 팀", null, null, CompetitionType.HACKATHON, 4));
         TeamResponse ideathonTeam = hackathonService.createTeam(hackathonId, 4L, new CreateTeamRequest("아이디어톤 팀", null, null, CompetitionType.IDEATHON, 4));
@@ -696,10 +696,6 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 "아이디어톤 프로젝트",
                 "일반 프로젝트"
         );
-
-        assertThat(hackathonService.getArchiveSubmissions(hackathonId, "조립단", null))
-                .extracting(SubmissionResponse::projectName)
-                .containsExactly("일반 프로젝트");
     }
 
     @Test
