@@ -455,7 +455,7 @@ public class HackathonController {
     @GetMapping("/api/v1/archive/hackathons/{hackathonId}/submissions")
     public ResponseEntity<ApiResponse<CursorPageResponse<SubmissionResponse>>> getArchiveSubmissions(
             @PathVariable Long hackathonId,
-            @RequestParam(required = false) String search,
+            @Parameter(description = "프로젝트명, 한 줄 소개 또는 팀명 검색어") @RequestParam(required = false) String search,
             @RequestParam(name = "tech_stack", required = false) String techStack,
             @Parameter(description = "이전 페이지의 마지막 제출물 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
