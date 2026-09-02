@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
+import org.forif_backend.application.staff.dto.MentorHistory;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
@@ -140,6 +141,14 @@ public class StaffAccountService {
                         studyNames.get(user.getId())
                 ))
                 .toList());
+    }
+
+    /** 부원 이력 상세에서 사용할 멘토 활동 이력 조회. */
+    @Transactional(readOnly = true)
+    public List<MentorHistory> getMentorHistory(Long userId) {
+        return studyRepository.findMentorHistoryByMentorId(userId).stream()
+                .map(MentorHistory::from)
+                .toList();
     }
 
     /**

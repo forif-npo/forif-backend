@@ -111,6 +111,29 @@ class StudyQueryRepositoryMentorTest {
     }
 
     @Test
+    void returnsApprovedAndStartedMentorHistoryInSemesterDescendingOrder() {
+        User mentor = persistUser(900009L, "이력 멘토");
+        User secondaryMentor = persistUser(900010L, "이력 부멘토");
+        Study oldStarted = persistStartedStudy(mentor, 2025, 2, "지난 학기 개설 스터디");
+        Study recentApproved = persistApprovedStudy(mentor, 2026, 2, "최근 승인 스터디");
+        Study secondaryApproved = persistApprovedStudy(secondaryMentor, 2026, 1, "부멘토 스터디");
+        secondaryApproved.setSecondaryMentor(mentor);
+        secondaryApproved.setSecondaryMentorName(mentor.getUserName());
+        Study pending = Study.createPendingStudy(mentor, 2026, 2);
+        pending.setStudyName("대기 스터디");
+        entityManager.persist(pending);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Study> history = studyQueryRepository.findMentorHistoryByMentorId(mentor.getId());
+
+        assertThat(history)
+                .extracting(Study::getId)
+                .containsExactly(recentApproved.getId(), secondaryApproved.getId(), oldStarted.getId())
+                .doesNotContain(pending.getId());
+    }
+
+    @Test
     void ordersOnlyTheSelectedSemesterMentorsBeforeApplyingTheOffset() {
         User 다람 = persistUser(900005L, "다람");
         User 가람 = persistUser(900006L, "가람");
