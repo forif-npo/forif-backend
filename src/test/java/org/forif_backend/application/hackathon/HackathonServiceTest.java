@@ -703,6 +703,22 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
+    @DisplayName("해커톤 목록은 기수로 검색할 수 있다")
+    void getHackathonsSearchesByEventRound() {
+        Long hackathonId = createDefaultHackathon();
+        int eventRound = hackathonService.getHackathon(hackathonId).eventRound();
+
+        List<Long> hackathonIds = hackathonService
+                .getHackathons(null, null, null, String.valueOf(eventRound), null, 0, 20)
+                .content()
+                .stream()
+                .map(HackathonResponse::hackathonId)
+                .toList();
+
+        assertThat(hackathonIds).containsExactly(hackathonId);
+    }
+
+    @Test
     @DisplayName("참가자는 본인 팀을 평가할 수 없고 다른 팀은 1~5점 객관식으로 평가한다")
     @Sql({"/sql/user-test-data.sql"})
     @Sql(statements = {

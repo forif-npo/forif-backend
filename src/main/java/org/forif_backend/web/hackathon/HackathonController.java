@@ -41,11 +41,13 @@ public class HackathonController {
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer semester,
             @RequestParam(required = false) HackathonStatus status,
+            @Parameter(description = "해커톤 제목, 장소, 학기 또는 기수 검색어") @RequestParam(required = false) String search,
             @Parameter(description = "이전 페이지의 마지막 해커톤 ID (cursor 모드)") @RequestParam(required = false) Integer cursor,
             @Parameter(description = "페이지 번호, 0부터 시작 (offset 모드)") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 당 항목 수") @RequestParam(defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(ApiResponse.success(hackathonService.getHackathons(year, semester, status, cursor, page, size)));
+        return ResponseEntity.ok(ApiResponse.success(
+                hackathonService.getHackathons(year, semester, status, search, cursor, page, size)));
     }
 
     @Operation(summary = "해커톤 상세 조회")

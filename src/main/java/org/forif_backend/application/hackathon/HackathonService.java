@@ -100,12 +100,14 @@ public class HackathonService {
             Integer year,
             Integer semester,
             HackathonStatus status,
+            String search,
             Integer cursor,
             Integer page,
             int size
     ) {
         synchronizeHackathonStatuses(now());
         List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
+                .filter(event -> matchesHackathonSearch(event, search))
                 .map(HackathonResponse::from)
                 .toList();
 
@@ -1176,6 +1178,18 @@ public class HackathonService {
         return containsIgnoreCase(submission.getProjectName(), search)
                 || containsIgnoreCase(submission.getSummary(), search)
                 || containsIgnoreCase(submission.getTeam().getName(), search);
+    }
+
+    private boolean matchesHackathonSearch(HackathonEvent event, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+
+        String normalizedSearch = search.trim();
+        return containsIgnoreCase(event.getTitle(), normalizedSearch)
+                || containsIgnoreCase(event.getLocation(), normalizedSearch)
+                || (event.getHeldYear() + "-" + event.getHeldSemester()).contains(normalizedSearch)
+                || String.valueOf(event.getEventRound()).contains(normalizedSearch);
     }
 
     private boolean matchesTechStack(List<HackathonSubmissionTechStack> techStacks, String techStack) {
