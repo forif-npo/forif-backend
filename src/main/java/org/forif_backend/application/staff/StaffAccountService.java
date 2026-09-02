@@ -160,6 +160,16 @@ public class StaffAccountService {
         validatePresidentTeam(userId);
     }
 
+    /** 회장단(회장/부회장) 여부를 확인한다. 리소스 소유권 권한과 조합할 때 사용한다. */
+    @Transactional(readOnly = true)
+    public boolean isPresidentTeam(Long userId) {
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        String affiliation = staffAccount.getAffiliation();
+        return "회장".equals(affiliation) || "부회장".equals(affiliation);
+    }
+
     /**
      * 회장 권한 검증 — 다른 도메인에서도 사용한다.
      * 회장직 인수인계가 걸린 작업(학기 전환 등)은 부회장이 할 수 없다.

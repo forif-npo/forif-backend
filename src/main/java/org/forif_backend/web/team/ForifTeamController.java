@@ -91,7 +91,7 @@ public class ForifTeamController {
         private String userTitle;
     }
 
-    @Operation(summary = "운영진 이력 수정 (어드민 전용)", description = "직책, 팀, 소개 등 운영진 프로필 정보를 수정합니다.")
+    @Operation(summary = "운영진 이력 수정", description = "회장단은 모든 운영진 프로필 정보를 수정할 수 있고, 일반 운영진은 본인의 소개 태그·자기소개·졸업년도만 수정할 수 있습니다.")
     @PatchMapping("/api/v1/admin/forif-team/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ForifTeamResponse>> updateMember(
@@ -99,9 +99,8 @@ public class ForifTeamController {
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id,
             @RequestBody UpdateForifTeamRequest request
     ) {
-        staffAccountService.requirePresidentTeam(requesterId);
         ForifTeamResponse response = forifTeamService.updateMember(
-                id,
+                requesterId, id,
                 request.userTitle(),
                 request.clubDepartment(),
                 request.introTag(),
@@ -112,7 +111,7 @@ public class ForifTeamController {
     }
 
     @Operation(summary = "운영진 프로필 사진 등록·교체",
-            description = "운영진 소개와 해당 부원의 마이페이지에 공통으로 표시할 5MB 이하 JPEG 또는 PNG 프로필 사진을 등록하거나 교체합니다.")
+            description = "회장단은 모든 운영진의 사진을, 일반 운영진은 본인 사진을 등록하거나 교체합니다. 사진은 운영진 소개와 해당 부원의 마이페이지에 공통으로 표시됩니다.")
     @PatchMapping(value = "/api/v1/admin/forif-team/{id}/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ForifTeamResponse>> updateMemberProfileImage(
@@ -120,8 +119,7 @@ public class ForifTeamController {
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id,
             @RequestPart("file") MultipartFile file
     ) {
-        staffAccountService.requirePresidentTeam(requesterId);
-        return ResponseEntity.ok(ApiResponse.success(forifTeamService.updateMemberProfileImage(id, file)));
+        return ResponseEntity.ok(ApiResponse.success(forifTeamService.updateMemberProfileImage(requesterId, id, file)));
     }
 
     @Operation(summary = "운영진 이력 삭제 (어드민 전용)")
