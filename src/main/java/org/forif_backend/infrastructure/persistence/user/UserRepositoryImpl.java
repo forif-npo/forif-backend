@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -373,12 +374,15 @@ public class UserRepositoryImpl implements UserRepository {
             int year, int semester, Long cursor, int size, String search
     ) {
         return searchApplicantsByDecision(
-                year, semester, cursor, size, search, hasRejectedStudyApplication());
+                year, semester, cursor, size, search,
+                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
     }
 
     @Override
     public long countRejectedApplicantsByYearSemester(int year, int semester, String search) {
-        return countApplicantsByDecision(year, semester, search, hasRejectedStudyApplication());
+        return countApplicantsByDecision(
+                year, semester, search,
+                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
     }
 
     @Override
@@ -544,6 +548,18 @@ public class UserRepositoryImpl implements UserRepository {
         return userApply.primaryStatus.eq(UserApplyStatus.REJECT)
                 .and(userApply.secondaryStudy.isNull()
                         .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
+    }
+
+    /** 합격 시 생성된 확인 기록은 부원 삭제 뒤에도 남아 심사 불합격과 구분한다. */
+    private BooleanExpression hasNoAcceptedHistory(int year, int semester) {
+        return JPAExpressions.selectOne()
+                .from(memberSemesterCheck)
+                .where(
+                        memberSemesterCheck.user.id.eq(user.id),
+                        memberSemesterCheck.actYear.eq(year),
+                        memberSemesterCheck.actSemester.eq(semester)
+                )
+                .notExists();
     }
 
     private BooleanExpression notificationRecipientSearchKeyword(String search) {

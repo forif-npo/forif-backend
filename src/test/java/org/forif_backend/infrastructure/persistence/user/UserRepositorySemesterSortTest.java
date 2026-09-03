@@ -4,6 +4,7 @@ import jakarta.persistence.EntityManager;
 import org.forif_backend.common.config.JpaAuditingConfig;
 import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.common.type.SortDirection;
+import org.forif_backend.domain.dues.MemberSemesterCheck;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.user.User;
@@ -89,6 +90,7 @@ class UserRepositorySemesterSortTest {
         User pending = persistUser(920005L, "대기중");
         User secondaryPending = persistUser(920006L, "2순위 대기");
         User previousSemesterRejected = persistUser(920007L, "이전 학기 불합격");
+        User acceptedThenRemoved = persistUser(920008L, "합격 후 명단 제외");
 
         persistApplication(primaryAccepted, 1, UserApplyStatus.ACCEPT, null);
         persistApplication(secondaryAccepted, 2, UserApplyStatus.REJECT, UserApplyStatus.ACCEPT);
@@ -97,6 +99,9 @@ class UserRepositorySemesterSortTest {
         persistApplication(pending, 5, UserApplyStatus.PENDING, null);
         persistApplication(secondaryPending, 6, UserApplyStatus.REJECT, UserApplyStatus.PENDING);
         persistApplication(previousSemesterRejected, 7, 2025, 2, UserApplyStatus.REJECT, null);
+        persistApplication(acceptedThenRemoved, 8, UserApplyStatus.REJECT, null);
+        // 합격 처리에서 생성된 확인 기록은 부원 삭제 후에도 남는다.
+        entityManager.persist(MemberSemesterCheck.create(acceptedThenRemoved, YEAR, SEMESTER));
 
         entityManager.flush();
         entityManager.clear();
