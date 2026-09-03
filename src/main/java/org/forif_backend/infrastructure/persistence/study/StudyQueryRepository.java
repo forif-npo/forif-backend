@@ -737,6 +737,21 @@ public class StudyQueryRepository {
                 .fetch();
     }
 
+    /** 부원 이력 상세용: 승인 또는 개설된 주·부멘토 활동을 학기 최신순으로 조회한다. */
+    public List<Study> findMentorHistoryByMentorId(Long mentorId) {
+        return queryFactory
+                .selectFrom(study)
+                .leftJoin(study.secondaryMentor, secondaryMentor)
+                .where(
+                        study.primaryMentor.id.eq(mentorId)
+                                .or(secondaryMentor.id.eq(mentorId)),
+                        study.autonomousFlag.isNull().or(study.autonomousFlag.isFalse()),
+                        study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED)
+                )
+                .orderBy(study.actYear.desc(), study.actSemester.desc(), study.id.desc())
+                .fetch();
+    }
+
     public List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester) {
         return queryFactory
                 .selectFrom(study).distinct()

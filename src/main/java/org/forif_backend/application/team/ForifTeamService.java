@@ -5,6 +5,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +27,7 @@ public class ForifTeamService {
     private final UserRepository userRepository;
     private final SemesterService semesterService;
     private final UserService userService;
+    private final StaffAccountService staffAccountService;
 
     @Transactional(readOnly = true)
     public List<ForifTeamResponse> getAllMembers() {
@@ -66,18 +69,31 @@ public class ForifTeamService {
     }
 
     @Transactional
-    public ForifTeamResponse updateMember(Long id, String userTitle, String clubDepartment,
+    public ForifTeamResponse updateMember(Long requesterId, Long id, String userTitle, String clubDepartment,
                                           String introTag, String selfIntro, Integer graduateYear) {
         ForifTeam forifTeam = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
-        forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
+
+        if (staffAccountService.isPresidentTeam(requesterId)) {
+            forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
+        } else {
+            validateOwner(requesterId, forifTeam);
+            validateSelfUpdateFields(forifTeam, userTitle, clubDepartment);
+            forifTeam.update(null, null, introTag, selfIntro, graduateYear);
+        }
+
         return toResponse(forifTeam);
     }
 
     @Transactional
-    public ForifTeamResponse updateMemberProfileImage(Long id, MultipartFile profileImage) {
+    public ForifTeamResponse updateMemberProfileImage(Long requesterId, Long id, MultipartFile profileImage) {
         ForifTeam forifTeam = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
+
+        if (!staffAccountService.isPresidentTeam(requesterId)) {
+            validateOwner(requesterId, forifTeam);
+        }
+
         userService.updateUserProfileImage(forifTeam.getUser().getId(), profileImage);
         return toResponse(forifTeam);
     }
@@ -87,6 +103,19 @@ public class ForifTeamService {
         forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
         forifTeamRepository.deleteById(id);
+    }
+
+    private void validateOwner(Long requesterId, ForifTeam forifTeam) {
+        if (!forifTeam.getUser().getId().equals(requesterId)) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+    }
+
+    private void validateSelfUpdateFields(ForifTeam forifTeam, String userTitle, String clubDepartment) {
+        if ((userTitle != null && !Objects.equals(userTitle, forifTeam.getUserTitle()))
+                || (clubDepartment != null && !Objects.equals(clubDepartment, forifTeam.getClubDepartment()))) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
     }
 
     private ForifTeamResponse toResponse(ForifTeam forifTeam) {
