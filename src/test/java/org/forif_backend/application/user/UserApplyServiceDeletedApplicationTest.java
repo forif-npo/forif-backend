@@ -67,7 +67,7 @@ class UserApplyServiceDeletedApplicationTest {
 
         userApplyService.rejectApplications(99L, 10, List.of(100L, 101L));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         verify(remainingApplication).updateStatus(10, UserApplyStatus.REJECT);
     }
 
@@ -91,7 +91,7 @@ class UserApplyServiceDeletedApplicationTest {
         assertError(() -> userApplyService.updateApplyStatus(
                 99L, 10, 100L, UserApplyStatus.REJECT));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
     }
 
     @Test
@@ -101,7 +101,7 @@ class UserApplyServiceDeletedApplicationTest {
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
                 .when(semesterPhaseGuard)
-                .requireOpen(SemesterPhase.MENTEE_REVIEW);
+                .requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         assertPhaseClosed(() -> userApplyService.rejectApplications(99L, 10, List.of(100L)));
         assertPhaseClosed(() -> userApplyService.updateApplyStatus(

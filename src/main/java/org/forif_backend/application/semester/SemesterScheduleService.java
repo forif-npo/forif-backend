@@ -8,6 +8,7 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.domain.semester.SemesterSchedule;
 import org.forif_backend.domain.semester.SemesterScheduleRepository;
+import org.forif_backend.domain.user.UserApplyRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,11 +30,15 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SemesterScheduleService {
 
+    private static final java.time.ZoneId KOREA_STANDARD_TIME = java.time.ZoneId.of("Asia/Seoul");
+
     private final SemesterScheduleRepository semesterScheduleRepository;
+    private final SemesterService semesterService;
+    private final UserApplyRepository userApplyRepository;
 
     @Transactional(readOnly = true)
     public List<SemesterScheduleInfo> getSchedules(int actYear, int actSemester) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
         return semesterScheduleRepository.findByYearAndSemester(actYear, actSemester).stream()
                 .sorted(Comparator.comparing(SemesterSchedule::getPhase))
                 .map(schedule -> SemesterScheduleInfo.from(schedule, now))
@@ -50,9 +55,17 @@ public class SemesterScheduleService {
         Map<SemesterPhase, PhaseWindow> requested = toValidatedMap(windows);
         validateOrder(requested);
 
-        List<SemesterSchedule> existing = semesterScheduleRepository.findByYearAndSemester(actYear, actSemester);
+        List<SemesterSchedule> existing = semesterScheduleRepository.findByYearAndSemesterForUpdate(actYear, actSemester);
         Map<SemesterPhase, SemesterSchedule> existingByPhase = new EnumMap<>(SemesterPhase.class);
         existing.forEach(schedule -> existingByPhase.put(schedule.getPhase(), schedule));
+
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
+        SemesterSchedule existingMenteeReview = existingByPhase.get(SemesterPhase.MENTEE_REVIEW);
+        PhaseWindow requestedMenteeReview = requested.get(SemesterPhase.MENTEE_REVIEW);
+        rejectExtendingMenteeReview(existingMenteeReview, requestedMenteeReview);
+        boolean closesCurrentMenteeReview = isCurrentSemester(actYear, actSemester)
+                && existingMenteeReview != null
+                && requestedMenteeReview == null;
 
         // 요청에서 빠진 단계는 제거한다. 멘티 모집·수락/거절은 닫히고, 그 외 단계는 상시 개방 정책을 따른다.
         existingByPhase.forEach((phase, schedule) -> {
@@ -73,11 +86,31 @@ public class SemesterScheduleService {
             saved.add(semesterScheduleRepository.save(schedule));
         });
 
-        LocalDateTime now = LocalDateTime.now();
+        if (closesCurrentMenteeReview) {
+            userApplyRepository.rejectPendingApplicationsByYearSemester(actYear, actSemester);
+        }
+
         return saved.stream()
                 .sorted(Comparator.comparing(SemesterSchedule::getPhase))
                 .map(schedule -> SemesterScheduleInfo.from(schedule, now))
                 .toList();
+    }
+
+    private boolean isCurrentSemester(int actYear, int actSemester) {
+        return semesterService.getActive().matches(actYear, actSemester);
+    }
+
+    private void rejectExtendingMenteeReview(SemesterSchedule existing, PhaseWindow requested) {
+        if (existing == null || requested == null) {
+            return;
+        }
+        if (requested.endsAt().isAfter(existing.getEndsAt())) {
+            throw new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED, List.of(new ApiErrorData(
+                    SemesterPhase.MENTEE_REVIEW.name(),
+                    "멘티 수락/거절 기간의 종료 시각은 연장할 수 없습니다.",
+                    null
+            )));
+        }
     }
 
     private Map<SemesterPhase, PhaseWindow> toValidatedMap(List<PhaseWindow> windows) {

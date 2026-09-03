@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
@@ -81,6 +82,25 @@ class SemesterPhaseGuardTest {
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
         assertThat(guard.isOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2)).isFalse();
+    }
+
+    @Test
+    void locksTheMenteeReviewScheduleBeforeAllowingAStatusChange() {
+        when(scheduleRepository.findByYearAndSemesterAndPhaseForUpdate(2026, 2, SemesterPhase.MENTEE_REVIEW))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_REVIEW,
+                        LocalDateTime.now().minusMinutes(1),
+                        LocalDateTime.now().plusMinutes(1),
+                        1L
+                )));
+
+        assertThatCode(() -> guard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW, 2026, 2))
+                .doesNotThrowAnyException();
+
+        verify(scheduleRepository).findByYearAndSemesterAndPhaseForUpdate(
+                2026, 2, SemesterPhase.MENTEE_REVIEW);
     }
 
     @Test

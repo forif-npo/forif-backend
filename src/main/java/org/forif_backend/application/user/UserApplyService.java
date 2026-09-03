@@ -333,7 +333,7 @@ public class UserApplyService {
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
         Study study = getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -384,7 +384,7 @@ public class UserApplyService {
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
         getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -499,7 +499,7 @@ public class UserApplyService {
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatus newStatus) {
         Study study = getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
@@ -553,7 +553,7 @@ public class UserApplyService {
         if (study.getStudyStatus() != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         return study;
     }
 

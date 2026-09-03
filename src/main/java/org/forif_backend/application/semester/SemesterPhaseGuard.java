@@ -47,6 +47,29 @@ public class SemesterPhaseGuard {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
 
+        requireOpen(phase, schedule);
+    }
+
+    /**
+     * 합불 처리처럼 마감 시각의 상태 변경과 경합할 수 있는 작업에 사용한다.
+     * 일정 행을 잠근 상태에서 기간을 확인해, 종료 뒤에 수동 심사가 커밋되는 일을 막는다.
+     */
+    @Transactional
+    public void requireOpenForUpdate(SemesterPhase phase) {
+        SemesterInfo active = semesterService.getActive();
+        requireOpenForUpdate(phase, active.actYear(), active.actSemester());
+    }
+
+    @Transactional
+    public void requireOpenForUpdate(SemesterPhase phase, int actYear, int actSemester) {
+        Optional<SemesterSchedule> schedule =
+                semesterScheduleRepository.findByYearAndSemesterAndPhaseForUpdate(actYear, actSemester, phase);
+
+        requireOpen(phase, schedule);
+    }
+
+    private void requireOpen(SemesterPhase phase, Optional<SemesterSchedule> schedule) {
+
         // 멘티 모집·수락/거절은 일정을 명시적으로 설정해야만 연다. 그 외 단계는 기존 상시 개방 정책을 유지한다.
         if (schedule.isEmpty()) {
             if (requiresExplicitSchedule(phase)) {
