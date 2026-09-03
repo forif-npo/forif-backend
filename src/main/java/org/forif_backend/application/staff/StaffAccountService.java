@@ -146,6 +146,8 @@ public class StaffAccountService {
     /** 부원 이력 상세에서 사용할 멘토 활동 이력 조회. */
     @Transactional(readOnly = true)
     public List<MentorHistory> getMentorHistory(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
         return studyRepository.findMentorHistoryByMentorId(userId).stream()
                 .map(MentorHistory::from)
                 .toList();

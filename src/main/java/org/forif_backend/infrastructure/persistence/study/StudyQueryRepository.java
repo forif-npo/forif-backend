@@ -745,6 +745,7 @@ public class StudyQueryRepository {
                 .where(
                         study.primaryMentor.id.eq(mentorId)
                                 .or(secondaryMentor.id.eq(mentorId)),
+                        study.autonomousFlag.isNull().or(study.autonomousFlag.isFalse()),
                         study.studyStatus.in(StudyStatus.APPROVED, StudyStatus.STARTED)
                 )
                 .orderBy(study.actYear.desc(), study.actSemester.desc(), study.id.desc())

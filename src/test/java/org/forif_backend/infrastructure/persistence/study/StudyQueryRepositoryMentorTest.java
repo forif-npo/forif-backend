@@ -5,6 +5,7 @@ import org.forif_backend.common.config.JpaAuditingConfig;
 import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.study.Study;
+import org.forif_backend.domain.study.StudyStatus;
 import org.forif_backend.domain.user.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -119,18 +120,22 @@ class StudyQueryRepositoryMentorTest {
         Study secondaryApproved = persistApprovedStudy(secondaryMentor, 2026, 1, "부멘토 스터디");
         secondaryApproved.setSecondaryMentor(mentor);
         secondaryApproved.setSecondaryMentorName(mentor.getUserName());
+        Study autonomous = Study.createAutonomousStudy(mentor, 2026, 2);
+        entityManager.persist(autonomous);
         Study pending = Study.createPendingStudy(mentor, 2026, 2);
         pending.setStudyName("대기 스터디");
         entityManager.persist(pending);
         entityManager.flush();
         entityManager.clear();
 
+        assertThat(autonomous.getStudyStatus()).isEqualTo(StudyStatus.APPROVED);
+
         List<Study> history = studyQueryRepository.findMentorHistoryByMentorId(mentor.getId());
 
         assertThat(history)
                 .extracting(Study::getId)
                 .containsExactly(recentApproved.getId(), secondaryApproved.getId(), oldStarted.getId())
-                .doesNotContain(pending.getId());
+                .doesNotContain(pending.getId(), autonomous.getId());
     }
 
     @Test
