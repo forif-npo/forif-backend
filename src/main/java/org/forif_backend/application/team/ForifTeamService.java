@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -77,7 +78,7 @@ public class ForifTeamService {
             forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
         } else {
             validateOwner(requesterId, forifTeam);
-            validateSelfUpdateFields(userTitle, clubDepartment);
+            validateSelfUpdateFields(forifTeam, userTitle, clubDepartment);
             forifTeam.update(null, null, introTag, selfIntro, graduateYear);
         }
 
@@ -110,8 +111,9 @@ public class ForifTeamService {
         }
     }
 
-    private void validateSelfUpdateFields(String userTitle, String clubDepartment) {
-        if (userTitle != null || clubDepartment != null) {
+    private void validateSelfUpdateFields(ForifTeam forifTeam, String userTitle, String clubDepartment) {
+        if ((userTitle != null && !Objects.equals(userTitle, forifTeam.getUserTitle()))
+                || (clubDepartment != null && !Objects.equals(clubDepartment, forifTeam.getClubDepartment()))) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
     }

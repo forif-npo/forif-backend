@@ -56,6 +56,23 @@ class ForifTeamServiceAuthorizationTest {
     }
 
     @Test
+    void generalOperatorCanSubmitUnchangedTitleAndDepartmentWithProfileUpdates() {
+        ForifTeam team = team(OWNER_ID);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
+        when(staffAccountService.isPresidentTeam(OWNER_ID)).thenReturn(false);
+
+        forifTeamService.updateMember(
+                OWNER_ID, TEAM_ID, "운영진", "개발팀",
+                "백엔드, 커피러버", "안녕하세요", 2027);
+
+        assertEquals("운영진", team.getUserTitle());
+        assertEquals("개발팀", team.getClubDepartment());
+        assertEquals("백엔드, 커피러버", team.getIntroTag());
+        assertEquals("안녕하세요", team.getSelfIntro());
+        assertEquals(2027, team.getGraduateYear());
+    }
+
+    @Test
     void generalOperatorCannotChangeOwnTitleOrDepartment() {
         ForifTeam team = team(OWNER_ID);
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));

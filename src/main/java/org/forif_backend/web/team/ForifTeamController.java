@@ -97,7 +97,7 @@ public class ForifTeamController {
     public ResponseEntity<ApiResponse<ForifTeamResponse>> updateMember(
             @AuthenticationPrincipal Long requesterId,
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id,
-            @RequestBody UpdateForifTeamRequest request
+            @Valid @RequestBody UpdateForifTeamRequest request
     ) {
         ForifTeamResponse response = forifTeamService.updateMember(
                 requesterId, id,
