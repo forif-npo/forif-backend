@@ -2,13 +2,18 @@ package org.forif_backend.migration;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * db/migration 의 마이그레이션이 실제 MySQL에서 실행되는지, 그리고 그 결과 스키마가
@@ -36,11 +41,35 @@ class FlywayMigrationSchemaTest {
     @ServiceConnection
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0.46");
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     @DisplayName("빈 DB에 마이그레이션을 적용하면 엔티티와 일치하는 스키마가 만들어진다")
     void migrationsProduceSchemaMatchingEntities() {
         // 컨텍스트 로딩 자체가 검증이다.
         // Flyway가 V1부터 순서대로 적용하고, 이어서 Hibernate가 validate로 엔티티와 대조한다.
         // 둘 중 하나라도 어긋나면 이 테스트는 컨텍스트 로딩 단계에서 실패한다.
+    }
+
+    @Test
+    @DisplayName("전화번호는 숫자만 포함해야 하며 중복될 수 없다")
+    void phoneNumberConstraintsAreEnforced() {
+        insertUser(20260001L, "first@hanyang.ac.kr", "01012345678");
+
+        assertThatThrownBy(() -> insertUser(20260002L, "duplicate@hanyang.ac.kr", "01012345678"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> insertUser(20260003L, "formatted@hanyang.ac.kr", "010-1234-5678"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    private void insertUser(long userId, String email, String phoneNumber) {
+        jdbcTemplate.update(
+                """
+                        INSERT INTO tb_user (created_at, updated_at, user_id, phone_num, email)
+                        VALUES (CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6), ?, ?, ?)
+                        """,
+                userId, phoneNumber, email
+        );
     }
 }
