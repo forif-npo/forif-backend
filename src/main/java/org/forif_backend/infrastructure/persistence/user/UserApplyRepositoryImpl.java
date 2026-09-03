@@ -8,7 +8,9 @@ import org.forif_backend.domain.user.User;
 import org.springframework.stereotype.Repository;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -25,6 +27,25 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     @Override
     public List<UserApply> findAllByYearSemester(int year, int semester) {
         return userApplyJpaRepository.findAllByYearSemester(year, semester);
+    }
+
+    @Override
+    public Map<Long, String> findAcceptedStudyNamesByUserIdsAndYearSemester(
+            List<Long> userIds, int year, int semester
+    ) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> studyNames = new LinkedHashMap<>();
+        userApplyJpaRepository.findAllByYearSemesterAndApplierIds(year, semester, userIds)
+                .forEach(application -> {
+                    String acceptedStudyName = acceptedStudyName(application);
+                    if (acceptedStudyName != null) {
+                        studyNames.put(application.getApplier().getId(), acceptedStudyName);
+                    }
+                });
+        return studyNames;
     }
 
     @Override
@@ -69,5 +90,15 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
                 userApplyJpaRepository.findPrimaryStudyIdsWithApplications(studyIds));
         result.addAll(userApplyJpaRepository.findSecondaryStudyIdsWithApplications(studyIds));
         return result;
+    }
+
+    private String acceptedStudyName(UserApply application) {
+        if (application.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
+            return application.getPrimaryStudyName();
+        }
+        if (application.getSecondaryStatus() == UserApplyStatus.ACCEPT) {
+            return application.getSecondaryStudyName();
+        }
+        return null;
     }
 }

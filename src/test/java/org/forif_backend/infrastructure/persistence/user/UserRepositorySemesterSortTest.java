@@ -17,13 +17,14 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 @DataJpaTest
-@Import({JpaAuditingConfig.class, QueryDslConfig.class, UserRepositoryImpl.class})
+@Import({JpaAuditingConfig.class, QueryDslConfig.class, UserRepositoryImpl.class, UserApplyRepositoryImpl.class})
 class UserRepositorySemesterSortTest {
 
     private static final int YEAR = 2026;
@@ -34,6 +35,9 @@ class UserRepositorySemesterSortTest {
 
     @Autowired
     private UserRepositoryImpl userRepository;
+
+    @Autowired
+    private UserApplyRepositoryImpl userApplyRepository;
 
     @Test
     void ordersOnlySelectedSemesterMembersBeforeApplyingTheOffset() {
@@ -121,6 +125,14 @@ class UserRepositorySemesterSortTest {
                 .containsExactly(920009L);
         assertThat(userRepository.countAutonomousStudyAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
                 .isEqualTo(1);
+
+        Map<Long, String> acceptedStudyNames = userApplyRepository
+                .findAcceptedStudyNamesByUserIdsAndYearSemester(
+                        List.of(920001L, 920002L, 920003L, 920004L, 920005L, 920006L), YEAR, SEMESTER);
+        assertThat(acceptedStudyNames)
+                .containsEntry(920001L, "스터디 1")
+                .containsEntry(920002L, "스터디 102")
+                .doesNotContainKeys(920003L, 920004L, 920005L, 920006L);
 
         assertThat(userRepository.searchRejectedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
