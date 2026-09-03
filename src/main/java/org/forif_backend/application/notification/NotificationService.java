@@ -82,7 +82,9 @@ public class NotificationService {
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case CURRENT_SEMESTER_APPLICANTS -> userService.getApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
-            case CURRENT_SEMESTER_ACCEPTED_APPLICANTS -> userService.getAcceptedApplicants(
+            case CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS -> userService.getRegularStudyAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS -> userService.getAutonomousStudyAcceptedApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case CURRENT_SEMESTER_REJECTED_APPLICANTS -> userService.getRejectedApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);

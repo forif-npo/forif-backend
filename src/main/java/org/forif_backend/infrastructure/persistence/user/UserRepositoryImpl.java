@@ -357,16 +357,29 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public List<User> searchAcceptedApplicantsByYearSemester(
+    public List<User> searchRegularStudyAcceptedApplicantsByYearSemester(
             int year, int semester, Long cursor, int size, String search
     ) {
         return searchApplicantsByDecision(
-                year, semester, cursor, size, search, hasAcceptedStudyApplication());
+                year, semester, cursor, size, search, hasAcceptedRegularStudyApplication());
     }
 
     @Override
-    public long countAcceptedApplicantsByYearSemester(int year, int semester, String search) {
-        return countApplicantsByDecision(year, semester, search, hasAcceptedStudyApplication());
+    public long countRegularStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedRegularStudyApplication());
+    }
+
+    @Override
+    public List<User> searchAutonomousStudyAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedAutonomousStudyApplication());
+    }
+
+    @Override
+    public long countAutonomousStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedAutonomousStudyApplication());
     }
 
     @Override
@@ -542,6 +555,24 @@ public class UserRepositoryImpl implements UserRepository {
     private BooleanExpression hasAcceptedStudyApplication() {
         return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
+    }
+
+    /** 자율스터디 합격자가 정규스터디 합격자 목록에도 중복되지 않도록 우선 분류한다. */
+    private BooleanExpression hasAcceptedRegularStudyApplication() {
+        return hasAcceptedStudyApplication().and(hasAcceptedAutonomousStudyApplication().not());
+    }
+
+    private BooleanExpression hasAcceptedAutonomousStudyApplication() {
+        return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
+                .and(JPAExpressions.selectOne()
+                        .from(study)
+                        .where(study.id.eq(userApply.primaryStudy), study.autonomousFlag.isTrue())
+                        .exists())
+                .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT)
+                        .and(JPAExpressions.selectOne()
+                                .from(study)
+                                .where(study.id.eq(userApply.secondaryStudy), study.autonomousFlag.isTrue())
+                                .exists()));
     }
 
     private BooleanExpression hasRejectedStudyApplication() {

@@ -70,15 +70,27 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
-    void getsCurrentSemesterAcceptedApplicants() {
-        when(userService.getAcceptedApplicants(2026, 1, null, 100, "김"))
+    void getsCurrentSemesterRegularStudyAcceptedApplicants() {
+        when(userService.getRegularStudyAcceptedApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
         CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
-                NotificationRecipientTarget.CURRENT_SEMESTER_ACCEPTED_APPLICANTS, null, 100, "김");
+                NotificationRecipientTarget.CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
-        verify(userService).getAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+        verify(userService).getRegularStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterAutonomousStudyAcceptedApplicants() {
+        when(userService.getAutonomousStudyAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getAutonomousStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
     }
 
     @Test

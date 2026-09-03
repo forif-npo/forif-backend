@@ -475,13 +475,24 @@ public class UserService {
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
-    /** 현재 학기에 1·2순위 중 하나라도 합격한 신청자 목록 조회. */
+    /** 현재 학기 정규스터디 합격자 목록 조회. 자율부원 합격자는 별도 목록으로 분리한다. */
     @Transactional(readOnly = true)
-    public CursorPageResponse<MemberInfo> getAcceptedApplicants(
+    public CursorPageResponse<MemberInfo> getRegularStudyAcceptedApplicants(
             int year, int semester, Long cursor, int size, String search
     ) {
-        long totalElements = userRepository.countAcceptedApplicantsByYearSemester(year, semester, search);
-        List<User> users = userRepository.searchAcceptedApplicantsByYearSemester(year, semester, cursor, size, search);
+        long totalElements = userRepository.countRegularStudyAcceptedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchRegularStudyAcceptedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
+    /** 현재 학기 자율부원 합격자 목록 조회. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getAutonomousStudyAcceptedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countAutonomousStudyAcceptedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchAutonomousStudyAcceptedApplicantsByYearSemester(
+                year, semester, cursor, size, search);
         return toCursorMemberPage(users, totalElements, size, year, semester);
     }
 

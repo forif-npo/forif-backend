@@ -91,6 +91,7 @@ class UserRepositorySemesterSortTest {
         User secondaryPending = persistUser(920006L, "2순위 대기");
         User previousSemesterRejected = persistUser(920007L, "이전 학기 불합격");
         User acceptedThenRemoved = persistUser(920008L, "합격 후 명단 제외");
+        User autonomousAccepted = persistUser(920009L, "자율부원 합격");
 
         persistApplication(primaryAccepted, 1, UserApplyStatus.ACCEPT, null);
         persistApplication(secondaryAccepted, 2, UserApplyStatus.REJECT, UserApplyStatus.ACCEPT);
@@ -100,18 +101,26 @@ class UserRepositorySemesterSortTest {
         persistApplication(secondaryPending, 6, UserApplyStatus.REJECT, UserApplyStatus.PENDING);
         persistApplication(previousSemesterRejected, 7, 2025, 2, UserApplyStatus.REJECT, null);
         persistApplication(acceptedThenRemoved, 8, UserApplyStatus.REJECT, null);
+        persistAutonomousAcceptedApplication(autonomousAccepted);
         // 합격 처리에서 생성된 확인 기록은 부원 삭제 후에도 남는다.
         entityManager.persist(MemberSemesterCheck.create(acceptedThenRemoved, YEAR, SEMESTER));
 
         entityManager.flush();
         entityManager.clear();
 
-        assertThat(userRepository.searchAcceptedApplicantsByYearSemester(
+        assertThat(userRepository.searchRegularStudyAcceptedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
                 .extracting(User::getId)
                 .containsExactlyInAnyOrder(920001L, 920002L);
-        assertThat(userRepository.countAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
+        assertThat(userRepository.countRegularStudyAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
                 .isEqualTo(2);
+
+        assertThat(userRepository.searchAutonomousStudyAcceptedApplicantsByYearSemester(
+                YEAR, SEMESTER, null, 10, null))
+                .extracting(User::getId)
+                .containsExactly(920009L);
+        assertThat(userRepository.countAutonomousStudyAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
+                .isEqualTo(1);
 
         assertThat(userRepository.searchRejectedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
@@ -164,6 +173,17 @@ class UserRepositorySemesterSortTest {
             application.addSecondaryStudy(secondaryStudyId, "스터디 " + secondaryStudyId, "지원 사유");
             application.updateStatus(secondaryStudyId, secondaryStatus);
         }
+        entityManager.persist(application);
+    }
+
+    private void persistAutonomousAcceptedApplication(User user) {
+        User mentor = persistUser(user.getId() + 100_000L, "자율 멘토" + user.getId());
+        Study autonomousStudy = Study.createAutonomousStudy(mentor, YEAR, SEMESTER);
+        entityManager.persist(autonomousStudy);
+        entityManager.flush();
+
+        UserApply application = UserApply.applyStudy(user, autonomousStudy, "지원 사유", YEAR, SEMESTER);
+        application.updateStatus(autonomousStudy.getId(), UserApplyStatus.ACCEPT);
         entityManager.persist(application);
     }
 }
