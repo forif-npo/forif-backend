@@ -96,6 +96,7 @@ class UserRepositorySemesterSortTest {
         User previousSemesterRejected = persistUser(920007L, "이전 학기 불합격");
         User acceptedThenRemoved = persistUser(920008L, "합격 후 명단 제외");
         User autonomousAccepted = persistUser(920009L, "자율부원 합격");
+        User primaryAcceptedSecondaryPending = persistUser(920010L, "1순위 합격 2순위 대기");
 
         persistApplication(primaryAccepted, 1, UserApplyStatus.ACCEPT, null);
         persistApplication(secondaryAccepted, 2, UserApplyStatus.REJECT, UserApplyStatus.ACCEPT);
@@ -106,7 +107,8 @@ class UserRepositorySemesterSortTest {
         persistApplication(previousSemesterRejected, 7, 2025, 2, UserApplyStatus.REJECT, null);
         persistApplication(acceptedThenRemoved, 8, UserApplyStatus.REJECT, null);
         persistAutonomousAcceptedApplication(autonomousAccepted);
-        // 합격 처리에서 생성된 확인 기록은 부원 삭제 후에도 남는다.
+        persistApplication(primaryAcceptedSecondaryPending, 10, UserApplyStatus.ACCEPT, UserApplyStatus.PENDING);
+        // 합격 확인 이력은 부원 명단 삭제 후에도 남아 심사 불합격과 구분한다.
         entityManager.persist(MemberSemesterCheck.create(acceptedThenRemoved, YEAR, SEMESTER));
 
         entityManager.flush();
@@ -115,9 +117,9 @@ class UserRepositorySemesterSortTest {
         assertThat(userRepository.searchRegularStudyAcceptedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
                 .extracting(User::getId)
-                .containsExactlyInAnyOrder(920001L, 920002L);
+                .containsExactlyInAnyOrder(920001L, 920002L, 920010L);
         assertThat(userRepository.countRegularStudyAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
-                .isEqualTo(2);
+                .isEqualTo(3);
 
         assertThat(userRepository.searchAutonomousStudyAcceptedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
@@ -126,12 +128,19 @@ class UserRepositorySemesterSortTest {
         assertThat(userRepository.countAutonomousStudyAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
                 .isEqualTo(1);
 
+        assertThat(userRepository.searchApplicantsByYearSemester(YEAR, SEMESTER, null, 10, null))
+                .extracting(User::getId)
+                .containsExactlyInAnyOrder(920001L, 920002L, 920003L, 920004L, 920009L, 920010L);
+        assertThat(userRepository.countApplicantsByYearSemester(YEAR, SEMESTER, null))
+                .isEqualTo(6);
+
         Map<Long, String> acceptedStudyNames = userApplyRepository
                 .findAcceptedStudyNamesByUserIdsAndYearSemester(
-                        List.of(920001L, 920002L, 920003L, 920004L, 920005L, 920006L), YEAR, SEMESTER);
+                        List.of(920001L, 920002L, 920003L, 920004L, 920005L, 920006L, 920010L), YEAR, SEMESTER);
         assertThat(acceptedStudyNames)
                 .containsEntry(920001L, "스터디 1")
                 .containsEntry(920002L, "스터디 102")
+                .containsEntry(920010L, "스터디 10")
                 .doesNotContainKeys(920003L, 920004L, 920005L, 920006L);
 
         assertThat(userRepository.searchRejectedApplicantsByYearSemester(

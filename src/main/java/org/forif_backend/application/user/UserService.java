@@ -464,7 +464,7 @@ public class UserService {
                 userId, active.actYear(), active.actSemester(), deletedCount);
     }
 
-    /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
+    /** 현재 학기 심사가 완료된 신청자 목록 조회. 대기중 신청자는 제외한다. */
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberInfo> getApplicants(int year, int semester, Long cursor, int size, String search) {
         long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);

@@ -59,7 +59,7 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
-    void getsCurrentSemesterApplicantsRegardlessOfAcceptanceStatus() {
+    void getsCurrentSemesterResolvedApplicants() {
         when(userService.getApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 

@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberPath;
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
@@ -331,6 +332,7 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(year, semester),
                         userCursorLt(cursor),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
@@ -349,6 +351,7 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(year, semester),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
                 )
@@ -557,22 +560,40 @@ public class UserRepositoryImpl implements UserRepository {
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
     }
 
-    /** 자율스터디 합격자가 정규스터디 합격자 목록에도 중복되지 않도록 우선 분류한다. */
+    /** 합격자와 심사 불합격자만 신청자 수신자 목록에 포함한다. */
+    private BooleanExpression hasResolvedStudyApplication(int year, int semester) {
+        return hasAcceptedStudyApplication()
+                .or(hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+    }
+
+    /** 1순위 합격이 있으면 1순위, 없으면 2순위 합격 스터디를 최종 소속으로 본다. */
     private BooleanExpression hasAcceptedRegularStudyApplication() {
-        return hasAcceptedStudyApplication().and(hasAcceptedAutonomousStudyApplication().not());
+        return hasAcceptedStudyApplicationAtPriority(false);
     }
 
     private BooleanExpression hasAcceptedAutonomousStudyApplication() {
+        return hasAcceptedStudyApplicationAtPriority(true);
+    }
+
+    private BooleanExpression hasAcceptedStudyApplicationAtPriority(boolean autonomous) {
         return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
-                .and(JPAExpressions.selectOne()
-                        .from(study)
-                        .where(study.id.eq(userApply.primaryStudy), study.autonomousFlag.isTrue())
-                        .exists())
-                .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT)
-                        .and(JPAExpressions.selectOne()
-                                .from(study)
-                                .where(study.id.eq(userApply.secondaryStudy), study.autonomousFlag.isTrue())
-                                .exists()));
+                .and(isAutonomousStudy(userApply.primaryStudy, autonomous))
+                .or(userApply.primaryStatus.ne(UserApplyStatus.ACCEPT)
+                        .and(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT))
+                        .and(isAutonomousStudy(userApply.secondaryStudy, autonomous)));
+    }
+
+    private BooleanExpression isAutonomousStudy(NumberPath<Integer> studyId, boolean autonomous) {
+        if (autonomous) {
+            return JPAExpressions.selectOne()
+                    .from(study)
+                    .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                    .exists();
+        }
+        return JPAExpressions.selectOne()
+                .from(study)
+                .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                .notExists();
     }
 
     private BooleanExpression hasRejectedStudyApplication() {
@@ -581,7 +602,7 @@ public class UserRepositoryImpl implements UserRepository {
                         .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
     }
 
-    /** 합격 시 생성된 확인 기록은 부원 삭제 뒤에도 남아 심사 불합격과 구분한다. */
+    /** 합격 확인 이력이 있으면 현재 상태가 REJECT여도 심사 불합격자로 보지 않는다. */
     private BooleanExpression hasNoAcceptedHistory(int year, int semester) {
         return JPAExpressions.selectOne()
                 .from(memberSemesterCheck)
