@@ -232,6 +232,19 @@ public class StaffAccountController {
         return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
     }
 
+    @Operation(summary = "부원 멘토 이력 조회 (어드민 전용)",
+            description = "해당 부원이 주·부멘토로 승인되었거나 개설한 스터디 이력을 학기 최신순으로 조회합니다.")
+    @GetMapping("/api/v1/admin/users/{userId}/mentor-history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<MentorHistoryResponse>>> getMemberMentorHistory(
+            @Parameter(description = "조회할 부원의 유저 ID") @PathVariable Long userId
+    ) {
+        List<MentorHistoryResponse> response = staffAccountService.getMentorHistory(userId).stream()
+                .map(MentorHistoryResponse::from)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     // ==================== 어드민 부원 관리 API ====================
 
     /**

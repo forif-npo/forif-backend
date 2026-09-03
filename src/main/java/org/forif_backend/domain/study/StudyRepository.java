@@ -164,5 +164,7 @@ public interface StudyRepository {
      * @return 스터디 리스트
      */
     List<Study> findStudiesByMentorId(Long mentorId);
+    /** 주·부멘토로 승인되었거나 개설된 스터디 이력을 학기 최신순으로 조회한다. */
+    List<Study> findMentorHistoryByMentorId(Long mentorId);
     List<Study> findStudyApplicationsByMentorId(Long mentorId, int actYear, int actSemester);
 }
