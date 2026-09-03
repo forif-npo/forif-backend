@@ -51,11 +51,14 @@ public class NotificationService {
         staffAccountRepository.findByUserId(senderId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
+        List<String> uniqueReceivers = command.receivers().stream()
+                .distinct()
+                .toList();
         Map<String, String> receiverNames = new HashMap<>();
         Map<String, SendAlimTalkMessageResult> lookupFailuresByReceiver = new HashMap<>();
         List<String> validReceivers = new ArrayList<>();
 
-        for (String receiver : command.receivers()) {
+        for (String receiver : uniqueReceivers) {
             resolveReceiver(receiver, receiverNames, lookupFailuresByReceiver);
             if (receiverNames.containsKey(receiver)) {
                 validReceivers.add(receiver);
@@ -65,7 +68,7 @@ public class NotificationService {
         if (validReceivers.isEmpty()) {
             return CompletableFuture.completedFuture(new SendAlimTalkResult(
                     command.templateCode(),
-                    mergeResults(command.receivers(), List.of(), lookupFailuresByReceiver)
+                    mergeResults(uniqueReceivers, List.of(), lookupFailuresByReceiver)
             ));
         }
 
@@ -78,7 +81,7 @@ public class NotificationService {
         return notificationSendPort.sendAlimTalk(validReceiverCommand, receiverNames)
                 .thenApply(sentResult -> new SendAlimTalkResult(
                         sentResult.templateId(),
-                        mergeResults(command.receivers(), sentResult.results(), lookupFailuresByReceiver)
+                        mergeResults(uniqueReceivers, sentResult.results(), lookupFailuresByReceiver)
                 ));
     }
 

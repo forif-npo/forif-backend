@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -140,6 +141,50 @@ class NotificationServiceRecipientTest {
                         ErrorCode.USER_NOT_FOUND.getMessage()
                 )
         );
+    }
+
+    @Test
+    void sendsDuplicateResolvableRecipientOnlyOnce() {
+        String receiver = "01011112222";
+        stubAuthorizedSender();
+        stubUser(receiver, "김포리");
+        when(notificationSendPort.sendAlimTalk(any(), any())).thenReturn(CompletableFuture.completedFuture(
+                new SendAlimTalkResult("template-1", List.of(
+                        new SendAlimTalkMessageResult(receiver, true, null, null)
+                ))
+        ));
+
+        SendAlimTalkResult result = notificationService.sendAlimTalk(
+                new SendAlimTalkCommand(List.of(receiver, receiver), "template-1", null),
+                1L
+        ).join();
+
+        ArgumentCaptor<SendAlimTalkCommand> commandCaptor = ArgumentCaptor.forClass(SendAlimTalkCommand.class);
+        verify(notificationSendPort).sendAlimTalk(commandCaptor.capture(), eq(Map.of(receiver, "김포리")));
+        verify(userRepository, times(1)).findByPhoneNum(receiver);
+        assertThat(commandCaptor.getValue().receivers()).containsExactly(receiver);
+        assertThat(result.results()).containsExactly(new SendAlimTalkMessageResult(receiver, true, null, null));
+    }
+
+    @Test
+    void returnsDuplicateUnresolvableRecipientOnlyOnceWithoutSending() {
+        String receiver = "01033334444";
+        stubAuthorizedSender();
+        when(userRepository.findByPhoneNum(receiver)).thenReturn(Optional.empty());
+
+        SendAlimTalkResult result = notificationService.sendAlimTalk(
+                new SendAlimTalkCommand(List.of(receiver, receiver), "template-1", null),
+                1L
+        ).join();
+
+        verify(userRepository, times(1)).findByPhoneNum(receiver);
+        verifyNoInteractions(notificationSendPort);
+        assertThat(result.results()).containsExactly(new SendAlimTalkMessageResult(
+                receiver,
+                false,
+                ErrorCode.USER_NOT_FOUND.getCode(),
+                ErrorCode.USER_NOT_FOUND.getMessage()
+        ));
     }
 
     private void stubAuthorizedSender() {
