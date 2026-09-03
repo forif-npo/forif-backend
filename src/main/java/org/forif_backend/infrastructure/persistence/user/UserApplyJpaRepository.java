@@ -3,6 +3,7 @@ package org.forif_backend.infrastructure.persistence.user;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,6 +25,22 @@ public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
             ORDER BY ua.createdAt DESC, ua.id DESC
             """)
     List<UserApply> findAllByYearSemester(@Param("year") int year, @Param("semester") int semester);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE UserApply ua
+            SET ua.primaryStatus = CASE WHEN ua.primaryStatus = :pendingStatus THEN :rejectedStatus ELSE ua.primaryStatus END,
+                ua.secondaryStatus = CASE WHEN ua.secondaryStatus = :pendingStatus THEN :rejectedStatus ELSE ua.secondaryStatus END,
+                ua.updatedAt = CURRENT_TIMESTAMP
+            WHERE ua.applyYear = :year
+              AND ua.applySemester = :semester
+              AND (ua.primaryStatus = :pendingStatus OR ua.secondaryStatus = :pendingStatus)
+            """)
+    int rejectPendingStatusesByYearSemester(
+            @Param("year") int year,
+            @Param("semester") int semester,
+            @Param("pendingStatus") UserApplyStatus pendingStatus,
+            @Param("rejectedStatus") UserApplyStatus rejectedStatus);
 
     @Query("""
             SELECT COUNT(ua) > 0 FROM UserApply ua

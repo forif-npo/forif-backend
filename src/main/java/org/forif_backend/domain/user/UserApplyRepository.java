@@ -17,6 +17,9 @@ public interface UserApplyRepository {
     /** 지정 학기의 모든 신청서. 어드민 신청자 관리 목록에서 1·2순위를 행으로 펼칠 때 사용한다. */
     List<UserApply> findAllByYearSemester(int year, int semester);
 
+    /** 멘티 합불 처리 기간이 끝난 학기의 남은 PENDING 상태를 일괄 불합격 처리한다. */
+    int rejectPendingApplicationsByYearSemester(int year, int semester);
+
     List<User> findApplicantsByYearSemester(int year, int semester, String search);
 
     /** 현재 학기에 1·2순위 중 하나라도 합격한 사용자. 회비 관리 대상 조회에 사용한다. */
