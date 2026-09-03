@@ -70,6 +70,30 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
+    void getsCurrentSemesterAcceptedApplicants() {
+        when(userService.getAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterRejectedApplicants() {
+        when(userService.getRejectedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_REJECTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getRejectedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
     void getsPreviousSemesterMembersAcrossYearBoundary() {
         when(userService.getNotificationMembers(2025, 2, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);

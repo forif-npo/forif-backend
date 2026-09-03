@@ -82,6 +82,10 @@ public class NotificationService {
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case CURRENT_SEMESTER_APPLICANTS -> userService.getApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_ACCEPTED_APPLICANTS -> userService.getAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_REJECTED_APPLICANTS -> userService.getRejectedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case PREVIOUS_SEMESTER_MEMBERS -> {
                 SemesterInfo previousSemester = previousOf(currentSemester);
                 yield userService.getNotificationMembers(

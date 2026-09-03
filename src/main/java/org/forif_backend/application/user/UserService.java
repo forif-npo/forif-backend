@@ -475,6 +475,26 @@ public class UserService {
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
+    /** 현재 학기에 1·2순위 중 하나라도 합격한 신청자 목록 조회. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getAcceptedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countAcceptedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchAcceptedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
+    /** 현재 학기에 지원한 모든 순위가 불합격 처리된 신청자 목록 조회. 대기중 신청자는 제외한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getRejectedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countRejectedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchRejectedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
+    }
+
     /** 문자 발송 수신자용 전체 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberInfo> getNotificationMembers(Long cursor, int size, String search) {

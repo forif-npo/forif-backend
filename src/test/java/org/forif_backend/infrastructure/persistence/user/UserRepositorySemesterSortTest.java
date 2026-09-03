@@ -7,6 +7,8 @@ import org.forif_backend.common.type.SortDirection;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyUser;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.infrastructure.persistence.config.QueryDslConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +18,8 @@ import org.springframework.context.annotation.Import;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @DataJpaTest
 @Import({JpaAuditingConfig.class, QueryDslConfig.class, UserRepositoryImpl.class})
@@ -76,6 +80,42 @@ class UserRepositorySemesterSortTest {
                 .containsExactly("다람", "나람", "가람");
     }
 
+    @Test
+    void separatesAcceptedAndFullyRejectedApplicantsAndExcludesPendingApplicants() {
+        User primaryAccepted = persistUser(920001L, "1순위 합격");
+        User secondaryAccepted = persistUser(920002L, "2순위 합격");
+        User primaryRejected = persistUser(920003L, "1순위 불합격");
+        User fullyRejected = persistUser(920004L, "모두 불합격");
+        User pending = persistUser(920005L, "대기중");
+        User secondaryPending = persistUser(920006L, "2순위 대기");
+        User previousSemesterRejected = persistUser(920007L, "이전 학기 불합격");
+
+        persistApplication(primaryAccepted, 1, UserApplyStatus.ACCEPT, null);
+        persistApplication(secondaryAccepted, 2, UserApplyStatus.REJECT, UserApplyStatus.ACCEPT);
+        persistApplication(primaryRejected, 3, UserApplyStatus.REJECT, null);
+        persistApplication(fullyRejected, 4, UserApplyStatus.REJECT, UserApplyStatus.REJECT);
+        persistApplication(pending, 5, UserApplyStatus.PENDING, null);
+        persistApplication(secondaryPending, 6, UserApplyStatus.REJECT, UserApplyStatus.PENDING);
+        persistApplication(previousSemesterRejected, 7, 2025, 2, UserApplyStatus.REJECT, null);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(userRepository.searchAcceptedApplicantsByYearSemester(
+                YEAR, SEMESTER, null, 10, null))
+                .extracting(User::getId)
+                .containsExactlyInAnyOrder(920001L, 920002L);
+        assertThat(userRepository.countAcceptedApplicantsByYearSemester(YEAR, SEMESTER, null))
+                .isEqualTo(2);
+
+        assertThat(userRepository.searchRejectedApplicantsByYearSemester(
+                YEAR, SEMESTER, null, 10, null))
+                .extracting(User::getId)
+                .containsExactlyInAnyOrder(920003L, 920004L);
+        assertThat(userRepository.countRejectedApplicantsByYearSemester(YEAR, SEMESTER, null))
+                .isEqualTo(2);
+    }
+
     private User persistUser(Long id, String name) {
         User user = User.createUser(id, name, id + "@forif.org", "010-0000-0000", "컴퓨터공학과");
         entityManager.persist(user);
@@ -89,5 +129,36 @@ class UserRepositorySemesterSortTest {
         study.approve();
         entityManager.persist(study);
         entityManager.persist(StudyUser.create(study, member));
+    }
+
+    private void persistApplication(
+            User user,
+            int studyId,
+            UserApplyStatus primaryStatus,
+            UserApplyStatus secondaryStatus
+    ) {
+        persistApplication(user, studyId, YEAR, SEMESTER, primaryStatus, secondaryStatus);
+    }
+
+    private void persistApplication(
+            User user,
+            int studyId,
+            int year,
+            int semester,
+            UserApplyStatus primaryStatus,
+            UserApplyStatus secondaryStatus
+    ) {
+        Study primaryStudy = mock(Study.class);
+        when(primaryStudy.getId()).thenReturn(studyId);
+        when(primaryStudy.getStudyName()).thenReturn("스터디 " + studyId);
+
+        UserApply application = UserApply.applyStudy(user, primaryStudy, "지원 사유", year, semester);
+        application.updateStatus(studyId, primaryStatus);
+        if (secondaryStatus != null) {
+            int secondaryStudyId = studyId + 100;
+            application.addSecondaryStudy(secondaryStudyId, "스터디 " + secondaryStudyId, "지원 사유");
+            application.updateStatus(secondaryStudyId, secondaryStatus);
+        }
+        entityManager.persist(application);
     }
 }

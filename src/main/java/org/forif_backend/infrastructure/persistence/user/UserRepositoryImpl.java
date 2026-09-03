@@ -356,6 +356,32 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> searchAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedStudyApplication());
+    }
+
+    @Override
+    public long countAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedStudyApplication());
+    }
+
+    @Override
+    public List<User> searchRejectedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasRejectedStudyApplication());
+    }
+
+    @Override
+    public long countRejectedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasRejectedStudyApplication());
+    }
+
+    @Override
     public List<User> searchAcceptedUsersMissingDuesByYearSemester(
             int year, int semester, Long cursor, int size, String search
     ) {
@@ -448,6 +474,51 @@ public class UserRepositoryImpl implements UserRepository {
         return count != null ? count : 0L;
     }
 
+    private List<User> searchApplicantsByDecision(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search,
+            BooleanExpression decision
+    ) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    private long countApplicantsByDecision(
+            int year,
+            int semester,
+            String search,
+            BooleanExpression decision
+    ) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
     private BooleanExpression userCursorLt(Long cursor) {
         return cursor != null ? user.id.lt(cursor) : null;
     }
@@ -467,6 +538,12 @@ public class UserRepositoryImpl implements UserRepository {
     private BooleanExpression hasAcceptedStudyApplication() {
         return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
+    }
+
+    private BooleanExpression hasRejectedStudyApplication() {
+        return userApply.primaryStatus.eq(UserApplyStatus.REJECT)
+                .and(userApply.secondaryStudy.isNull()
+                        .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
     }
 
     private BooleanExpression notificationRecipientSearchKeyword(String search) {
