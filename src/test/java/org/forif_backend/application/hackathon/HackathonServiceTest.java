@@ -703,19 +703,30 @@ public class HackathonServiceTest extends DefaultMockitoTest {
     }
 
     @Test
-    @DisplayName("해커톤 목록은 기수로 검색할 수 있다")
-    void getHackathonsSearchesByEventRound() {
-        Long hackathonId = createDefaultHackathon();
-        int eventRound = hackathonService.getHackathon(hackathonId).eventRound();
-
-        List<Long> hackathonIds = hackathonService
-                .getHackathons(null, null, null, String.valueOf(eventRound), null, 0, 20)
-                .content()
-                .stream()
-                .map(HackathonResponse::hackathonId)
-                .toList();
-
-        assertThat(hackathonIds).containsExactly(hackathonId);
+    @DisplayName("해커톤 기수와 학기는 정확한 형식으로만 검색한다")
+    void getHackathonsSearchesEventRoundAndSemesterExactly() {
+        Long firstRound = createDefaultHackathon(); // 2025-2, 1기
+        LocalDateTime now = LocalDateTime.now();
+        Long secondRound = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026, 1, "봄 해커톤", "설명", "캠퍼스",
+                now.minusDays(2), now.plusDays(1), now.plusDays(1), now.plusDays(2),
+                now.plusDays(3), now.plusDays(4)
+        )).hackathonId();
+        Long thirdRound = hackathonService.createHackathon(new CreateHackathonRequest(
+                2026, 2, "여름 해커톤", "설명", "운동장",
+                now.minusDays(2), now.plusDays(1), now.plusDays(1), now.plusDays(2),
+                now.plusDays(3), now.plusDays(4)
+        )).hackathonId();
+        hackathonRepository.saveEvent(HackathonEvent.create(
+                2027, 1, 10, "가을 해커톤", "설명", "강의실",
+                now.minusDays(2), now.plusDays(1), now.plusDays(1), now.plusDays(2),
+                now.plusDays(3), now.plusDays(4)
+        ));
+        assertThat(searchHackathonIds("1")).containsExactly(firstRound);
+        assertThat(searchHackathonIds("2")).containsExactly(secondRound);
+        assertThat(searchHackathonIds("3기")).containsExactly(thirdRound);
+        assertThat(searchHackathonIds("2025-2")).containsExactly(firstRound);
+        assertThat(searchHackathonIds("2025")).isEmpty();
     }
 
     @Test
@@ -806,5 +817,13 @@ public class HackathonServiceTest extends DefaultMockitoTest {
                 now.plusDays(3),
                 now.plusDays(4)
         )).hackathonId();
+    }
+
+    private List<Long> searchHackathonIds(String search) {
+        return hackathonService.getHackathons(null, null, null, search, null, 0, 20)
+                .content()
+                .stream()
+                .map(HackathonResponse::hackathonId)
+                .toList();
     }
 }
