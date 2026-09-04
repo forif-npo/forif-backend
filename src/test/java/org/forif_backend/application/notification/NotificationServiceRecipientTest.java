@@ -59,7 +59,7 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
-    void getsCurrentSemesterApplicantsRegardlessOfAcceptanceStatus() {
+    void getsCurrentSemesterResolvedApplicants() {
         when(userService.getApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
@@ -67,6 +67,42 @@ class NotificationServiceRecipientTest {
                 NotificationRecipientTarget.CURRENT_SEMESTER_APPLICANTS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
+    }
+
+    @Test
+    void getsCurrentSemesterRegularStudyAcceptedApplicants() {
+        when(userService.getRegularStudyAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getRegularStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterAutonomousStudyAcceptedApplicants() {
+        when(userService.getAutonomousStudyAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getAutonomousStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterRejectedApplicants() {
+        when(userService.getRejectedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_REJECTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getRejectedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
     }
 
     @Test

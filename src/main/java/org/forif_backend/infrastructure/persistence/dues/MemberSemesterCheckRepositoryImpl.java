@@ -31,4 +31,9 @@ public class MemberSemesterCheckRepositoryImpl implements MemberSemesterCheckRep
     public MemberSemesterCheck save(MemberSemesterCheck memberSemesterCheck) {
         return memberSemesterCheckJpaRepository.save(memberSemesterCheck);
     }
+
+    @Override
+    public void deleteByUserIdAndYearSemester(Long userId, int year, int semester) {
+        memberSemesterCheckJpaRepository.deleteByUser_IdAndActYearAndActSemester(userId, year, semester);
+    }
 }

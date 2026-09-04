@@ -60,6 +60,18 @@ public interface UserRepository {
 
     long countApplicantsByYearSemester(int year, int semester, String search);
 
+    List<User> searchRegularStudyAcceptedApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countRegularStudyAcceptedApplicantsByYearSemester(int year, int semester, String search);
+
+    List<User> searchAutonomousStudyAcceptedApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countAutonomousStudyAcceptedApplicantsByYearSemester(int year, int semester, String search);
+
+    List<User> searchRejectedApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search);
+
+    long countRejectedApplicantsByYearSemester(int year, int semester, String search);
+
     List<User> searchAcceptedUsersMissingDuesByYearSemester(int year, int semester, Long cursor, int size, String search);
 
     long countAcceptedUsersMissingDuesByYearSemester(int year, int semester, String search);

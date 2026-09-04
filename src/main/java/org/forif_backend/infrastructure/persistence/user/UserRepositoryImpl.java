@@ -2,6 +2,8 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -330,6 +332,7 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(year, semester),
                         userCursorLt(cursor),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
@@ -348,11 +351,54 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(year, semester),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
                 )
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchRegularStudyAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedRegularStudyApplication());
+    }
+
+    @Override
+    public long countRegularStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedRegularStudyApplication());
+    }
+
+    @Override
+    public List<User> searchAutonomousStudyAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedAutonomousStudyApplication());
+    }
+
+    @Override
+    public long countAutonomousStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedAutonomousStudyApplication());
+    }
+
+    @Override
+    public List<User> searchRejectedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search,
+                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+    }
+
+    @Override
+    public long countRejectedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(
+                year, semester, search,
+                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
     }
 
     @Override
@@ -448,6 +494,51 @@ public class UserRepositoryImpl implements UserRepository {
         return count != null ? count : 0L;
     }
 
+    private List<User> searchApplicantsByDecision(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search,
+            BooleanExpression decision
+    ) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    private long countApplicantsByDecision(
+            int year,
+            int semester,
+            String search,
+            BooleanExpression decision
+    ) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
     private BooleanExpression userCursorLt(Long cursor) {
         return cursor != null ? user.id.lt(cursor) : null;
     }
@@ -467,6 +558,60 @@ public class UserRepositoryImpl implements UserRepository {
     private BooleanExpression hasAcceptedStudyApplication() {
         return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
+    }
+
+    /** 합격자와 심사 불합격자만 신청자 수신자 목록에 포함한다. */
+    private BooleanExpression hasResolvedStudyApplication(int year, int semester) {
+        return hasAcceptedStudyApplication()
+                .or(hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+    }
+
+    /** 1순위 합격이 있으면 1순위, 없으면 2순위 합격 스터디를 최종 소속으로 본다. */
+    private BooleanExpression hasAcceptedRegularStudyApplication() {
+        return hasAcceptedStudyApplicationAtPriority(false);
+    }
+
+    private BooleanExpression hasAcceptedAutonomousStudyApplication() {
+        return hasAcceptedStudyApplicationAtPriority(true);
+    }
+
+    private BooleanExpression hasAcceptedStudyApplicationAtPriority(boolean autonomous) {
+        return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
+                .and(isAutonomousStudy(userApply.primaryStudy, autonomous))
+                .or(userApply.primaryStatus.ne(UserApplyStatus.ACCEPT)
+                        .and(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT))
+                        .and(isAutonomousStudy(userApply.secondaryStudy, autonomous)));
+    }
+
+    private BooleanExpression isAutonomousStudy(NumberPath<Integer> studyId, boolean autonomous) {
+        if (autonomous) {
+            return JPAExpressions.selectOne()
+                    .from(study)
+                    .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                    .exists();
+        }
+        return JPAExpressions.selectOne()
+                .from(study)
+                .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                .notExists();
+    }
+
+    private BooleanExpression hasRejectedStudyApplication() {
+        return userApply.primaryStatus.eq(UserApplyStatus.REJECT)
+                .and(userApply.secondaryStudy.isNull()
+                        .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
+    }
+
+    /** 합격 확인 이력이 있으면 현재 상태가 REJECT여도 심사 불합격자로 보지 않는다. */
+    private BooleanExpression hasNoAcceptedHistory(int year, int semester) {
+        return JPAExpressions.selectOne()
+                .from(memberSemesterCheck)
+                .where(
+                        memberSemesterCheck.user.id.eq(user.id),
+                        memberSemesterCheck.actYear.eq(year),
+                        memberSemesterCheck.actSemester.eq(semester)
+                )
+                .notExists();
     }
 
     private BooleanExpression notificationRecipientSearchKeyword(String search) {
