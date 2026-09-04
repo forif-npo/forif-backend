@@ -11,6 +11,7 @@ public enum ErrorCode {
     // 400 Bad Request
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "FOR001-400", "잘못된 요청입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "FOR002-400", "입력값이 유효하지 않습니다."),
+    INVALID_PHONE_NUMBER(HttpStatus.BAD_REQUEST, "FOR146-400", "전화번호 형식이 올바르지 않습니다."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "FOR003-400", "입력값 검증에 실패했습니다."),
     MISSING_PARAMETER(HttpStatus.BAD_REQUEST, "FOR004-400", "필수 파라미터가 누락되었습니다."),
     TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "FOR005-400", "파라미터 타입이 올바르지 않습니다."),
