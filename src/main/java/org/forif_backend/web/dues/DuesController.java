@@ -11,6 +11,7 @@ import org.forif_backend.application.dues.dto.UpdateDuesMemberCommand;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.web.dues.dto.BatchUpdateDuesRequest;
+import org.forif_backend.web.dues.dto.RegistrationWithdrawalRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -57,5 +58,16 @@ public class DuesController {
                         .toList()
         );
         return ResponseEntity.ok(ApiResponse.successWithMsg("회비 관리 상태를 저장했습니다."));
+    }
+
+    @Operation(summary = "현재 학기 등록 철회 (어드민 전용)",
+            description = "합격 및 신청 이력은 보존하고, 선택한 사용자를 회비 관리와 현재 학기 활동부원 등록 대상에서 제외합니다.")
+    @PostMapping("/registration-withdrawals")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> withdrawCurrentSemesterRegistrations(
+            @RequestBody @Valid RegistrationWithdrawalRequest request
+    ) {
+        duesService.withdrawCurrentSemesterRegistrations(request.userIds());
+        return ResponseEntity.ok(ApiResponse.successWithMsg("이번 학기 등록을 철회했습니다."));
     }
 }

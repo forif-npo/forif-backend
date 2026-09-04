@@ -130,6 +130,24 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("등록 철회된 합격자는 회비 관리 목록과 집계에서 제외한다")
+    void excludesRegistrationWithdrawnApplicantFromDues() {
+        MemberSemesterCheck withdrawnCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
+        withdrawnCheck.withdrawRegistration();
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(duesUnpaidUser, completedUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L, 2L)))
+                .thenReturn(List.of(withdrawnCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(0, 20, null, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(2L);
+        assertThat(result.summary().totalCount()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("매우 큰 페이지 번호는 빈 회비 목록으로 처리한다")
     void returnsEmptyDuesPageForAnExcessivelyLargePageNumber() {
         when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
@@ -158,6 +176,45 @@ class DuesServiceTest {
         ));
 
         verify(memberSemesterCheckRepository).save(any(MemberSemesterCheck.class));
+    }
+
+    @Test
+    @DisplayName("등록 철회는 합격 상태를 바꾸지 않고 현재 학기 수강 관계만 제거한다")
+    void withdrawsRegistrationWithoutChangingAcceptance() {
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
+        when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
+                .thenReturn(Optional.empty());
+        when(memberSemesterCheckRepository.save(any(MemberSemesterCheck.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        duesService.withdrawCurrentSemesterRegistrations(List.of(1L));
+
+        ArgumentCaptor<MemberSemesterCheck> captor = ArgumentCaptor.forClass(MemberSemesterCheck.class);
+        verify(memberSemesterCheckRepository).save(captor.capture());
+        assertThat(captor.getValue().isRegistrationWithdrawn()).isTrue();
+        verify(studyUserRepository).deleteByUserIdAndStudyYearSemester(1L, 2026, 2);
+        verify(userApplyRepository, never()).findByApplierIdAndYearSemester(1L, 2026, 2);
+    }
+
+    @Test
+    @DisplayName("등록 철회된 합격자는 이전 회비 일괄 저장으로 다시 등록할 수 없다")
+    void preventsDuesUpdatesAfterRegistrationWithdrawal() {
+        MemberSemesterCheck withdrawnCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
+        withdrawnCheck.withdrawRegistration();
+        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
+        when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
+                .thenReturn(Optional.of(withdrawnCheck));
+
+        assertThatThrownBy(() -> duesService.updateCurrentSemesterDuesBatch(List.of(
+                new UpdateDuesMemberCommand(1L, true, true)
+        )))
+                .isInstanceOf(ForifException.class)
+                .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
+                        .isEqualTo(ErrorCode.REGISTRATION_ALREADY_WITHDRAWN));
+
+        verify(memberSemesterCheckRepository, never()).save(any(MemberSemesterCheck.class));
     }
 
     @Test
