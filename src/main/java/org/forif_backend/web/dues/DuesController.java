@@ -33,10 +33,12 @@ public class DuesController {
             @Parameter(description = "페이지 번호, 0부터 시작") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 당 항목 수, 최대 100") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "이름 또는 학과 검색어") @RequestParam(required = false) String search,
+            @Parameter(description = "회비 납부 여부 필터") @RequestParam(value = "dues_paid", required = false) Boolean duesPaid,
+            @Parameter(description = "구글폼 제출 여부 필터") @RequestParam(value = "google_form_submitted", required = false) Boolean googleFormSubmitted,
             @Parameter(description = "정렬 조건 (예: userName:asc)") @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                duesService.getCurrentSemesterDues(page, size, search,
+                duesService.getCurrentSemesterDues(page, size, search, duesPaid, googleFormSubmitted,
                         SortCriteria.parse(sort, Set.of("userId", "userName", "department", "googleFormSubmitted", "duesPaid")))
         ));
     }

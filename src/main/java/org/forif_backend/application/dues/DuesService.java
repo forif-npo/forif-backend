@@ -50,13 +50,26 @@ public class DuesService {
             String search,
             List<SortCriteria> sorting
     ) {
-        return getCurrentSemesterDues(page, size, search, comparatorFor(sorting));
+        return getCurrentSemesterDues(page, size, search, null, null, sorting);
+    }
+
+    public DuesPageResult getCurrentSemesterDues(
+            int page,
+            int size,
+            String search,
+            Boolean duesPaid,
+            Boolean googleFormSubmitted,
+            List<SortCriteria> sorting
+    ) {
+        return getCurrentSemesterDues(page, size, search, duesPaid, googleFormSubmitted, comparatorFor(sorting));
     }
 
     private DuesPageResult getCurrentSemesterDues(
             int page,
             int size,
             String search,
+            Boolean duesPaid,
+            Boolean googleFormSubmitted,
             Comparator<DuesMember> comparator
     ) {
         SemesterInfo semester = semesterService.getActive();
@@ -67,11 +80,19 @@ public class DuesService {
         );
 
         List<DuesMember> members = toDuesMembers(users, semester);
+        DuesSummary summary = search == null || search.isBlank()
+                ? summarize(members)
+                : summarize(toDuesMembers(
+                        findDuesTargets(semester.actYear(), semester.actSemester(), null),
+                        semester
+                ));
         members = members.stream()
+                .filter(member -> duesPaid == null || member.duesPaid() == duesPaid)
+                .filter(member -> googleFormSubmitted == null
+                        || member.googleFormSubmitted() == googleFormSubmitted)
                 .sorted(comparator)
                 .toList();
 
-        DuesSummary summary = summarize(members);
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         int totalElements = members.size();

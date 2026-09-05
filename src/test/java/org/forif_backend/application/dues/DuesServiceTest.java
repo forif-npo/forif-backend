@@ -130,6 +130,110 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("회비 납부 여부로 현재 학기 합격자를 필터링할 수 있다")
+    void filtersCurrentSemesterDuesByPaidStatus() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, false, null, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.summary().totalCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("구글폼 제출 여부로 현재 학기 합격자를 필터링할 수 있다")
+    void filtersCurrentSemesterDuesByGoogleFormSubmittedStatus() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, null, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("회비 미납과 구글폼 미제출 필터를 함께 적용하면 두 조건 모두 미확인인 합격자만 조회한다")
+    void filtersCurrentSemesterDuesByBothUncheckedStatuses() {
+        User duesPaidOnlyUser = User.createUser(3L, "다라마바사", "third@hanyang.ac.kr", "01055556666", "소프트웨어학부");
+        User googleFormSubmittedOnlyUser = User.createUser(4L, "라마바사아", "fourth@hanyang.ac.kr", "01077778888", "기계공학부");
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        MemberSemesterCheck duesPaidOnlyCheck = MemberSemesterCheck.create(duesPaidOnlyUser, 2026, 2);
+        MemberSemesterCheck googleFormSubmittedOnlyCheck = MemberSemesterCheck.create(googleFormSubmittedOnlyUser, 2026, 2);
+        completedCheck.update(true, true);
+        duesPaidOnlyCheck.update(true, false);
+        googleFormSubmittedOnlyCheck.update(false, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(
+                        completedUser,
+                        duesPaidOnlyUser,
+                        googleFormSubmittedOnlyUser,
+                        duesUnpaidUser
+                ));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(
+                2026, 2, List.of(2L, 3L, 4L, 1L)))
+                .thenReturn(List.of(completedCheck, duesPaidOnlyCheck, googleFormSubmittedOnlyCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, false, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.summary())
+                .extracting(summary -> summary.totalCount(),
+                        summary -> summary.duesPaidCount(),
+                        summary -> summary.googleFormSubmittedCount(),
+                        summary -> summary.completedCount())
+                .containsExactly(4, 2, 2, 1);
+    }
+
+    @Test
+    @DisplayName("검색어와 상태 필터를 적용해도 요약 통계는 현재 학기 전체 합격자 기준으로 유지된다")
+    void keepsSemesterSummaryWhenSearchingAndFilteringDues() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, "가나"))
+                .thenReturn(List.of(duesUnpaidUser));
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L)))
+                .thenReturn(List.of());
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, "가나", false, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.summary())
+                .extracting(summary -> summary.totalCount(),
+                        summary -> summary.duesPaidCount(),
+                        summary -> summary.googleFormSubmittedCount(),
+                        summary -> summary.completedCount())
+                .containsExactly(2, 1, 1, 1);
+    }
+
+    @Test
     @DisplayName("매우 큰 페이지 번호는 빈 회비 목록으로 처리한다")
     void returnsEmptyDuesPageForAnExcessivelyLargePageNumber() {
         when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
