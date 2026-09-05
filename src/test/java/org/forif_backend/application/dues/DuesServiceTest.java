@@ -130,6 +130,44 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("회비 납부 여부로 현재 학기 합격자를 필터링할 수 있다")
+    void filtersCurrentSemesterDuesByPaidStatus() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, false, null, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("구글폼 제출 여부로 현재 학기 합격자를 필터링할 수 있다")
+    void filtersCurrentSemesterDuesByGoogleFormSubmittedStatus() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, null, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("매우 큰 페이지 번호는 빈 회비 목록으로 처리한다")
     void returnsEmptyDuesPageForAnExcessivelyLargePageNumber() {
         when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))

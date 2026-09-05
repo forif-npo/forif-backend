@@ -50,13 +50,26 @@ public class DuesService {
             String search,
             List<SortCriteria> sorting
     ) {
-        return getCurrentSemesterDues(page, size, search, comparatorFor(sorting));
+        return getCurrentSemesterDues(page, size, search, null, null, sorting);
+    }
+
+    public DuesPageResult getCurrentSemesterDues(
+            int page,
+            int size,
+            String search,
+            Boolean duesPaid,
+            Boolean googleFormSubmitted,
+            List<SortCriteria> sorting
+    ) {
+        return getCurrentSemesterDues(page, size, search, duesPaid, googleFormSubmitted, comparatorFor(sorting));
     }
 
     private DuesPageResult getCurrentSemesterDues(
             int page,
             int size,
             String search,
+            Boolean duesPaid,
+            Boolean googleFormSubmitted,
             Comparator<DuesMember> comparator
     ) {
         SemesterInfo semester = semesterService.getActive();
@@ -68,6 +81,9 @@ public class DuesService {
 
         List<DuesMember> members = toDuesMembers(users, semester);
         members = members.stream()
+                .filter(member -> duesPaid == null || member.duesPaid() == duesPaid)
+                .filter(member -> googleFormSubmitted == null
+                        || member.googleFormSubmitted() == googleFormSubmitted)
                 .sorted(comparator)
                 .toList();
 
