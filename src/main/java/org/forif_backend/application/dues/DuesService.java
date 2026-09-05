@@ -80,6 +80,7 @@ public class DuesService {
         );
 
         List<DuesMember> members = toDuesMembers(users, semester);
+        DuesSummary summary = summarize(members);
         members = members.stream()
                 .filter(member -> duesPaid == null || member.duesPaid() == duesPaid)
                 .filter(member -> googleFormSubmitted == null
@@ -87,7 +88,6 @@ public class DuesService {
                 .sorted(comparator)
                 .toList();
 
-        DuesSummary summary = summarize(members);
         int safePage = Math.max(page, 0);
         int safeSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         int totalElements = members.size();

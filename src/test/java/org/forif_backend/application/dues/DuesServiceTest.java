@@ -146,6 +146,7 @@ class DuesServiceTest {
         assertThat(result.content()).extracting(member -> member.userId())
                 .containsExactly(1L);
         assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.summary().totalCount()).isEqualTo(2);
     }
 
     @Test
@@ -165,6 +166,43 @@ class DuesServiceTest {
         assertThat(result.content()).extracting(member -> member.userId())
                 .containsExactly(1L);
         assertThat(result.totalElements()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("회비 미납과 구글폼 미제출 필터를 함께 적용하면 두 조건 모두 미확인인 합격자만 조회한다")
+    void filtersCurrentSemesterDuesByBothUncheckedStatuses() {
+        User duesPaidOnlyUser = User.createUser(3L, "다라마바사", "third@hanyang.ac.kr", "01055556666", "소프트웨어학부");
+        User googleFormSubmittedOnlyUser = User.createUser(4L, "라마바사아", "fourth@hanyang.ac.kr", "01077778888", "기계공학부");
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        MemberSemesterCheck duesPaidOnlyCheck = MemberSemesterCheck.create(duesPaidOnlyUser, 2026, 2);
+        MemberSemesterCheck googleFormSubmittedOnlyCheck = MemberSemesterCheck.create(googleFormSubmittedOnlyUser, 2026, 2);
+        completedCheck.update(true, true);
+        duesPaidOnlyCheck.update(true, false);
+        googleFormSubmittedOnlyCheck.update(false, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(
+                        completedUser,
+                        duesPaidOnlyUser,
+                        googleFormSubmittedOnlyUser,
+                        duesUnpaidUser
+                ));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(
+                2026, 2, List.of(2L, 3L, 4L, 1L)))
+                .thenReturn(List.of(completedCheck, duesPaidOnlyCheck, googleFormSubmittedOnlyCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, null, false, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.summary())
+                .extracting(summary -> summary.totalCount(),
+                        summary -> summary.duesPaidCount(),
+                        summary -> summary.googleFormSubmittedCount(),
+                        summary -> summary.completedCount())
+                .containsExactly(4, 2, 2, 1);
     }
 
     @Test
