@@ -206,6 +206,34 @@ class DuesServiceTest {
     }
 
     @Test
+    @DisplayName("검색어와 상태 필터를 적용해도 요약 통계는 현재 학기 전체 합격자 기준으로 유지된다")
+    void keepsSemesterSummaryWhenSearchingAndFilteringDues() {
+        MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
+        completedCheck.update(true, true);
+
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, "가나"))
+                .thenReturn(List.of(duesUnpaidUser));
+        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
+                .thenReturn(List.of(completedUser, duesUnpaidUser));
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L)))
+                .thenReturn(List.of());
+        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
+                .thenReturn(List.of(completedCheck));
+
+        DuesPageResult result = duesService.getCurrentSemesterDues(
+                0, 20, "가나", false, false, List.of());
+
+        assertThat(result.content()).extracting(member -> member.userId())
+                .containsExactly(1L);
+        assertThat(result.summary())
+                .extracting(summary -> summary.totalCount(),
+                        summary -> summary.duesPaidCount(),
+                        summary -> summary.googleFormSubmittedCount(),
+                        summary -> summary.completedCount())
+                .containsExactly(2, 1, 1, 1);
+    }
+
+    @Test
     @DisplayName("매우 큰 페이지 번호는 빈 회비 목록으로 처리한다")
     void returnsEmptyDuesPageForAnExcessivelyLargePageNumber() {
         when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))

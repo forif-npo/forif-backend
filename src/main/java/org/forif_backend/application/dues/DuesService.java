@@ -80,7 +80,12 @@ public class DuesService {
         );
 
         List<DuesMember> members = toDuesMembers(users, semester);
-        DuesSummary summary = summarize(members);
+        DuesSummary summary = search == null || search.isBlank()
+                ? summarize(members)
+                : summarize(toDuesMembers(
+                        findDuesTargets(semester.actYear(), semester.actSemester(), null),
+                        semester
+                ));
         members = members.stream()
                 .filter(member -> duesPaid == null || member.duesPaid() == duesPaid)
                 .filter(member -> googleFormSubmitted == null
