@@ -4,6 +4,7 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
+import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
@@ -55,6 +56,7 @@ public class UserService {
     private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
     private final StudyUserRepository studyUserRepository;
+    private final DuesService duesService;
     private final StaffAccountRepository staffAccountRepository;
     private final JwtProvider jwtProvider;
     private final GoogleOAuthClient googleOAuthClient;
@@ -433,34 +435,14 @@ public class UserService {
         return users.withContent(buildMemberInfos(users.content(), year, semester));
     }
 
-    /**
-     * 현재 활동 학기 부원 명단에서 제외한다.
-     * User 계정과 지난 학기 수강 이력은 보존하며, 현재 학기의 수강 관계만 하드 삭제한다.
-     *
-     * 수강 관계만 지우면 삭제가 유지되지 않는다. 지원서가 합격 상태로 남아 있는 한
-     * 회비 확인 시 그 지원서를 근거로 수강생이 다시 등록되기 때문이다(DuesService).
-     * 그래서 지원서의 합격도 함께 되돌린다. 이렇게 해야 운영진이 다시 합격시켜 복구하는
-     * 정상 경로도 열린다. 자율스터디는 운영진 전용 합불 처리 경로로 복구한다.
-     */
+    /** 현재 활동 학기 부원 명단에서 제외하고, 합격 결과는 유지한다. */
     @Transactional
     public void deleteCurrentSemesterMember(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
-
         SemesterInfo active = semesterService.getActive();
-        int deletedCount = studyUserRepository.deleteByUserIdAndStudyYearSemester(
+        duesService.withdrawCurrentSemesterRegistrations(List.of(userId));
+
+        log.info("현재 학기 부원 등록 철회: userId={}, {}년 {}학기",
                 userId, active.actYear(), active.actSemester());
-
-        if (deletedCount == 0) {
-            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
-        }
-
-        userRepository.findUserApplyByYearAndSemesterAndUser(active.actYear(), active.actSemester(), user)
-                .ifPresent(UserApply::revertAcceptance);
-
-        // 되돌릴 수 없는 삭제이고 운영진 누구나 호출할 수 있으므로 흔적을 남긴다
-        log.info("현재 학기 부원 명단 삭제: userId={}, {}년 {}학기, 수강관계 {}건",
-                userId, active.actYear(), active.actSemester(), deletedCount);
     }
 
     /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
