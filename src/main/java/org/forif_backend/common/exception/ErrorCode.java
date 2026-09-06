@@ -112,6 +112,7 @@ public enum ErrorCode {
     AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 이미 자율부원 등록용 스터디가 생성되어 있습니다."),
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
+    REGISTRATION_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "FOR146-409", "이미 이번 학기 등록을 철회한 사용자입니다."),
 
     // Product (서비스 쇼케이스)
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 서비스를 찾을 수 없습니다."),
