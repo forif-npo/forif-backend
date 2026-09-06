@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 
 import java.util.List;
 import java.util.Map;
@@ -140,6 +141,39 @@ class NotificationServiceRecipientTest {
                         ErrorCode.USER_NOT_FOUND.getCode(),
                         ErrorCode.USER_NOT_FOUND.getMessage()
                 )
+        );
+    }
+
+    @Test
+    void continuesSendingWhenOneReceiverLookupReturnsMultipleUsers() {
+        String duplicateReceiver = "01033334444";
+        String validReceiver = "01011112222";
+        stubAuthorizedSender();
+        when(userRepository.findByPhoneNum(duplicateReceiver))
+                .thenThrow(new IncorrectResultSizeDataAccessException(1, 2));
+        stubUser(validReceiver, "김포리");
+        when(notificationSendPort.sendAlimTalk(any(), any())).thenReturn(CompletableFuture.completedFuture(
+                new SendAlimTalkResult("template-1", List.of(
+                        new SendAlimTalkMessageResult(validReceiver, true, null, null)
+                ))
+        ));
+
+        SendAlimTalkResult result = notificationService.sendAlimTalk(
+                new SendAlimTalkCommand(List.of(duplicateReceiver, validReceiver), "template-1", null),
+                1L
+        ).join();
+
+        ArgumentCaptor<SendAlimTalkCommand> commandCaptor = ArgumentCaptor.forClass(SendAlimTalkCommand.class);
+        verify(notificationSendPort).sendAlimTalk(commandCaptor.capture(), eq(Map.of(validReceiver, "김포리")));
+        assertThat(commandCaptor.getValue().receivers()).containsExactly(validReceiver);
+        assertThat(result.results()).containsExactly(
+                new SendAlimTalkMessageResult(
+                        duplicateReceiver,
+                        false,
+                        "UNKNOWN",
+                        "수신자 정보를 조회할 수 없습니다."
+                ),
+                new SendAlimTalkMessageResult(validReceiver, true, null, null)
         );
     }
 

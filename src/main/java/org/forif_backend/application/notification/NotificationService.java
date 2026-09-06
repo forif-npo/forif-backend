@@ -18,6 +18,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.application.user.dto.MemberInfo;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ public class NotificationService {
     private static final int MAX_RECIPIENT_PAGE_SIZE = 100;
     private static final String UNKNOWN_FAILURE_CODE = "UNKNOWN";
     private static final String MISSING_PROVIDER_RESULT_MESSAGE = "발송 결과를 확인할 수 없습니다.";
+    private static final String RECEIVER_LOOKUP_FAILURE_MESSAGE = "수신자 정보를 조회할 수 없습니다.";
 
     private final NotificationSendPort notificationSendPort;
     private final StaffAccountRepository staffAccountRepository;
@@ -99,12 +101,17 @@ public class NotificationService {
             return;
         }
 
-        userRepository.findByPhoneNum(receiver)
-                .map(User::getUserName)
-                .ifPresentOrElse(
-                        userName -> receiverNames.put(receiver, userName),
-                        () -> lookupFailuresByReceiver.put(receiver, userNotFoundResult(receiver))
-                );
+        try {
+            userRepository.findByPhoneNum(receiver)
+                    .map(User::getUserName)
+                    .ifPresentOrElse(
+                            userName -> receiverNames.put(receiver, userName),
+                            () -> lookupFailuresByReceiver.put(receiver, userNotFoundResult(receiver))
+                    );
+        } catch (DataAccessException exception) {
+            log.warn("수신자 정보 조회에 실패했습니다. receiver: {}", receiver, exception);
+            lookupFailuresByReceiver.put(receiver, receiverLookupFailureResult(receiver));
+        }
     }
 
     private List<SendAlimTalkMessageResult> mergeResults(
@@ -142,6 +149,15 @@ public class NotificationService {
                 false,
                 ErrorCode.USER_NOT_FOUND.getCode(),
                 ErrorCode.USER_NOT_FOUND.getMessage()
+        );
+    }
+
+    private SendAlimTalkMessageResult receiverLookupFailureResult(String receiver) {
+        return new SendAlimTalkMessageResult(
+                receiver,
+                false,
+                UNKNOWN_FAILURE_CODE,
+                RECEIVER_LOOKUP_FAILURE_MESSAGE
         );
     }
 
