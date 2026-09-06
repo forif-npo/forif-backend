@@ -1,6 +1,7 @@
 package org.forif_backend.domain.user;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -16,6 +17,11 @@ public interface UserApplyRepository {
 
     /** 지정 학기의 모든 신청서. 어드민 신청자 관리 목록에서 1·2순위를 행으로 펼칠 때 사용한다. */
     List<UserApply> findAllByYearSemester(int year, int semester);
+
+    /** 해당 학기에 합격 처리된 사용자의 최종 스터디명을 사용자 ID별로 조회한다. */
+    Map<Long, String> findAcceptedStudyNamesByUserIdsAndYearSemester(
+            List<Long> userIds, int year, int semester
+    );
 
     List<User> findApplicantsByYearSemester(int year, int semester, String search);
 
