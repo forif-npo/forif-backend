@@ -40,6 +40,13 @@ public class MemberSemesterCheck extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean googleFormSubmitted;
 
+    /**
+     * 합격 결과는 유지하되, 이번 학기 활동부원 등록을 철회한 상태다.
+     * 회비·구글폼 확인이 나중에 변경되어도 수강생으로 다시 등록되지 않는다.
+     */
+    @Column(nullable = false)
+    private boolean registrationWithdrawn;
+
     public static MemberSemesterCheck create(User user, int actYear, int actSemester) {
         MemberSemesterCheck memberCheck = new MemberSemesterCheck();
         memberCheck.user = user;
@@ -55,5 +62,9 @@ public class MemberSemesterCheck extends BaseTimeEntity {
         if (googleFormSubmitted != null) {
             this.googleFormSubmitted = googleFormSubmitted;
         }
+    }
+
+    public void withdrawRegistration() {
+        this.registrationWithdrawn = true;
     }
 }

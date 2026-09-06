@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -16,6 +18,8 @@ import org.forif_backend.domain.semester.SemesterScheduleRepository;
 import org.junit.jupiter.api.Test;
 
 class SemesterPhaseGuardTest {
+
+    private static final ZoneId KOREA_STANDARD_TIME = ZoneId.of("Asia/Seoul");
 
     private final SemesterScheduleRepository scheduleRepository = mock(SemesterScheduleRepository.class);
     private final SemesterPhaseGuard guard = new SemesterPhaseGuard(
@@ -81,6 +85,26 @@ class SemesterPhaseGuardTest {
                 .satisfies(exception -> assertThat(((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
         assertThat(guard.isOpen(SemesterPhase.MENTEE_REVIEW, 2026, 2)).isFalse();
+    }
+
+    @Test
+    void locksTheMenteeReviewScheduleBeforeAllowingAStatusChange() {
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
+        when(scheduleRepository.findByYearAndSemesterAndPhaseForUpdate(2026, 2, SemesterPhase.MENTEE_REVIEW))
+                .thenReturn(Optional.of(SemesterSchedule.create(
+                        2026,
+                        2,
+                        SemesterPhase.MENTEE_REVIEW,
+                        now.minusMinutes(1),
+                        now.plusMinutes(1),
+                        1L
+                )));
+
+        assertThatCode(() -> guard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW, 2026, 2))
+                .doesNotThrowAnyException();
+
+        verify(scheduleRepository).findByYearAndSemesterAndPhaseForUpdate(
+                2026, 2, SemesterPhase.MENTEE_REVIEW);
     }
 
     @Test

@@ -5,6 +5,8 @@ import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.exception.ErrorCode;
+import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.team.ForifTeamRepository;
@@ -19,9 +21,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class StaffAccountServiceMentorQueryTest {
@@ -50,5 +56,27 @@ class StaffAccountServiceMentorQueryTest {
         assertThat(result.content())
                 .extracting(MentorSummary::studyName)
                 .containsExactly("대표 스터디", "공동 스터디");
+    }
+
+    @Test
+    void rejectsMentorHistoryLookupForAnUnknownUser() {
+        when(userRepository.findById(999L)).thenReturn(Optional.empty());
+
+        ForifException exception = assertThrows(
+                ForifException.class,
+                () -> staffAccountService.getMentorHistory(999L));
+
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.USER_NOT_FOUND);
+        verifyNoInteractions(studyRepository);
+    }
+
+    @Test
+    void returnsAnEmptyHistoryForAnExistingUserWithoutMentorActivities() {
+        User user = User.createUser(1L, "일반 부원", "member@forif.org", "010", "컴퓨터공학과");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(studyRepository.findMentorHistoryByMentorId(1L)).thenReturn(List.of());
+
+        assertThat(staffAccountService.getMentorHistory(1L)).isEmpty();
+        verify(studyRepository).findMentorHistoryByMentorId(1L);
     }
 }

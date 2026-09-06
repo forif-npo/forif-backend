@@ -32,6 +32,8 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.forif_backend.application.file.FileViewUrls;
 import org.forif_backend.application.file.TransactionalFileCleanup;
@@ -45,6 +47,8 @@ public class HackathonService {
     private static final String FILE_CLEANUP_CONTEXT = "해커톤 제출 발표자료";
     private static final int DEFAULT_MAX_SCORE = 5;
     private static final BigDecimal DEFAULT_WEIGHT = BigDecimal.ONE;
+    private static final Pattern EVENT_ROUND_SEARCH_PATTERN = Pattern.compile("^(\\d+)\\s*기?$");
+    private static final Pattern SEMESTER_SEARCH_PATTERN = Pattern.compile("^(\\d{4})-(1|2)$");
     private static final List<HackathonStatus> STATUS_FLOW = List.of(
             HackathonStatus.RECRUITING,
             HackathonStatus.TEAM_BUILDING,
@@ -100,12 +104,14 @@ public class HackathonService {
             Integer year,
             Integer semester,
             HackathonStatus status,
+            String search,
             Integer cursor,
             Integer page,
             int size
     ) {
         synchronizeHackathonStatuses(now());
         List<HackathonResponse> responses = hackathonRepository.findEvents(year, semester, status).stream()
+                .filter(event -> matchesHackathonSearch(event, search))
                 .map(HackathonResponse::from)
                 .toList();
 
@@ -1174,7 +1180,39 @@ public class HackathonService {
             return true;
         }
         return containsIgnoreCase(submission.getProjectName(), search)
-                || containsIgnoreCase(submission.getSummary(), search);
+                || containsIgnoreCase(submission.getSummary(), search)
+                || containsIgnoreCase(submission.getTeam().getName(), search);
+    }
+
+    private boolean matchesHackathonSearch(HackathonEvent event, String search) {
+        if (search == null || search.isBlank()) {
+            return true;
+        }
+
+        String normalizedSearch = search.trim();
+        return containsIgnoreCase(event.getTitle(), normalizedSearch)
+                || containsIgnoreCase(event.getLocation(), normalizedSearch)
+                || matchesEventRound(event, normalizedSearch)
+                || matchesSemester(event, normalizedSearch);
+    }
+
+    private boolean matchesEventRound(HackathonEvent event, String search) {
+        Matcher matcher = EVENT_ROUND_SEARCH_PATTERN.matcher(search);
+        if (!matcher.matches()) {
+            return false;
+        }
+        try {
+            return event.getEventRound() == Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return false;
+        }
+    }
+
+    private boolean matchesSemester(HackathonEvent event, String search) {
+        Matcher matcher = SEMESTER_SEARCH_PATTERN.matcher(search);
+        return matcher.matches()
+                && event.getHeldYear() == Integer.parseInt(matcher.group(1))
+                && event.getHeldSemester() == Integer.parseInt(matcher.group(2));
     }
 
     private boolean matchesTechStack(List<HackathonSubmissionTechStack> techStacks, String techStack) {

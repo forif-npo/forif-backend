@@ -21,8 +21,21 @@ public class SemesterScheduleRepositoryImpl implements SemesterScheduleRepositor
     }
 
     @Override
+    public List<SemesterSchedule> findByYearAndSemesterForUpdate(int actYear, int actSemester) {
+        return semesterScheduleJpaRepository.findByActYearAndActSemesterForUpdate(actYear, actSemester);
+    }
+
+    @Override
     public Optional<SemesterSchedule> findByYearAndSemesterAndPhase(int actYear, int actSemester, SemesterPhase phase) {
         return semesterScheduleJpaRepository.findByActYearAndActSemesterAndPhase(actYear, actSemester, phase);
+    }
+
+    @Override
+    public Optional<SemesterSchedule> findByYearAndSemesterAndPhaseForUpdate(
+            int actYear, int actSemester, SemesterPhase phase
+    ) {
+        return semesterScheduleJpaRepository.findByActYearAndActSemesterAndPhaseForUpdate(
+                actYear, actSemester, phase);
     }
 
     @Override

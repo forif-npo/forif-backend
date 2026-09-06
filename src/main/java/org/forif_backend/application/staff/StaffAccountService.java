@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
+import org.forif_backend.application.staff.dto.MentorHistory;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
@@ -142,6 +143,16 @@ public class StaffAccountService {
                 .toList());
     }
 
+    /** 부원 이력 상세에서 사용할 멘토 활동 이력 조회. */
+    @Transactional(readOnly = true)
+    public List<MentorHistory> getMentorHistory(Long userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+        return studyRepository.findMentorHistoryByMentorId(userId).stream()
+                .map(MentorHistory::from)
+                .toList();
+    }
+
     /**
      * 현재 로그인한 스태프 정보 조회
      */
@@ -158,6 +169,16 @@ public class StaffAccountService {
      */
     public void requirePresidentTeam(Long userId) {
         validatePresidentTeam(userId);
+    }
+
+    /** 회장단(회장/부회장) 여부를 확인한다. 리소스 소유권 권한과 조합할 때 사용한다. */
+    @Transactional(readOnly = true)
+    public boolean isPresidentTeam(Long userId) {
+        StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        String affiliation = staffAccount.getAffiliation();
+        return "회장".equals(affiliation) || "부회장".equals(affiliation);
     }
 
     /**
