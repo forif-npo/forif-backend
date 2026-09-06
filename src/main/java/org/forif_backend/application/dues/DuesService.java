@@ -96,6 +96,19 @@ public class DuesService {
         commands.forEach(command -> updateCurrentSemesterDues(command, semester));
     }
 
+    /**
+     * 합격 결과는 보존한 채 이번 학기 활동부원 등록만 철회한다.
+     * 철회된 사용자는 회비 관리 대상에서 제외되며, 이후 회비·구글폼 상태를 수정해도
+     * 수강생으로 다시 등록되지 않는다.
+     */
+    @Transactional
+    public void withdrawCurrentSemesterRegistrations(List<Long> userIds) {
+        SemesterInfo semester = semesterService.getActive();
+        userIds.stream()
+                .distinct()
+                .forEach(userId -> withdrawCurrentSemesterRegistration(userId, semester));
+    }
+
     private void updateCurrentSemesterDues(
             UpdateDuesMemberCommand command,
             SemesterInfo semester
@@ -113,9 +126,35 @@ public class DuesService {
         MemberSemesterCheck memberCheck = memberSemesterCheckRepository
                 .findByUserIdAndYearSemester(userId, semester.actYear(), semester.actSemester())
                 .orElseGet(() -> MemberSemesterCheck.create(user, semester.actYear(), semester.actSemester()));
+        if (memberCheck.isRegistrationWithdrawn()) {
+            throw new ForifException(ErrorCode.REGISTRATION_ALREADY_WITHDRAWN);
+        }
         memberCheck.update(command.duesPaid(), command.googleFormSubmitted());
         memberSemesterCheckRepository.save(memberCheck);
         synchronizeStudyMembership(user, semester, memberCheck);
+    }
+
+    private void withdrawCurrentSemesterRegistration(Long userId, SemesterInfo semester) {
+        boolean isAccepted = userApplyRepository.existsAcceptedByApplierIdAndYearSemester(
+                userId, semester.actYear(), semester.actSemester());
+        if (!isAccepted) {
+            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
+        MemberSemesterCheck memberCheck = memberSemesterCheckRepository
+                .findByUserIdAndYearSemester(userId, semester.actYear(), semester.actSemester())
+                .orElseGet(() -> MemberSemesterCheck.create(user, semester.actYear(), semester.actSemester()));
+
+        if (memberCheck.isRegistrationWithdrawn()) {
+            throw new ForifException(ErrorCode.REGISTRATION_ALREADY_WITHDRAWN);
+        }
+
+        memberCheck.withdrawRegistration();
+        memberSemesterCheckRepository.save(memberCheck);
+        studyUserRepository.deleteByUserIdAndStudyYearSemester(
+                userId, semester.actYear(), semester.actSemester());
     }
 
     @Transactional
@@ -138,7 +177,9 @@ public class DuesService {
     }
 
     private void registerStudyUserIfEligible(Study study, User user, MemberSemesterCheck memberCheck) {
-        if (!memberCheck.isDuesPaid() || !memberCheck.isGoogleFormSubmitted()) {
+        if (memberCheck.isRegistrationWithdrawn()
+                || !memberCheck.isDuesPaid()
+                || !memberCheck.isGoogleFormSubmitted()) {
             return;
         }
         studyUserRepository.findByUserIdAndStudyId(user.getId(), study.getId())
@@ -159,7 +200,9 @@ public class DuesService {
                 .flatMap(this::acceptedStudyId)
                 .flatMap(studyRepository::findStudyById)
                 .ifPresent(study -> {
-                    if (memberCheck.isDuesPaid() && memberCheck.isGoogleFormSubmitted()) {
+                    if (!memberCheck.isRegistrationWithdrawn()
+                            && memberCheck.isDuesPaid()
+                            && memberCheck.isGoogleFormSubmitted()) {
                         registerStudyUserIfEligible(study, user, memberCheck);
                     } else {
                         studyUserRepository.deleteByUserIdAndStudyId(user.getId(), study.getId());
@@ -192,6 +235,10 @@ public class DuesService {
                 .stream()
                 .collect(Collectors.toMap(memberCheck -> memberCheck.getUser().getId(), Function.identity()));
         return users.stream()
+                .filter(user -> {
+                    MemberSemesterCheck memberCheck = memberChecks.get(user.getId());
+                    return memberCheck == null || !memberCheck.isRegistrationWithdrawn();
+                })
                 .map(user -> toDuesMember(user, memberChecks.get(user.getId())))
                 .toList();
     }

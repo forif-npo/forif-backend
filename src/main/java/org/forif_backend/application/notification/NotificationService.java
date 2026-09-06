@@ -3,6 +3,7 @@ package org.forif_backend.application.notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.notification.dto.SendAlimTalkCommand;
+import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
 import org.forif_backend.application.notification.dto.TemplateInfo;
 import org.forif_backend.application.notification.dto.NotificationRecipientTarget;
@@ -13,17 +14,20 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.application.user.dto.MemberInfo;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -32,6 +36,9 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private static final int MAX_RECIPIENT_PAGE_SIZE = 100;
+    private static final String UNKNOWN_FAILURE_CODE = "UNKNOWN";
+    private static final String MISSING_PROVIDER_RESULT_MESSAGE = "발송 결과를 확인할 수 없습니다.";
+    private static final String RECEIVER_LOOKUP_FAILURE_MESSAGE = "수신자 정보를 조회할 수 없습니다.";
 
     private final NotificationSendPort notificationSendPort;
     private final StaffAccountRepository staffAccountRepository;
@@ -47,18 +54,116 @@ public class NotificationService {
         staffAccountRepository.findByUserId(senderId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        // 수신자별 이름 조회 (전화번호 -> 이름)
-        Map<String, String> receiverNames = command.receivers().stream()
+        List<String> uniqueReceivers = command.receivers().stream()
+                .map(receiver -> receiver == null
+                        ? null
+                        : PhoneNumberUtils.normalizePhoneNumber(receiver))
                 .distinct()
-                .collect(Collectors.toMap(
-                        phoneNumber -> phoneNumber,
-                        phoneNumber -> userRepository.findByPhoneNum(phoneNumber)
-                                .map(User::getUserName)
-                                .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND))
-                ));
+                .toList();
 
-        // 알림톡 전송 (수신자별 이름 포함)
-        return notificationSendPort.sendAlimTalk(command, receiverNames);
+        Map<String, String> receiverNames = new HashMap<>();
+        Map<String, SendAlimTalkMessageResult> lookupFailuresByReceiver = new HashMap<>();
+        List<String> validReceivers = new ArrayList<>();
+
+        for (String receiver : uniqueReceivers) {
+            resolveReceiver(receiver, receiverNames, lookupFailuresByReceiver);
+            if (receiverNames.containsKey(receiver)) {
+                validReceivers.add(receiver);
+            }
+        }
+
+        if (validReceivers.isEmpty()) {
+            return CompletableFuture.completedFuture(new SendAlimTalkResult(
+                    command.templateCode(),
+                    mergeResults(uniqueReceivers, List.of(), lookupFailuresByReceiver)
+            ));
+        }
+
+        SendAlimTalkCommand validReceiverCommand = new SendAlimTalkCommand(
+                validReceivers,
+                command.templateCode(),
+                command.variables()
+        );
+
+        return notificationSendPort.sendAlimTalk(validReceiverCommand, receiverNames)
+                .thenApply(sentResult -> new SendAlimTalkResult(
+                        sentResult.templateId(),
+                        mergeResults(uniqueReceivers, sentResult.results(), lookupFailuresByReceiver)
+                ));
+    }
+
+    private void resolveReceiver(
+            String receiver,
+            Map<String, String> receiverNames,
+            Map<String, SendAlimTalkMessageResult> lookupFailuresByReceiver
+    ) {
+        if (receiverNames.containsKey(receiver) || lookupFailuresByReceiver.containsKey(receiver)) {
+            return;
+        }
+
+        if (receiver == null) {
+            lookupFailuresByReceiver.put(null, userNotFoundResult(null));
+            return;
+        }
+
+        try {
+            userRepository.findByPhoneNum(receiver)
+                    .map(User::getUserName)
+                    .ifPresentOrElse(
+                            userName -> receiverNames.put(receiver, userName),
+                            () -> lookupFailuresByReceiver.put(receiver, userNotFoundResult(receiver))
+                    );
+        } catch (DataAccessException exception) {
+            log.warn("수신자 정보 조회에 실패했습니다. receiver: {}", receiver, exception);
+            lookupFailuresByReceiver.put(receiver, receiverLookupFailureResult(receiver));
+        }
+    }
+
+    private List<SendAlimTalkMessageResult> mergeResults(
+            List<String> requestedReceivers,
+            List<SendAlimTalkMessageResult> sentResults,
+            Map<String, SendAlimTalkMessageResult> lookupFailuresByReceiver
+    ) {
+        List<SendAlimTalkMessageResult> mergedResults = new ArrayList<>();
+        int sentResultIndex = 0;
+
+        for (String receiver : requestedReceivers) {
+            SendAlimTalkMessageResult lookupFailure = lookupFailuresByReceiver.get(receiver);
+            if (lookupFailure != null) {
+                mergedResults.add(lookupFailure);
+                continue;
+            }
+            if (sentResultIndex < sentResults.size()) {
+                mergedResults.add(sentResults.get(sentResultIndex++));
+                continue;
+            }
+            mergedResults.add(new SendAlimTalkMessageResult(
+                    receiver,
+                    false,
+                    UNKNOWN_FAILURE_CODE,
+                    MISSING_PROVIDER_RESULT_MESSAGE
+            ));
+        }
+
+        return mergedResults;
+    }
+
+    private SendAlimTalkMessageResult userNotFoundResult(String receiver) {
+        return new SendAlimTalkMessageResult(
+                receiver,
+                false,
+                ErrorCode.USER_NOT_FOUND.getCode(),
+                ErrorCode.USER_NOT_FOUND.getMessage()
+        );
+    }
+
+    private SendAlimTalkMessageResult receiverLookupFailureResult(String receiver) {
+        return new SendAlimTalkMessageResult(
+                receiver,
+                false,
+                UNKNOWN_FAILURE_CODE,
+                RECEIVER_LOOKUP_FAILURE_MESSAGE
+        );
     }
 
     public List<TemplateInfo> getKakaoTemplates(Long userId) {
@@ -81,6 +186,14 @@ public class NotificationService {
             case CURRENT_SEMESTER_MEMBERS -> userService.getNotificationMembers(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case CURRENT_SEMESTER_APPLICANTS -> userService.getApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_RESOLVED_APPLICANTS -> userService.getResolvedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS -> userService.getRegularStudyAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS -> userService.getAutonomousStudyAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_REJECTED_APPLICANTS -> userService.getRejectedApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case PREVIOUS_SEMESTER_MEMBERS -> {
                 SemesterInfo previousSemester = previousOf(currentSemester);
