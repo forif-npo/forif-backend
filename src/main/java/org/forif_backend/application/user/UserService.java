@@ -21,6 +21,7 @@ import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.user.*;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -87,7 +88,7 @@ public class UserService {
                 command.studentId(),
                 command.userName(),
                 command.email(),
-                command.phoneNum(),
+                PhoneNumberUtils.normalizePhoneNumber(command.phoneNum()),
                 command.department()
         );
 
@@ -349,7 +350,7 @@ public class UserService {
     @Transactional
     public User updateUserPhoneNum(Long userId, String phoneNum) {
         User user = getUserInfo(userId);
-        user.updatePhoneNum(phoneNum);
+        user.updatePhoneNum(PhoneNumberUtils.normalizePhoneNumber(phoneNum));
         return user;
     }
 
@@ -358,7 +359,7 @@ public class UserService {
     public void updateMemberInfo(Long userId, String department, String phoneNum) {
         User user = getUserInfo(userId);
         user.updateProfile(department, null);
-        user.updatePhoneNum(phoneNum);
+        user.updatePhoneNum(PhoneNumberUtils.normalizePhoneNumber(phoneNum));
     }
 
     public String getProfileImageUrl(String imgUrl) {

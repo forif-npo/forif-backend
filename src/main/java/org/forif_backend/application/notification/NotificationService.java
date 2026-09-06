@@ -13,6 +13,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -47,9 +48,13 @@ public class NotificationService {
         staffAccountRepository.findByUserId(senderId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        // 수신자별 이름 조회 (전화번호 -> 이름)
-        Map<String, String> receiverNames = command.receivers().stream()
+        List<String> normalizedReceivers = command.receivers().stream()
+                .map(PhoneNumberUtils::normalizePhoneNumber)
                 .distinct()
+                .toList();
+
+        // 수신자별 이름 조회 (전화번호 -> 이름)
+        Map<String, String> receiverNames = normalizedReceivers.stream()
                 .collect(Collectors.toMap(
                         phoneNumber -> phoneNumber,
                         phoneNumber -> userRepository.findByPhoneNum(phoneNumber)
@@ -58,7 +63,12 @@ public class NotificationService {
                 ));
 
         // 알림톡 전송 (수신자별 이름 포함)
-        return notificationSendPort.sendAlimTalk(command, receiverNames);
+        SendAlimTalkCommand normalizedCommand = new SendAlimTalkCommand(
+                normalizedReceivers,
+                command.templateCode(),
+                command.variables()
+        );
+        return notificationSendPort.sendAlimTalk(normalizedCommand, receiverNames);
     }
 
     public List<TemplateInfo> getKakaoTemplates(Long userId) {
