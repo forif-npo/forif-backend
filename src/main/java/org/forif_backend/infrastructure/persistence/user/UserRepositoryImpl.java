@@ -411,6 +411,7 @@ public class UserRepositoryImpl implements UserRepository {
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
                         hasAcceptedStudyApplication(),
+                        registrationNotWithdrawn(),
                         userCursorLt(cursor),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search),
@@ -440,12 +441,19 @@ public class UserRepositoryImpl implements UserRepository {
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
                         hasAcceptedStudyApplication(),
+                        registrationNotWithdrawn(),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search),
                         incompleteCheck
                 )
                 .fetchOne();
         return count != null ? count : 0L;
+    }
+
+    /** 등록 철회자는 합격 이력은 보존하되 회비·구글폼 독촉 대상에서는 제외한다. */
+    private BooleanExpression registrationNotWithdrawn() {
+        return memberSemesterCheck.id.isNull()
+                .or(memberSemesterCheck.registrationWithdrawn.isFalse());
     }
 
     private BooleanExpression userCursorLt(Long cursor) {
