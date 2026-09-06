@@ -30,6 +30,12 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     }
 
     @Override
+    public int rejectPendingApplicationsByYearSemester(int year, int semester) {
+        return userApplyJpaRepository.rejectPendingStatusesByYearSemester(
+                year, semester, UserApplyStatus.PENDING, UserApplyStatus.REJECT);
+    }
+
+    @Override
     public Map<Long, String> findAcceptedStudyNamesByUserIdsAndYearSemester(
             List<Long> userIds, int year, int semester
     ) {

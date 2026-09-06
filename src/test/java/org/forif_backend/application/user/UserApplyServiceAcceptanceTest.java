@@ -71,7 +71,7 @@ class UserApplyServiceAcceptanceTest {
 
         userApplyService.acceptApplications(99L, 10, List.of(100L));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         verify(application).updateStatus(10, org.forif_backend.domain.user.UserApplyStatus.ACCEPT);
         verify(duesService).ensureMemberCheck(study, applicant);
         verify(duesService).registerStudyUserIfEligible(study, applicant);
@@ -93,7 +93,7 @@ class UserApplyServiceAcceptanceTest {
 
         userApplyService.acceptApplications(99L, 10, List.of(100L, 101L));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         verify(remainingApplication).updateStatus(10, org.forif_backend.domain.user.UserApplyStatus.ACCEPT);
         verify(duesService).registerStudyUserIfEligible(study, applicant);
     }
@@ -105,7 +105,7 @@ class UserApplyServiceAcceptanceTest {
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         doThrow(new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED))
                 .when(semesterPhaseGuard)
-                .requireOpen(SemesterPhase.MENTEE_REVIEW);
+                .requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         assertThatThrownBy(() -> userApplyService.acceptApplications(99L, 10, List.of(100L)))
                 .isInstanceOf(ForifException.class)
@@ -135,7 +135,7 @@ class UserApplyServiceAcceptanceTest {
 
         userApplyService.acceptAutonomousStudyApplications(10, List.of(100L));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         verify(application).updateStatus(10, UserApplyStatus.ACCEPT);
         verify(duesService).ensureMemberCheck(autonomousStudy, applicant);
         verify(duesService).registerStudyUserIfEligible(autonomousStudy, applicant);
@@ -159,7 +159,7 @@ class UserApplyServiceAcceptanceTest {
 
         userApplyService.rejectAutonomousStudyApplications(10, List.of(100L));
 
-        verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
+        verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
         verify(application).updateStatus(10, UserApplyStatus.REJECT);
     }

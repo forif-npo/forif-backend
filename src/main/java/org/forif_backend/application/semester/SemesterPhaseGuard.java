@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,7 @@ import java.util.Optional;
 public class SemesterPhaseGuard {
 
     private static final DateTimeFormatter DISPLAY = DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm");
+    private static final ZoneId KOREA_STANDARD_TIME = ZoneId.of("Asia/Seoul");
 
     private final SemesterScheduleRepository semesterScheduleRepository;
     private final SemesterService semesterService;
@@ -47,6 +49,29 @@ public class SemesterPhaseGuard {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
 
+        requireOpen(phase, schedule);
+    }
+
+    /**
+     * 합불 처리처럼 마감 시각의 상태 변경과 경합할 수 있는 작업에 사용한다.
+     * 일정 행을 잠근 상태에서 기간을 확인해, 종료 뒤에 수동 심사가 커밋되는 일을 막는다.
+     */
+    @Transactional
+    public void requireOpenForUpdate(SemesterPhase phase) {
+        SemesterInfo active = semesterService.getActive();
+        requireOpenForUpdate(phase, active.actYear(), active.actSemester());
+    }
+
+    @Transactional
+    public void requireOpenForUpdate(SemesterPhase phase, int actYear, int actSemester) {
+        Optional<SemesterSchedule> schedule =
+                semesterScheduleRepository.findByYearAndSemesterAndPhaseForUpdate(actYear, actSemester, phase);
+
+        requireOpen(phase, schedule);
+    }
+
+    private void requireOpen(SemesterPhase phase, Optional<SemesterSchedule> schedule) {
+
         // 멘티 모집·수락/거절은 일정을 명시적으로 설정해야만 연다. 그 외 단계는 기존 상시 개방 정책을 유지한다.
         if (schedule.isEmpty()) {
             if (requiresExplicitSchedule(phase)) {
@@ -56,7 +81,7 @@ public class SemesterPhaseGuard {
         }
 
         SemesterSchedule window = schedule.get();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
         if (window.contains(now)) {
             return;
         }
@@ -81,7 +106,7 @@ public class SemesterPhaseGuard {
     public boolean isOpen(SemesterPhase phase, int actYear, int actSemester) {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
-                .map(schedule -> schedule.contains(LocalDateTime.now()))
+                .map(schedule -> schedule.contains(LocalDateTime.now(KOREA_STANDARD_TIME)))
                 .orElse(!requiresExplicitSchedule(phase));
     }
 
@@ -98,7 +123,7 @@ public class SemesterPhaseGuard {
     public void requireBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
-        if (schedule.isEmpty() || schedule.get().notStartedAt(LocalDateTime.now())) {
+        if (schedule.isEmpty() || schedule.get().notStartedAt(LocalDateTime.now(KOREA_STANDARD_TIME))) {
             return;
         }
 
@@ -117,7 +142,7 @@ public class SemesterPhaseGuard {
     public boolean isBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
-                .map(schedule -> schedule.notStartedAt(LocalDateTime.now()))
+                .map(schedule -> schedule.notStartedAt(LocalDateTime.now(KOREA_STANDARD_TIME)))
                 .orElse(true);
     }
 
@@ -134,7 +159,7 @@ public class SemesterPhaseGuard {
     public void requireNotEnded(SemesterPhase phase, int actYear, int actSemester) {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
-        if (schedule.isPresent() && !LocalDateTime.now().isBefore(schedule.get().getEndsAt())) {
+        if (schedule.isPresent() && !LocalDateTime.now(KOREA_STANDARD_TIME).isBefore(schedule.get().getEndsAt())) {
             throw new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED);
         }
     }
