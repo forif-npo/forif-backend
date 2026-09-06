@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,7 @@ import java.util.Optional;
 public class SemesterPhaseGuard {
 
     private static final DateTimeFormatter DISPLAY = DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm");
+    private static final ZoneId KOREA_STANDARD_TIME = ZoneId.of("Asia/Seoul");
 
     private final SemesterScheduleRepository semesterScheduleRepository;
     private final SemesterService semesterService;
@@ -79,7 +81,7 @@ public class SemesterPhaseGuard {
         }
 
         SemesterSchedule window = schedule.get();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
         if (window.contains(now)) {
             return;
         }
@@ -104,7 +106,7 @@ public class SemesterPhaseGuard {
     public boolean isOpen(SemesterPhase phase, int actYear, int actSemester) {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
-                .map(schedule -> schedule.contains(LocalDateTime.now()))
+                .map(schedule -> schedule.contains(LocalDateTime.now(KOREA_STANDARD_TIME)))
                 .orElse(!requiresExplicitSchedule(phase));
     }
 
@@ -121,7 +123,7 @@ public class SemesterPhaseGuard {
     public void requireBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
-        if (schedule.isEmpty() || schedule.get().notStartedAt(LocalDateTime.now())) {
+        if (schedule.isEmpty() || schedule.get().notStartedAt(LocalDateTime.now(KOREA_STANDARD_TIME))) {
             return;
         }
 
@@ -140,7 +142,7 @@ public class SemesterPhaseGuard {
     public boolean isBeforeStart(SemesterPhase phase, int actYear, int actSemester) {
         return semesterScheduleRepository
                 .findByYearAndSemesterAndPhase(actYear, actSemester, phase)
-                .map(schedule -> schedule.notStartedAt(LocalDateTime.now()))
+                .map(schedule -> schedule.notStartedAt(LocalDateTime.now(KOREA_STANDARD_TIME)))
                 .orElse(true);
     }
 
@@ -157,7 +159,7 @@ public class SemesterPhaseGuard {
     public void requireNotEnded(SemesterPhase phase, int actYear, int actSemester) {
         Optional<SemesterSchedule> schedule =
                 semesterScheduleRepository.findByYearAndSemesterAndPhase(actYear, actSemester, phase);
-        if (schedule.isPresent() && !LocalDateTime.now().isBefore(schedule.get().getEndsAt())) {
+        if (schedule.isPresent() && !LocalDateTime.now(KOREA_STANDARD_TIME).isBefore(schedule.get().getEndsAt())) {
             throw new ForifException(ErrorCode.SEMESTER_PHASE_CLOSED);
         }
     }

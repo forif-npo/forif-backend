@@ -62,10 +62,12 @@ public class SemesterScheduleService {
         LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
         SemesterSchedule existingMenteeReview = existingByPhase.get(SemesterPhase.MENTEE_REVIEW);
         PhaseWindow requestedMenteeReview = requested.get(SemesterPhase.MENTEE_REVIEW);
-        rejectExtendingMenteeReview(existingMenteeReview, requestedMenteeReview);
-        boolean closesCurrentMenteeReview = isCurrentSemester(actYear, actSemester)
+        boolean currentSemester = isCurrentSemester(actYear, actSemester);
+        rejectExtendingMenteeReview(existingMenteeReview, requestedMenteeReview, currentSemester, now);
+        boolean closesCurrentMenteeReview = currentSemester
                 && existingMenteeReview != null
-                && requestedMenteeReview == null;
+                && requestedMenteeReview == null
+                && !now.isBefore(existingMenteeReview.getEndsAt());
 
         // 요청에서 빠진 단계는 제거한다. 멘티 모집·수락/거절은 닫히고, 그 외 단계는 상시 개방 정책을 따른다.
         existingByPhase.forEach((phase, schedule) -> {
@@ -100,8 +102,13 @@ public class SemesterScheduleService {
         return semesterService.getActive().matches(actYear, actSemester);
     }
 
-    private void rejectExtendingMenteeReview(SemesterSchedule existing, PhaseWindow requested) {
-        if (existing == null || requested == null) {
+    private void rejectExtendingMenteeReview(
+            SemesterSchedule existing,
+            PhaseWindow requested,
+            boolean currentSemester,
+            LocalDateTime now
+    ) {
+        if (existing == null || requested == null || !currentSemester || now.isBefore(existing.getStartsAt())) {
             return;
         }
         if (requested.endsAt().isAfter(existing.getEndsAt())) {
