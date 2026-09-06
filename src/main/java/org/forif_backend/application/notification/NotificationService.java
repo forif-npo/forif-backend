@@ -14,6 +14,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -54,8 +55,12 @@ public class NotificationService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         List<String> uniqueReceivers = command.receivers().stream()
+                .map(receiver -> receiver == null
+                        ? null
+                        : PhoneNumberUtils.normalizePhoneNumber(receiver))
                 .distinct()
                 .toList();
+
         Map<String, String> receiverNames = new HashMap<>();
         Map<String, SendAlimTalkMessageResult> lookupFailuresByReceiver = new HashMap<>();
         List<String> validReceivers = new ArrayList<>();
@@ -181,6 +186,14 @@ public class NotificationService {
             case CURRENT_SEMESTER_MEMBERS -> userService.getNotificationMembers(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case CURRENT_SEMESTER_APPLICANTS -> userService.getApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_RESOLVED_APPLICANTS -> userService.getResolvedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS -> userService.getRegularStudyAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS -> userService.getAutonomousStudyAcceptedApplicants(
+                    currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
+            case CURRENT_SEMESTER_REJECTED_APPLICANTS -> userService.getRejectedApplicants(
                     currentSemester.actYear(), currentSemester.actSemester(), cursor, safeSize, search);
             case PREVIOUS_SEMESTER_MEMBERS -> {
                 SemesterInfo previousSemester = previousOf(currentSemester);

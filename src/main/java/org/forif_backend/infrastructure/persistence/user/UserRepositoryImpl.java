@@ -2,6 +2,8 @@ package org.forif_backend.infrastructure.persistence.user;
 
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.NumberPath;
+import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
@@ -356,6 +358,83 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public List<User> searchResolvedApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(),
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countResolvedApplicantsByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchRegularStudyAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedRegularStudyApplication());
+    }
+
+    @Override
+    public long countRegularStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedRegularStudyApplication());
+    }
+
+    @Override
+    public List<User> searchAutonomousStudyAcceptedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search, hasAcceptedAutonomousStudyApplication());
+    }
+
+    @Override
+    public long countAutonomousStudyAcceptedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(year, semester, search, hasAcceptedAutonomousStudyApplication());
+    }
+
+    @Override
+    public List<User> searchRejectedApplicantsByYearSemester(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        return searchApplicantsByDecision(
+                year, semester, cursor, size, search,
+                hasRejectedStudyApplication());
+    }
+
+    @Override
+    public long countRejectedApplicantsByYearSemester(int year, int semester, String search) {
+        return countApplicantsByDecision(
+                year, semester, search,
+                hasRejectedStudyApplication());
+    }
+
+    @Override
     public List<User> searchAcceptedUsersMissingDuesByYearSemester(
             int year, int semester, Long cursor, int size, String search
     ) {
@@ -450,7 +529,52 @@ public class UserRepositoryImpl implements UserRepository {
         return count != null ? count : 0L;
     }
 
-    /** 등록 철회자는 합격 이력은 보존하되 회비·구글폼 독촉 대상에서는 제외한다. */
+    private List<User> searchApplicantsByDecision(
+            int year,
+            int semester,
+            Long cursor,
+            int size,
+            String search,
+            BooleanExpression decision
+    ) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    private long countApplicantsByDecision(
+            int year,
+            int semester,
+            String search,
+            BooleanExpression decision
+    ) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        decision,
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+      
+      /** 등록 철회자는 합격 이력은 보존하되 회비·구글폼 독촉 대상에서는 제외한다. */
     private BooleanExpression registrationNotWithdrawn() {
         return memberSemesterCheck.id.isNull()
                 .or(memberSemesterCheck.registrationWithdrawn.isFalse());
@@ -475,6 +599,48 @@ public class UserRepositoryImpl implements UserRepository {
     private BooleanExpression hasAcceptedStudyApplication() {
         return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
+    }
+
+    /** 현재 심사 상태가 합격 또는 불합격인 신청자만 심사 완료 수신자 목록에 포함한다. */
+    private BooleanExpression hasResolvedStudyApplication() {
+        return hasAcceptedStudyApplication()
+                .or(hasRejectedStudyApplication());
+    }
+
+    /** 1순위 합격이 있으면 1순위, 없으면 2순위 합격 스터디를 최종 소속으로 본다. */
+    private BooleanExpression hasAcceptedRegularStudyApplication() {
+        return hasAcceptedStudyApplicationAtPriority(false);
+    }
+
+    private BooleanExpression hasAcceptedAutonomousStudyApplication() {
+        return hasAcceptedStudyApplicationAtPriority(true);
+    }
+
+    private BooleanExpression hasAcceptedStudyApplicationAtPriority(boolean autonomous) {
+        return userApply.primaryStatus.eq(UserApplyStatus.ACCEPT)
+                .and(isAutonomousStudy(userApply.primaryStudy, autonomous))
+                .or(userApply.primaryStatus.ne(UserApplyStatus.ACCEPT)
+                        .and(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT))
+                        .and(isAutonomousStudy(userApply.secondaryStudy, autonomous)));
+    }
+
+    private BooleanExpression isAutonomousStudy(NumberPath<Integer> studyId, boolean autonomous) {
+        if (autonomous) {
+            return JPAExpressions.selectOne()
+                    .from(study)
+                    .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                    .exists();
+        }
+        return JPAExpressions.selectOne()
+                .from(study)
+                .where(study.id.eq(studyId), study.autonomousFlag.isTrue())
+                .notExists();
+    }
+
+    private BooleanExpression hasRejectedStudyApplication() {
+        return userApply.primaryStatus.eq(UserApplyStatus.REJECT)
+                .and(userApply.secondaryStudy.isNull()
+                        .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
     }
 
     private BooleanExpression notificationRecipientSearchKeyword(String search) {

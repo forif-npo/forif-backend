@@ -26,6 +26,19 @@ public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
     List<UserApply> findAllByYearSemester(@Param("year") int year, @Param("semester") int semester);
 
     @Query("""
+            SELECT ua FROM UserApply ua
+            JOIN FETCH ua.applier
+            WHERE ua.applyYear = :year
+              AND ua.applySemester = :semester
+              AND ua.applier.id IN :userIds
+            """)
+    List<UserApply> findAllByYearSemesterAndApplierIds(
+            @Param("year") int year,
+            @Param("semester") int semester,
+            @Param("userIds") List<Long> userIds
+    );
+
+    @Query("""
             SELECT COUNT(ua) > 0 FROM UserApply ua
             WHERE ua.primaryStudy = :studyId OR ua.secondaryStudy = :studyId
             """)

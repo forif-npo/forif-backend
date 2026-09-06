@@ -30,7 +30,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
@@ -43,6 +43,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceRecipientTest {
 
+    private static final Long SENDER_ID = 20260001L;
     private static final CursorPageResponse<MemberInfo> EMPTY_PAGE =
             CursorPageResponse.ofCursor(java.util.List.of(), null, false, 0);
 
@@ -243,7 +244,7 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
-    void getsCurrentSemesterApplicantsRegardlessOfAcceptanceStatus() {
+    void getsCurrentSemesterApplicants() {
         when(userService.getApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
@@ -251,6 +252,54 @@ class NotificationServiceRecipientTest {
                 NotificationRecipientTarget.CURRENT_SEMESTER_APPLICANTS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
+    }
+
+    @Test
+    void getsCurrentSemesterResolvedApplicants() {
+        when(userService.getResolvedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_RESOLVED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getResolvedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterRegularStudyAcceptedApplicants() {
+        when(userService.getRegularStudyAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_REGULAR_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getRegularStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterAutonomousStudyAcceptedApplicants() {
+        when(userService.getAutonomousStudyAcceptedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_AUTONOMOUS_STUDY_ACCEPTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getAutonomousStudyAcceptedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
+    }
+
+    @Test
+    void getsCurrentSemesterRejectedApplicants() {
+        when(userService.getRejectedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_REJECTED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getRejectedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
     }
 
     @Test
@@ -296,5 +345,26 @@ class NotificationServiceRecipientTest {
                 NotificationRecipientTarget.ACCEPTED_GOOGLE_FORM_NOT_SUBMITTED, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
+    }
+
+    @Test
+    void normalizesReceiversBeforeLookingUpNamesAndSending() {
+        User receiver = User.createUser(
+                20260002L, "수신자", "receiver@hanyang.ac.kr", "01012345678", "컴퓨터학부");
+        when(staffAccountRepository.findByUserId(SENDER_ID)).thenReturn(Optional.of(mock(StaffAccount.class)));
+        when(userRepository.findByPhoneNum("01012345678")).thenReturn(Optional.of(receiver));
+        when(notificationSendPort.sendAlimTalk(any(), any())).thenReturn(CompletableFuture.completedFuture(
+                new SendAlimTalkResult("template", List.of())));
+
+        notificationService.sendAlimTalk(
+                new SendAlimTalkCommand(List.of("010-1234-5678"), "template", Map.of()),
+                SENDER_ID
+        ).join();
+
+        verify(userRepository).findByPhoneNum("01012345678");
+        verify(notificationSendPort).sendAlimTalk(
+                eq(new SendAlimTalkCommand(List.of("01012345678"), "template", Map.of())),
+                eq(Map.of("01012345678", "수신자"))
+        );
     }
 }

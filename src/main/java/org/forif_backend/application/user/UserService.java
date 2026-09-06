@@ -21,6 +21,7 @@ import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
+import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.user.*;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -86,7 +88,7 @@ public class UserService {
                 command.studentId(),
                 command.userName(),
                 command.email(),
-                command.phoneNum(),
+                PhoneNumberUtils.normalizePhoneNumber(command.phoneNum()),
                 command.department()
         );
 
@@ -348,7 +350,7 @@ public class UserService {
     @Transactional
     public User updateUserPhoneNum(Long userId, String phoneNum) {
         User user = getUserInfo(userId);
-        user.updatePhoneNum(phoneNum);
+        user.updatePhoneNum(PhoneNumberUtils.normalizePhoneNumber(phoneNum));
         return user;
     }
 
@@ -357,7 +359,7 @@ public class UserService {
     public void updateMemberInfo(Long userId, String department, String phoneNum) {
         User user = getUserInfo(userId);
         user.updateProfile(department, null);
-        user.updatePhoneNum(phoneNum);
+        user.updatePhoneNum(PhoneNumberUtils.normalizePhoneNumber(phoneNum));
     }
 
     public String getProfileImageUrl(String imgUrl) {
@@ -445,16 +447,55 @@ public class UserService {
                 userId, active.actYear(), active.actSemester());
     }
 
-    /** 현재 학기 스터디 합격 여부와 관계없이 해당 학기에 스터디를 신청한 사용자 목록 조회 */
+    /** 현재 학기 전체 신청자 목록 조회. 대기중 신청자도 포함한다. */
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberInfo> getApplicants(int year, int semester, Long cursor, int size, String search) {
         long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);
         List<User> users = userRepository.searchApplicantsByYearSemester(year, semester, cursor, size, search);
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester, true);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
+    /** 현재 학기 심사가 완료된 신청자 목록 조회. 대기중 신청자는 제외한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getResolvedApplicants(int year, int semester, Long cursor, int size, String search) {
+        long totalElements = userRepository.countResolvedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchResolvedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
+    }
+
+    /** 현재 학기 정규스터디 합격자 목록 조회. 자율부원 합격자는 별도 목록으로 분리한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getRegularStudyAcceptedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countRegularStudyAcceptedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchRegularStudyAcceptedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
+    }
+
+    /** 현재 학기 자율부원 합격자 목록 조회. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getAutonomousStudyAcceptedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countAutonomousStudyAcceptedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchAutonomousStudyAcceptedApplicantsByYearSemester(
+                year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
+    }
+
+    /** 현재 학기에 지원한 모든 순위가 불합격 처리된 신청자 목록 조회. 대기중 신청자는 제외한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getRejectedApplicants(
+            int year, int semester, Long cursor, int size, String search
+    ) {
+        long totalElements = userRepository.countRejectedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchRejectedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester);
     }
 
     /** 문자 발송 수신자용 전체 부원 조회. 검색은 이름 또는 학번으로만 수행한다. */
@@ -483,7 +524,7 @@ public class UserService {
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingDuesByYearSemester(year, semester, search);
         List<User> users = userRepository.searchAcceptedUsersMissingDuesByYearSemester(year, semester, cursor, size, search);
-        return toCursorMemberPage(users, totalElements, size, year, semester);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
     }
 
     /** 구글폼을 미제출한 현재 학기 합격자 조회. */
@@ -493,7 +534,7 @@ public class UserService {
     ) {
         long totalElements = userRepository.countAcceptedUsersMissingGoogleFormByYearSemester(year, semester, search);
         List<User> users = userRepository.searchAcceptedUsersMissingGoogleFormByYearSemester(year, semester, cursor, size, search);
-        return toCursorMemberPage(users, totalElements, size, year, semester);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
     }
 
     private CursorPageResponse<MemberInfo> toCursorMemberPage(
@@ -503,17 +544,42 @@ public class UserService {
             int year,
             int semester
     ) {
+        return toCursorMemberPage(users, totalElements, size, year, semester, false);
+    }
+
+    private CursorPageResponse<MemberInfo> toCursorMemberPage(
+            List<User> users,
+            long totalElements,
+            int size,
+            int year,
+            int semester,
+            boolean includeAcceptedStudyFallback
+    ) {
         boolean hasNext = users.size() > size;
         List<User> content = hasNext ? users.subList(0, size) : users;
-        List<MemberInfo> responses = buildMemberInfos(content, year, semester);
+        List<MemberInfo> responses = buildMemberInfos(content, year, semester, includeAcceptedStudyFallback);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
     }
 
     private List<MemberInfo> buildMemberInfos(List<User> users, int year, int semester) {
+        return buildMemberInfos(users, year, semester, false);
+    }
+
+    private List<MemberInfo> buildMemberInfos(
+            List<User> users,
+            int year,
+            int semester,
+            boolean includeAcceptedStudyFallback
+    ) {
         List<Long> userIds = users.stream().map(User::getId).toList();
 
-        Map<Long, String> studyNameMap = studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester);
+        Map<Long, String> studyNameMap = new HashMap<>(
+                studyRepository.findCurrentStudyNamesByUserIds(userIds, year, semester));
+        if (includeAcceptedStudyFallback) {
+            userApplyRepository.findAcceptedStudyNamesByUserIdsAndYearSemester(userIds, year, semester)
+                    .forEach(studyNameMap::putIfAbsent);
+        }
         Map<Long, StaffRole> staffRoleMap = staffAccountRepository.findStaffRolesByUserIds(userIds);
         // 멘토는 계정이 아니라 해당 학기 스터디의 멘토 관계로 판정한다
         Set<Long> mentorUserIds = studyRepository.findMentorUserIdsByUserIds(userIds, year, semester);
