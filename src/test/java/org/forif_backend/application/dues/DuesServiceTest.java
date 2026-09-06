@@ -35,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -211,12 +212,8 @@ class DuesServiceTest {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(completedUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, "가나"))
-                .thenReturn(List.of(duesUnpaidUser));
         when(userApplyRepository.findAcceptedApplicantsByYearSemester(2026, 2, null))
                 .thenReturn(List.of(completedUser, duesUnpaidUser));
-        when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(1L)))
-                .thenReturn(List.of());
         when(memberSemesterCheckRepository.findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L)))
                 .thenReturn(List.of(completedCheck));
 
@@ -231,6 +228,11 @@ class DuesServiceTest {
                         summary -> summary.googleFormSubmittedCount(),
                         summary -> summary.completedCount())
                 .containsExactly(2, 1, 1, 1);
+
+        verify(userApplyRepository).findAcceptedApplicantsByYearSemester(2026, 2, null);
+        verify(memberSemesterCheckRepository)
+                .findAllByYearSemesterAndUserIds(2026, 2, List.of(2L, 1L));
+        verifyNoMoreInteractions(userApplyRepository, memberSemesterCheckRepository);
     }
 
     @Test

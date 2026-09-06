@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -75,18 +76,15 @@ public class DuesService {
         SemesterInfo semester = semesterService.getActive();
         List<User> users = findDuesTargets(
                 semester.actYear(),
-                semester.actSemester(),
-                search
+                semester.actSemester()
         );
 
+        // 요약 통계는 검색 조건과 무관하게 전체 합격자 기준이므로, 대상과 상태를 한 번만 조회해 재사용한다.
         List<DuesMember> members = toDuesMembers(users, semester);
-        DuesSummary summary = search == null || search.isBlank()
-                ? summarize(members)
-                : summarize(toDuesMembers(
-                        findDuesTargets(semester.actYear(), semester.actSemester(), null),
-                        semester
-                ));
+        DuesSummary summary = summarize(members);
+        String normalizedSearch = normalizeSearch(search);
         members = members.stream()
+                .filter(member -> matchesSearch(member, normalizedSearch))
                 .filter(member -> duesPaid == null || member.duesPaid() == duesPaid)
                 .filter(member -> googleFormSubmitted == null
                         || member.googleFormSubmitted() == googleFormSubmitted)
@@ -241,8 +239,8 @@ public class DuesService {
         return Optional.empty();
     }
 
-    private List<User> findDuesTargets(int year, int semester, String search) {
-        return userApplyRepository.findAcceptedApplicantsByYearSemester(year, semester, search);
+    private List<User> findDuesTargets(int year, int semester) {
+        return userApplyRepository.findAcceptedApplicantsByYearSemester(year, semester, null);
     }
 
     private List<DuesMember> toDuesMembers(List<User> users, SemesterInfo semester) {
@@ -272,6 +270,22 @@ public class DuesService {
                 memberCheck != null && memberCheck.isDuesPaid(),
                 memberCheck != null && memberCheck.isGoogleFormSubmitted()
         );
+    }
+
+    private String normalizeSearch(String search) {
+        return search == null || search.isEmpty() ? null : search.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean matchesSearch(DuesMember member, String normalizedSearch) {
+        if (normalizedSearch == null) {
+            return true;
+        }
+        return containsIgnoreCase(member.userName(), normalizedSearch)
+                || containsIgnoreCase(member.department(), normalizedSearch);
+    }
+
+    private boolean containsIgnoreCase(String value, String normalizedSearch) {
+        return value != null && value.toLowerCase(Locale.ROOT).contains(normalizedSearch);
     }
 
     private Comparator<DuesMember> defaultComparator() {
