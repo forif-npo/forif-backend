@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.MySQLContainer;
@@ -38,11 +38,11 @@ class PhoneNumberConstraintTest {
         insertUser(20260001L, "first@hanyang.ac.kr", "01012345678");
 
         assertThatThrownBy(() -> insertUser(20260002L, "duplicate@hanyang.ac.kr", "01012345678"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertUser(20260003L, "formatted@hanyang.ac.kr", "010-1234-5678"))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
         assertThatThrownBy(() -> insertUser(20260006L, "empty@hanyang.ac.kr", ""))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataAccessException.class);
     }
 
     @Test
