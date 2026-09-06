@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -17,6 +18,8 @@ import org.forif_backend.domain.semester.SemesterScheduleRepository;
 import org.junit.jupiter.api.Test;
 
 class SemesterPhaseGuardTest {
+
+    private static final ZoneId KOREA_STANDARD_TIME = ZoneId.of("Asia/Seoul");
 
     private final SemesterScheduleRepository scheduleRepository = mock(SemesterScheduleRepository.class);
     private final SemesterPhaseGuard guard = new SemesterPhaseGuard(
@@ -86,13 +89,14 @@ class SemesterPhaseGuardTest {
 
     @Test
     void locksTheMenteeReviewScheduleBeforeAllowingAStatusChange() {
+        LocalDateTime now = LocalDateTime.now(KOREA_STANDARD_TIME);
         when(scheduleRepository.findByYearAndSemesterAndPhaseForUpdate(2026, 2, SemesterPhase.MENTEE_REVIEW))
                 .thenReturn(Optional.of(SemesterSchedule.create(
                         2026,
                         2,
                         SemesterPhase.MENTEE_REVIEW,
-                        LocalDateTime.now().minusMinutes(1),
-                        LocalDateTime.now().plusMinutes(1),
+                        now.minusMinutes(1),
+                        now.plusMinutes(1),
                         1L
                 )));
 
