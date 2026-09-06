@@ -59,7 +59,7 @@ class NotificationServiceRecipientTest {
     }
 
     @Test
-    void getsCurrentSemesterResolvedApplicants() {
+    void getsCurrentSemesterApplicants() {
         when(userService.getApplicants(2026, 1, null, 100, "김"))
                 .thenReturn(EMPTY_PAGE);
 
@@ -67,6 +67,18 @@ class NotificationServiceRecipientTest {
                 NotificationRecipientTarget.CURRENT_SEMESTER_APPLICANTS, null, 100, "김");
 
         assertThat(result).isSameAs(EMPTY_PAGE);
+    }
+
+    @Test
+    void getsCurrentSemesterResolvedApplicants() {
+        when(userService.getResolvedApplicants(2026, 1, null, 100, "김"))
+                .thenReturn(EMPTY_PAGE);
+
+        CursorPageResponse<MemberInfo> result = notificationService.getRecipients(
+                NotificationRecipientTarget.CURRENT_SEMESTER_RESOLVED_APPLICANTS, null, 100, "김");
+
+        assertThat(result).isSameAs(EMPTY_PAGE);
+        verify(userService).getResolvedApplicants(eq(2026), eq(1), isNull(), eq(100), eq("김"));
     }
 
     @Test

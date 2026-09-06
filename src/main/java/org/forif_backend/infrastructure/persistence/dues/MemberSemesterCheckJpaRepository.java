@@ -15,6 +15,4 @@ public interface MemberSemesterCheckJpaRepository extends JpaRepository<MemberSe
             int actSemester,
             List<Long> userIds
     );
-
-    void deleteByUser_IdAndActYearAndActSemester(Long userId, int actYear, int actSemester);
 }

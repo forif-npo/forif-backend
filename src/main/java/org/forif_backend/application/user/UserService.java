@@ -446,7 +446,7 @@ public class UserService {
                 userId, active.actYear(), active.actSemester());
     }
 
-    /** 현재 학기 심사가 완료된 신청자 목록 조회. 대기중 신청자는 제외한다. */
+    /** 현재 학기 전체 신청자 목록 조회. 대기중 신청자도 포함한다. */
     @Transactional(readOnly = true)
     public CursorPageResponse<MemberInfo> getApplicants(int year, int semester, Long cursor, int size, String search) {
         long totalElements = userRepository.countApplicantsByYearSemester(year, semester, search);
@@ -456,6 +456,14 @@ public class UserService {
         List<MemberInfo> responses = buildMemberInfos(content, year, semester, true);
         Long nextCursor = hasNext ? content.get(content.size() - 1).getId() : null;
         return CursorPageResponse.ofCursor(responses, nextCursor != null ? nextCursor.intValue() : null, hasNext, totalElements);
+    }
+
+    /** 현재 학기 심사가 완료된 신청자 목록 조회. 대기중 신청자는 제외한다. */
+    @Transactional(readOnly = true)
+    public CursorPageResponse<MemberInfo> getResolvedApplicants(int year, int semester, Long cursor, int size, String search) {
+        long totalElements = userRepository.countResolvedApplicantsByYearSemester(year, semester, search);
+        List<User> users = userRepository.searchResolvedApplicantsByYearSemester(year, semester, cursor, size, search);
+        return toCursorMemberPage(users, totalElements, size, year, semester, true);
     }
 
     /** 현재 학기 정규스터디 합격자 목록 조회. 자율부원 합격자는 별도 목록으로 분리한다. */

@@ -6,7 +6,6 @@ import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.study.StudyMentorAccess;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
-import org.forif_backend.domain.dues.MemberSemesterCheckRepository;
 import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.domain.study.Study;
 import org.forif_backend.domain.study.StudyRepository;
@@ -46,8 +45,6 @@ class UserApplyServiceAcceptanceTest {
     private StudyMentorAccess studyMentorAccess;
     @Mock
     private DuesService duesService;
-    @Mock
-    private MemberSemesterCheckRepository memberSemesterCheckRepository;
     @Mock
     private UserRepository userRepository;
     @Mock
@@ -145,7 +142,7 @@ class UserApplyServiceAcceptanceTest {
     }
 
     @Test
-    void adminRejectsAnAcceptedAutonomousStudyApplicationAndRemovesTheMembership() {
+    void adminRejectsAnAcceptedAutonomousStudyApplicationAndPreservesTheSemesterCheck() {
         Study autonomousStudy = mock(Study.class);
         User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply application = mock(UserApply.class);
@@ -164,19 +161,16 @@ class UserApplyServiceAcceptanceTest {
 
         verify(semesterPhaseGuard).requireOpen(SemesterPhase.MENTEE_REVIEW);
         verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
-        verify(memberSemesterCheckRepository).deleteByUserIdAndYearSemester(1L, 2026, 2);
         verify(application).updateStatus(10, UserApplyStatus.REJECT);
     }
 
     @Test
-    void mentorRejectionOfAnAcceptedApplicationRemovesTheCheckRecord() {
+    void mentorRejectionOfAnAcceptedApplicationPreservesTheSemesterCheck() {
         Study study = mock(Study.class);
         User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply application = mock(UserApply.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(study.getActYear()).thenReturn(2026);
-        when(study.getActSemester()).thenReturn(2);
         when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
@@ -185,19 +179,16 @@ class UserApplyServiceAcceptanceTest {
         userApplyService.rejectApplications(99L, 10, List.of(100L));
 
         verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
-        verify(memberSemesterCheckRepository).deleteByUserIdAndYearSemester(1L, 2026, 2);
         verify(application).updateStatus(10, UserApplyStatus.REJECT);
     }
 
     @Test
-    void statusUpdateFromAcceptedToRejectedRemovesMembershipAndTheCheckRecord() {
+    void statusUpdateFromAcceptedToRejectedRemovesOnlyTheStudyMembership() {
         Study study = mock(Study.class);
         User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply application = mock(UserApply.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(study.getActYear()).thenReturn(2026);
-        when(study.getActSemester()).thenReturn(2);
         when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
@@ -206,7 +197,6 @@ class UserApplyServiceAcceptanceTest {
         userApplyService.updateApplyStatus(99L, 10, 100L, UserApplyStatus.REJECT);
 
         verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
-        verify(memberSemesterCheckRepository).deleteByUserIdAndYearSemester(1L, 2026, 2);
         verify(application).updateStatus(10, UserApplyStatus.REJECT);
     }
 

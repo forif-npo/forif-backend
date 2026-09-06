@@ -86,7 +86,7 @@ class UserRepositorySemesterSortTest {
     }
 
     @Test
-    void separatesAcceptedAndFullyRejectedApplicantsAndExcludesPendingApplicants() {
+    void separatesAllApplicantsAndResolvedApplicants() {
         User primaryAccepted = persistUser(920001L, "1순위 합격");
         User secondaryAccepted = persistUser(920002L, "2순위 합격");
         User primaryRejected = persistUser(920003L, "1순위 불합격");
@@ -98,7 +98,7 @@ class UserRepositorySemesterSortTest {
         User autonomousAccepted = persistUser(920009L, "자율부원 합격");
         User primaryAcceptedSecondaryPending = persistUser(920010L, "1순위 합격 2순위 대기");
 
-        persistApplication(primaryAccepted, 1, UserApplyStatus.ACCEPT, null);
+        persistApplication(primaryAccepted, 101, UserApplyStatus.ACCEPT, null);
         persistApplication(secondaryAccepted, 2, UserApplyStatus.REJECT, UserApplyStatus.ACCEPT);
         persistApplication(primaryRejected, 3, UserApplyStatus.REJECT, null);
         persistApplication(fullyRejected, 4, UserApplyStatus.REJECT, UserApplyStatus.REJECT);
@@ -108,7 +108,7 @@ class UserRepositorySemesterSortTest {
         persistApplication(acceptedThenRemoved, 8, UserApplyStatus.REJECT, null);
         persistAutonomousAcceptedApplication(autonomousAccepted);
         persistApplication(primaryAcceptedSecondaryPending, 10, UserApplyStatus.ACCEPT, UserApplyStatus.PENDING);
-        // 합격 확인 이력은 부원 명단 삭제 후에도 남아 심사 불합격과 구분한다.
+        // 합격 번복 뒤에도 회비·구글폼 확인 기록은 보존된다.
         entityManager.persist(MemberSemesterCheck.create(acceptedThenRemoved, YEAR, SEMESTER));
 
         entityManager.flush();
@@ -130,15 +130,23 @@ class UserRepositorySemesterSortTest {
 
         assertThat(userRepository.searchApplicantsByYearSemester(YEAR, SEMESTER, null, 10, null))
                 .extracting(User::getId)
-                .containsExactlyInAnyOrder(920001L, 920002L, 920003L, 920004L, 920009L, 920010L);
+                .containsExactlyInAnyOrder(
+                        920001L, 920002L, 920003L, 920004L, 920005L,
+                        920006L, 920008L, 920009L, 920010L);
         assertThat(userRepository.countApplicantsByYearSemester(YEAR, SEMESTER, null))
-                .isEqualTo(6);
+                .isEqualTo(9);
+
+        assertThat(userRepository.searchResolvedApplicantsByYearSemester(YEAR, SEMESTER, null, 10, null))
+                .extracting(User::getId)
+                .containsExactlyInAnyOrder(920001L, 920002L, 920003L, 920004L, 920008L, 920009L, 920010L);
+        assertThat(userRepository.countResolvedApplicantsByYearSemester(YEAR, SEMESTER, null))
+                .isEqualTo(7);
 
         Map<Long, String> acceptedStudyNames = userApplyRepository
                 .findAcceptedStudyNamesByUserIdsAndYearSemester(
                         List.of(920001L, 920002L, 920003L, 920004L, 920005L, 920006L, 920010L), YEAR, SEMESTER);
         assertThat(acceptedStudyNames)
-                .containsEntry(920001L, "스터디 1")
+                .containsEntry(920001L, "스터디 101")
                 .containsEntry(920002L, "스터디 102")
                 .containsEntry(920010L, "스터디 10")
                 .doesNotContainKeys(920003L, 920004L, 920005L, 920006L);
@@ -146,9 +154,9 @@ class UserRepositorySemesterSortTest {
         assertThat(userRepository.searchRejectedApplicantsByYearSemester(
                 YEAR, SEMESTER, null, 10, null))
                 .extracting(User::getId)
-                .containsExactlyInAnyOrder(920003L, 920004L);
+                .containsExactlyInAnyOrder(920003L, 920004L, 920008L);
         assertThat(userRepository.countRejectedApplicantsByYearSemester(YEAR, SEMESTER, null))
-                .isEqualTo(2);
+                .isEqualTo(3);
     }
 
     private User persistUser(Long id, String name) {

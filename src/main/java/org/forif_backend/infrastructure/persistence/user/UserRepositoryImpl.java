@@ -332,7 +332,6 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
-                        hasResolvedStudyApplication(year, semester),
                         userCursorLt(cursor),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
@@ -351,7 +350,41 @@ public class UserRepositoryImpl implements UserRepository {
                 .where(
                         userApply.applyYear.eq(year),
                         userApply.applySemester.eq(semester),
-                        hasResolvedStudyApplication(year, semester),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .fetchOne();
+        return count != null ? count : 0L;
+    }
+
+    @Override
+    public List<User> searchResolvedApplicantsByYearSemester(int year, int semester, Long cursor, int size, String search) {
+        return queryFactory
+                .selectFrom(user).distinct()
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(),
+                        userCursorLt(cursor),
+                        hasPhoneNumber(),
+                        notificationRecipientSearchKeyword(search)
+                )
+                .orderBy(user.id.desc())
+                .limit(size + 1)
+                .fetch();
+    }
+
+    @Override
+    public long countResolvedApplicantsByYearSemester(int year, int semester, String search) {
+        Long count = queryFactory
+                .select(user.countDistinct())
+                .from(user)
+                .join(userApply).on(userApply.applier.id.eq(user.id))
+                .where(
+                        userApply.applyYear.eq(year),
+                        userApply.applySemester.eq(semester),
+                        hasResolvedStudyApplication(),
                         hasPhoneNumber(),
                         notificationRecipientSearchKeyword(search)
                 )
@@ -391,14 +424,14 @@ public class UserRepositoryImpl implements UserRepository {
     ) {
         return searchApplicantsByDecision(
                 year, semester, cursor, size, search,
-                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+                hasRejectedStudyApplication());
     }
 
     @Override
     public long countRejectedApplicantsByYearSemester(int year, int semester, String search) {
         return countApplicantsByDecision(
                 year, semester, search,
-                hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+                hasRejectedStudyApplication());
     }
 
     @Override
@@ -568,10 +601,10 @@ public class UserRepositoryImpl implements UserRepository {
                 .or(userApply.secondaryStatus.eq(UserApplyStatus.ACCEPT));
     }
 
-    /** 합격자와 심사 불합격자만 신청자 수신자 목록에 포함한다. */
-    private BooleanExpression hasResolvedStudyApplication(int year, int semester) {
+    /** 현재 심사 상태가 합격 또는 불합격인 신청자만 심사 완료 수신자 목록에 포함한다. */
+    private BooleanExpression hasResolvedStudyApplication() {
         return hasAcceptedStudyApplication()
-                .or(hasRejectedStudyApplication().and(hasNoAcceptedHistory(year, semester)));
+                .or(hasRejectedStudyApplication());
     }
 
     /** 1순위 합격이 있으면 1순위, 없으면 2순위 합격 스터디를 최종 소속으로 본다. */
@@ -608,18 +641,6 @@ public class UserRepositoryImpl implements UserRepository {
         return userApply.primaryStatus.eq(UserApplyStatus.REJECT)
                 .and(userApply.secondaryStudy.isNull()
                         .or(userApply.secondaryStatus.eq(UserApplyStatus.REJECT)));
-    }
-
-    /** 합격 확인 이력이 있으면 현재 상태가 REJECT여도 심사 불합격자로 보지 않는다. */
-    private BooleanExpression hasNoAcceptedHistory(int year, int semester) {
-        return JPAExpressions.selectOne()
-                .from(memberSemesterCheck)
-                .where(
-                        memberSemesterCheck.user.id.eq(user.id),
-                        memberSemesterCheck.actYear.eq(year),
-                        memberSemesterCheck.actSemester.eq(semester)
-                )
-                .notExists();
     }
 
     private BooleanExpression notificationRecipientSearchKeyword(String search) {

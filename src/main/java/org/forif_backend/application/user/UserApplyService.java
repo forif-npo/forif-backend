@@ -13,7 +13,6 @@ import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.dues.DuesService;
 import org.forif_backend.application.study.StudyMentorAccess;
 import org.forif_backend.application.semester.dto.SemesterInfo;
-import org.forif_backend.domain.dues.MemberSemesterCheckRepository;
 import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -52,7 +51,6 @@ public class UserApplyService {
     private final SemesterPhaseGuard semesterPhaseGuard;
     private final StudyMentorAccess studyMentorAccess;
     private final DuesService duesService;
-    private final MemberSemesterCheckRepository memberSemesterCheckRepository;
     private final UserRepository userRepository;
     private final UserApplyRepository userApplyRepository;
     private final StudyRepository studyRepository;
@@ -212,7 +210,7 @@ public class UserApplyService {
     /** 운영진이 자율스터디 신청을 수동 불합격 처리한다. */
     @Transactional
     public void rejectAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
-        Study study = getAutonomousStudyForAdminDecision(studyId);
+        getAutonomousStudyForAdminDecision(studyId);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -226,7 +224,7 @@ public class UserApplyService {
                 continue;
             }
             if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
-                removeRevertedAcceptanceMembership(study, studyId, apply);
+                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
         }
@@ -385,7 +383,7 @@ public class UserApplyService {
      */
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
-        Study study = getStudyIfActiveMentor(userId, studyId);
+        getStudyIfActiveMentor(userId, studyId);
         semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
@@ -408,7 +406,7 @@ public class UserApplyService {
             }
 
             if (currentStatus == UserApplyStatus.ACCEPT) {
-                removeRevertedAcceptanceMembership(study, studyId, apply);
+                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
 
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
@@ -518,7 +516,7 @@ public class UserApplyService {
                 ? userApply.getPrimaryStatus()
                 : userApply.getSecondaryStatus();
         if (currentStatus == UserApplyStatus.ACCEPT) {
-            removeRevertedAcceptanceMembership(study, studyId, userApply);
+            removeRevertedAcceptanceStudyMembership(studyId, userApply);
         }
         userApply.updateStatus(studyId, newStatus);
     }
@@ -572,15 +570,12 @@ public class UserApplyService {
     }
 
     /**
-     * 멘토/운영진이 심사 중 합격을 번복한 경우의 정리다.
-     * 부원 명단 삭제와 달리, 이 경우는 심사 불합격으로 다시 수신자 목록에 포함되어야 하므로
-     * 합격 확인 기록도 함께 지운다.
+     * 멘토/운영진이 심사 중 특정 스터디의 합격을 번복한 경우의 정리다.
+     * 회비·구글폼 확인 기록은 사용자·학기 단위의 사실이므로, 다른 스터디 합격 여부와 무관하게 보존한다.
      */
-    private void removeRevertedAcceptanceMembership(Study study, Integer studyId, UserApply apply) {
+    private void removeRevertedAcceptanceStudyMembership(Integer studyId, UserApply apply) {
         Long userId = apply.getApplier().getId();
         studyUserRepository.deleteByUserIdAndStudyId(userId, studyId);
-        memberSemesterCheckRepository.deleteByUserIdAndYearSemester(
-                userId, study.getActYear(), study.getActSemester());
     }
 
     /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */
