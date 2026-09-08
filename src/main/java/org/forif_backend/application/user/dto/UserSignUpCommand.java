@@ -9,6 +9,10 @@ public record UserSignUpCommand(
     String userName,
     String email,
     String phoneNum,
-    String department
+    Long departmentId,
+    String legacyDepartmentName
 ) {
+    public UserSignUpCommand(Long studentId, String userName, String email, String phoneNum, Long departmentId) {
+        this(studentId, userName, email, phoneNum, departmentId, null);
+    }
 }

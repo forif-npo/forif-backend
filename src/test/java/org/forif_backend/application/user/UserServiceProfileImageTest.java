@@ -1,6 +1,7 @@
 package org.forif_backend.application.user;
 
 import org.forif_backend.application.auth.RefreshTokenService;
+import org.forif_backend.application.department.DepartmentService;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.common.auth.JwtProvider;
@@ -11,6 +12,7 @@ import org.forif_backend.domain.user.GoogleOAuthClient;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.domain.department.Department;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceProfileImageTest {
@@ -56,6 +59,8 @@ class UserServiceProfileImageTest {
     private RefreshTokenService refreshTokenService;
     @Mock
     private FilePort filePort;
+    @Mock
+    private DepartmentService departmentService;
 
     @InjectMocks
     private UserService userService;
@@ -81,6 +86,9 @@ class UserServiceProfileImageTest {
         );
 
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        Department department = mock(Department.class);
+        when(department.getDepartmentName()).thenReturn("컴퓨터학부");
+        when(departmentService.getRequired(1L, null)).thenReturn(department);
         when(filePort.uploadFile(profileImage, "users/profiles")).thenReturn(UPLOADED_OBJECT_KEY);
         TransactionSynchronizationManager.initSynchronization();
     }
@@ -94,7 +102,7 @@ class UserServiceProfileImageTest {
 
     @Test
     void deletesPreviousProfileImageAfterCommit() {
-        userService.updateUserProfile(USER_ID, "컴퓨터학부", profileImage);
+        userService.updateUserProfile(USER_ID, 1L, profileImage);
 
         assertEquals(UPLOADED_OBJECT_KEY, user.getImgUrl());
         verify(filePort, never()).deleteFile(PREVIOUS_OBJECT_KEY);
@@ -107,7 +115,7 @@ class UserServiceProfileImageTest {
 
     @Test
     void deletesUploadedProfileImageAfterRollback() {
-        userService.updateUserProfile(USER_ID, "컴퓨터학부", profileImage);
+        userService.updateUserProfile(USER_ID, 1L, profileImage);
 
         completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
 

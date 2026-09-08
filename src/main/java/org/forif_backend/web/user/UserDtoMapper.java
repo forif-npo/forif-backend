@@ -21,6 +21,7 @@ public class UserDtoMapper {
             request.userName(),
             email,
             request.phoneNum(),
+            request.departmentId(),
             request.department()
         );
     }
@@ -113,6 +114,7 @@ public class UserDtoMapper {
                 .userName(user.getUserName())
                 .email(user.getEmail())
                 .phoneNum(user.getPhoneNum())
+                .departmentId(user.getDepartmentId())
                 .department(user.getDepartment())
                 .imgUrl(user.getImgUrl())
                 .build();

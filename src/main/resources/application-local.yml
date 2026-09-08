@@ -10,6 +10,9 @@ spring:
     hibernate:
       ddl-auto: update
 
+  flyway:
+    enabled: true
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}

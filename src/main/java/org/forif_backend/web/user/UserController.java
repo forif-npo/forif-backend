@@ -53,7 +53,7 @@ public class UserController {
     @Operation(summary = "부원 회원가입", description = "Google OAuth 이메일 인증 후 신규 부원을 등록합니다. Refresh Token은 HttpOnly 쿠키로 발급됩니다.")
     @PostMapping("/signup")
     public ResponseEntity<ApiResponse<UserSignUpResponse>> userSignUp(
-            @RequestBody UserSignUpRequest request,
+            @Valid @RequestBody UserSignUpRequest request,
             HttpServletResponse httpResponse
     ) {
         // 1. Google에서 이메일 가져오기
@@ -256,7 +256,7 @@ public class UserController {
             @RequestPart(value = "profileImage", required = false) MultipartFile profileImage
     ) {
         User user = userService.updateUserProfile(
-                userId, request.department(), profileImage);
+                userId, request.departmentId(), request.department(), profileImage);
         return ResponseEntity.ok(ApiResponse.success(toUserProfileResponse(user)));
     }
 

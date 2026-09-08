@@ -7,6 +7,7 @@ public record UserProfileResponse(
         String userName,
         String email,
         String phoneNum,
+        Long departmentId,
         String department,
         String imgUrl
 ) {
@@ -16,6 +17,7 @@ public record UserProfileResponse(
                 user.getUserName(),
                 user.getEmail(),
                 user.getPhoneNum(),
+                user.getDepartmentId(),
                 user.getDepartment(),
                 imgUrl
         );
