@@ -2,7 +2,9 @@ package org.forif_backend.infrastructure.external.notification;
 
 import com.solapi.sdk.SolapiClient;
 import com.solapi.sdk.message.dto.request.kakao.KakaoAlimtalkSendableTemplateListRequest;
+import com.solapi.sdk.message.dto.request.MessageListRequest;
 import com.solapi.sdk.message.dto.response.MultipleDetailMessageSentResponse;
+import com.solapi.sdk.message.dto.response.MessageListResponse;
 import com.solapi.sdk.message.dto.response.kakao.KakaoAlimtalkTemplateResponse;
 import com.solapi.sdk.message.exception.SolapiMessageNotReceivedException;
 import com.solapi.sdk.message.model.FailedMessage;
@@ -16,6 +18,8 @@ import org.forif_backend.application.notification.dto.SendAlimTalkCommand;
 import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
 import org.forif_backend.application.notification.dto.TemplateInfo;
+import org.forif_backend.application.notification.dto.NotificationHistoryItem;
+import org.forif_backend.application.notification.dto.NotificationHistoryPage;
 import org.forif_backend.application.notification.port.out.NotificationSendPort;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -24,6 +28,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,6 +46,8 @@ public class NotificationClient implements NotificationSendPort {
     private static final String UNKNOWN_FAILURE_CODE = "UNKNOWN";
     private static final String UNMATCHED_FAILURE_MESSAGE = "Solapi 실패 수신자를 식별하지 못했습니다.";
     private static final String GENERIC_FAILURE_MESSAGE = "Solapi에서 발송을 거절했습니다.";
+    private static final String ALIMTALK_MESSAGE_TYPE = "ATA";
+    private static final ZoneId KOREA_ZONE_ID = ZoneId.of("Asia/Seoul");
 
     @Value("${notification.api-key}")
     private String apiKey;
@@ -236,5 +245,55 @@ public class NotificationClient implements NotificationSendPort {
             log.error("Failed to get kakao templates", e);
             throw new ForifException(ErrorCode.NOTIFICATION_TEMPLATE_FETCH_FAILED);
         }
+    }
+
+    @Override
+    public NotificationHistoryPage getAlimTalkHistory(String cursor, int size) {
+        try {
+            LocalDateTime endDate = LocalDateTime.now(KOREA_ZONE_ID);
+            MessageListRequest request = new MessageListRequest();
+            request.setType(ALIMTALK_MESSAGE_TYPE);
+            request.setStartKey(cursor);
+            request.setLimit(size);
+            request.setStartDate(endDate.minusMonths(6));
+            request.setEndDate(endDate);
+
+            MessageListResponse response = messageService.getMessageList(request);
+            Map<String, Message> messageList = response.getMessageList();
+            List<NotificationHistoryItem> history = messageList == null
+                    ? List.of()
+                    : messageList.values().stream()
+                    .map(NotificationClient::toHistoryItem)
+                    .sorted(Comparator.comparing(
+                            NotificationHistoryItem::createdAt,
+                            Comparator.nullsLast(Comparator.reverseOrder())
+                    ))
+                    .toList();
+            String nextCursor = response.getNextKey();
+
+            return new NotificationHistoryPage(
+                    history,
+                    nextCursor,
+                    nextCursor != null && !nextCursor.isBlank()
+            );
+        } catch (Exception exception) {
+            log.error("Failed to get AlimTalk message history", exception);
+            throw new ForifException(ErrorCode.NOTIFICATION_HISTORY_FETCH_FAILED);
+        }
+    }
+
+    private static NotificationHistoryItem toHistoryItem(Message message) {
+        KakaoOption kakaoOptions = message.getKakaoOptions();
+        return new NotificationHistoryItem(
+                message.getMessageId(),
+                kakaoOptions == null ? null : kakaoOptions.getTemplateId(),
+                message.getTo(),
+                message.getStatus(),
+                message.getStatusCode(),
+                message.getDateCreated(),
+                message.getDateProcessed(),
+                message.getDateReported(),
+                message.getDateUpdated()
+        );
     }
 }

@@ -3,6 +3,8 @@ package org.forif_backend.application.notification;
 import org.forif_backend.application.notification.dto.SendAlimTalkCommand;
 import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
+import org.forif_backend.application.notification.dto.NotificationHistoryItem;
+import org.forif_backend.application.notification.dto.NotificationHistoryPage;
 import org.forif_backend.application.notification.port.out.NotificationSendPort;
 import org.forif_backend.application.notification.dto.NotificationRecipientTarget;
 import org.forif_backend.application.semester.SemesterService;
@@ -366,5 +368,24 @@ class NotificationServiceRecipientTest {
                 eq(new SendAlimTalkCommand(List.of("01012345678"), "template", Map.of())),
                 eq(Map.of("01012345678", "수신자"))
         );
+    }
+
+    @Test
+    void getsAlimTalkHistoryForAuthorizedStaffWithProviderCursor() {
+        NotificationHistoryPage historyPage = new NotificationHistoryPage(
+                List.of(new NotificationHistoryItem(
+                        "message-1", "template-1", "01012345678", "SENT", null,
+                        "2026-09-08T10:00:00", "2026-09-08T10:00:01", null, "2026-09-08T10:00:01"
+                )),
+                "next-key",
+                true
+        );
+        stubAuthorizedSender();
+        when(notificationSendPort.getAlimTalkHistory("current-key", 100)).thenReturn(historyPage);
+
+        NotificationHistoryPage result = notificationService.getAlimTalkHistory(1L, "current-key", 1_000);
+
+        assertThat(result).isSameAs(historyPage);
+        verify(notificationSendPort).getAlimTalkHistory("current-key", 100);
     }
 }

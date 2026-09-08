@@ -15,6 +15,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.notification.dto.NotificationDtoMapper;
 import org.forif_backend.web.notification.dto.SendAlimTalkRequest;
 import org.forif_backend.web.notification.dto.SendAlimTalkResponse;
+import org.forif_backend.web.notification.dto.NotificationHistoryResponse;
 import org.forif_backend.web.user.dto.MemberResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -81,5 +82,21 @@ public class NotificationController {
 
         List<TemplateInfo> templates = notificationService.getKakaoTemplates(userId);
         return ResponseEntity.ok(ApiResponse.success(templates));
+    }
+
+    @Operation(
+            summary = "알림톡 발송 이력 조회 (어드민 전용)",
+            description = "Solapi에 보관된 최근 6개월 알림톡(ATA) 발송 이력을 최신순으로 조회합니다. next_cursor를 cursor로 전달해 다음 페이지를 조회합니다."
+    )
+    @GetMapping("/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<NotificationHistoryResponse>> getAlimTalkHistory(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "50") int size,
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(NotificationHistoryResponse.from(
+                notificationService.getAlimTalkHistory(userId, cursor, size)
+        )));
     }
 }

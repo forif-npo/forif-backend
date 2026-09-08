@@ -139,7 +139,8 @@ public enum ErrorCode {
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
-    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다.");
+    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다."),
+    NOTIFICATION_HISTORY_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR147-500", "알림톡 발송 이력 조회에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
