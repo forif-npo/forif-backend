@@ -224,7 +224,7 @@ public class UserApplyService {
                 continue;
             }
             if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
-                studyUserRepository.deleteByUserIdAndStudyId(apply.getApplier().getId(), studyId);
+                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
         }
@@ -333,7 +333,7 @@ public class UserApplyService {
     @Transactional
     public void acceptApplications(Long userId, Integer studyId, List<Long> applyIds) {
         Study study = getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -384,7 +384,7 @@ public class UserApplyService {
     @Transactional
     public void rejectApplications(Long userId, Integer studyId, List<Long> applyIds) {
         getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
         for (Long applyId : applyIds) {
             Optional<UserApply> applyOpt = findApplication(applyId);
@@ -406,7 +406,7 @@ public class UserApplyService {
             }
 
             if (currentStatus == UserApplyStatus.ACCEPT) {
-                studyUserRepository.deleteByUserIdAndStudyId(apply.getApplier().getId(), studyId);
+                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
 
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
@@ -499,7 +499,7 @@ public class UserApplyService {
     @Transactional
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatus newStatus) {
         Study study = getStudyIfActiveMentor(userId, studyId);
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         UserApply userApply = getApplication(applyId);
 
         // 신청서가 해당 스터디에 대한 것인지 검증
@@ -512,7 +512,13 @@ public class UserApplyService {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
-        userApply.updateStatus(study.getId(), newStatus);
+        UserApplyStatus currentStatus = userApply.getPrimaryStudy() == studyId
+                ? userApply.getPrimaryStatus()
+                : userApply.getSecondaryStatus();
+        if (currentStatus == UserApplyStatus.ACCEPT) {
+            removeRevertedAcceptanceStudyMembership(studyId, userApply);
+        }
+        userApply.updateStatus(studyId, newStatus);
     }
 
     /** 조회용. 지난 학기 스터디도 본인이 멘토였으면 볼 수 있다. */
@@ -553,7 +559,7 @@ public class UserApplyService {
         if (study.getStudyStatus() != StudyStatus.APPROVED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
         }
-        semesterPhaseGuard.requireOpen(SemesterPhase.MENTEE_REVIEW);
+        semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
         return study;
     }
 
@@ -561,6 +567,15 @@ public class UserApplyService {
         if (apply.getPrimaryStudy() != studyId) {
             throw new ForifException(ErrorCode.USER_NOT_APPLIED_TO_STUDY);
         }
+    }
+
+    /**
+     * 멘토/운영진이 심사 중 특정 스터디의 합격을 번복한 경우의 정리다.
+     * 회비·구글폼 확인 기록은 사용자·학기 단위의 사실이므로, 다른 스터디 합격 여부와 무관하게 보존한다.
+     */
+    private void removeRevertedAcceptanceStudyMembership(Integer studyId, UserApply apply) {
+        Long userId = apply.getApplier().getId();
+        studyUserRepository.deleteByUserIdAndStudyId(userId, studyId);
     }
 
     /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */

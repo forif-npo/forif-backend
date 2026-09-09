@@ -31,4 +31,5 @@ public class MemberSemesterCheckRepositoryImpl implements MemberSemesterCheckRep
     public MemberSemesterCheck save(MemberSemesterCheck memberSemesterCheck) {
         return memberSemesterCheckJpaRepository.save(memberSemesterCheck);
     }
+
 }

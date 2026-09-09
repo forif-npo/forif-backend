@@ -11,6 +11,7 @@ public enum ErrorCode {
     // 400 Bad Request
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "FOR001-400", "잘못된 요청입니다."),
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "FOR002-400", "입력값이 유효하지 않습니다."),
+    INVALID_PHONE_NUMBER(HttpStatus.BAD_REQUEST, "FOR146-400", "전화번호 형식이 올바르지 않습니다."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "FOR003-400", "입력값 검증에 실패했습니다."),
     MISSING_PARAMETER(HttpStatus.BAD_REQUEST, "FOR004-400", "필수 파라미터가 누락되었습니다."),
     TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "FOR005-400", "파라미터 타입이 올바르지 않습니다."),
@@ -72,6 +73,7 @@ public enum ErrorCode {
     // 404 Not Found
     STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR022-404", "스터디가 존재하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR023-404", "유저를 찾을 수 없습니다."),
+    DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR147-404", "학과를 찾을 수 없습니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR024-404", "공지사항이 없습니다."),
     SPECIFIC_NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR025-404", "해당 공지사항이 없습니다."),
     FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR026-404", "FAQ가 없습니다."),
@@ -112,6 +114,7 @@ public enum ErrorCode {
     AUTONOMOUS_STUDY_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR131-409", "현재 학기에 이미 자율부원 등록용 스터디가 생성되어 있습니다."),
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
+    REGISTRATION_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "FOR146-409", "이미 이번 학기 등록을 철회한 사용자입니다."),
 
     // Product (서비스 쇼케이스)
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR110-404", "해당 서비스를 찾을 수 없습니다."),
@@ -137,7 +140,8 @@ public enum ErrorCode {
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
-    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다.");
+    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다."),
+    NOTIFICATION_HISTORY_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR147-500", "알림톡 발송 이력 조회에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
