@@ -59,6 +59,7 @@ public class SecurityConfig {
                     "/api/v1/files/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET,
+                    "/api/v1/departments",
                     "/api/v1/studies",
                     "/api/v1/studies/{studyId}",
                     "/api/v1/products",

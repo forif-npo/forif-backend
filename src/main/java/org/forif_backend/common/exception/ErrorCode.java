@@ -73,6 +73,7 @@ public enum ErrorCode {
     // 404 Not Found
     STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR022-404", "스터디가 존재하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR023-404", "유저를 찾을 수 없습니다."),
+    DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR147-404", "학과를 찾을 수 없습니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR024-404", "공지사항이 없습니다."),
     SPECIFIC_NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR025-404", "해당 공지사항이 없습니다."),
     FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR026-404", "FAQ가 없습니다."),

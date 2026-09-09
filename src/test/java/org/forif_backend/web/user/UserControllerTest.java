@@ -46,7 +46,7 @@ class UserControllerTest {
                 "테스트유저",
                 "mock-google-access-token",
                 "010-1234-5678",
-                "컴퓨터공학과"
+                1L
         );
 
         // when & then
@@ -73,7 +73,7 @@ class UserControllerTest {
                 "테스트유저1",
                 "mock-duplicate-google-access-token",
                 "010-1234-5678",
-                "컴퓨터공학과"
+                1L
         );
 
         mockMvc.perform(post("/api/v1/users/signup")
@@ -86,7 +86,7 @@ class UserControllerTest {
                 "테스트유저2",
                 "mock-duplicate-google-access-token",
                 "010-9876-5432",
-                "전자공학과"
+                1L
         );
 
         // then
@@ -108,7 +108,7 @@ class UserControllerTest {
                 "로그인테스트",
                 "mock-signin-google-access-token",
                 "010-1234-5678",
-                "컴퓨터공학과"
+                1L
         );
 
         mockMvc.perform(post("/api/v1/users/signup")
@@ -132,7 +132,7 @@ class UserControllerTest {
                 "리프레시테스트",
                 "mock-refresh-google-access-token",
                 "010-1234-5678",
-                "컴퓨터공학과"
+                1L
         );
 
         var signUpResult = mockMvc.perform(post("/api/v1/users/signup")
@@ -171,7 +171,7 @@ class UserControllerTest {
                 "로그아웃테스트",
                 "mock-logout-google-access-token",
                 "010-1234-5678",
-                "컴퓨터공학과"
+                1L
         );
 
         var signUpResult = mockMvc.perform(post("/api/v1/users/signup")

@@ -8,6 +8,7 @@ public record UserInfoResponse(
         String userName,
         String email,
         String phoneNum,
+        Long departmentId,
         String department,
         String imgUrl
 ) {

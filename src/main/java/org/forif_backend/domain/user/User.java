@@ -5,6 +5,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.forif_backend.common.BaseTimeEntity;
+import org.forif_backend.domain.department.Department;
 
 @Entity
 @Getter
@@ -25,8 +26,12 @@ public class User extends BaseTimeEntity {
     @Column(length = 20)
     private String phoneNum;
 
-    @Column(length = 50)
+    @Column(name = "department", length = 50)
     private String department;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department departmentEntity;
 
     @Column(length = 300)
     private String imgUrl;
@@ -50,6 +55,15 @@ public class User extends BaseTimeEntity {
     public void updateProfile(String department, String imgUrl) {
         if (department != null) this.department = department;
         if (imgUrl != null) this.imgUrl = imgUrl;
+    }
+
+    public void updateDepartment(Department department) {
+        this.departmentEntity = department;
+        this.department = department.getDepartmentName();
+    }
+
+    public Long getDepartmentId() {
+        return departmentEntity != null ? departmentEntity.getId() : null;
     }
 
     public void updatePhoneNum(String phoneNum) {

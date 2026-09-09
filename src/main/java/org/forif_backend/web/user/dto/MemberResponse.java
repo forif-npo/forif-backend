@@ -7,6 +7,7 @@ import org.forif_backend.common.dto.response.CursorPageResponse;
 @Builder
 public record MemberResponse(
         Long userId,
+        Long departmentId,
         String department,
         String userName,
         String phoneNum,
@@ -17,6 +18,7 @@ public record MemberResponse(
     public static MemberResponse from(MemberInfo info) {
         return MemberResponse.builder()
                 .userId(info.userId())
+                .departmentId(info.departmentId())
                 .department(info.department())
                 .userName(info.userName())
                 .phoneNum(info.phoneNum())

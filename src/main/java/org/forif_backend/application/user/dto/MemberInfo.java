@@ -8,6 +8,7 @@ import lombok.Builder;
 @Builder
 public record MemberInfo(
         Long userId,
+        Long departmentId,
         String department,
         String userName,
         String phoneNum,
