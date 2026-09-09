@@ -7,6 +7,7 @@ import org.forif_backend.application.notification.dto.SendAlimTalkMessageResult;
 import org.forif_backend.application.notification.dto.SendAlimTalkResult;
 import org.forif_backend.application.notification.dto.TemplateInfo;
 import org.forif_backend.application.notification.dto.NotificationRecipientTarget;
+import org.forif_backend.application.notification.dto.NotificationHistoryPage;
 import org.forif_backend.application.notification.port.out.NotificationSendPort;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
@@ -36,6 +37,7 @@ import java.util.concurrent.CompletableFuture;
 public class NotificationService {
 
     private static final int MAX_RECIPIENT_PAGE_SIZE = 100;
+    private static final int MAX_HISTORY_PAGE_SIZE = 100;
     private static final String UNKNOWN_FAILURE_CODE = "UNKNOWN";
     private static final String MISSING_PROVIDER_RESULT_MESSAGE = "발송 결과를 확인할 수 없습니다.";
     private static final String RECEIVER_LOOKUP_FAILURE_MESSAGE = "수신자 정보를 조회할 수 없습니다.";
@@ -171,6 +173,14 @@ public class NotificationService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         return notificationSendPort.getKakaoTemplates();
+    }
+
+    public NotificationHistoryPage getAlimTalkHistory(Long userId, String cursor, int size) {
+        staffAccountRepository.findByUserId(userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+
+        int safeSize = Math.max(1, Math.min(size, MAX_HISTORY_PAGE_SIZE));
+        return notificationSendPort.getAlimTalkHistory(cursor, safeSize);
     }
 
     public CursorPageResponse<MemberInfo> getRecipients(

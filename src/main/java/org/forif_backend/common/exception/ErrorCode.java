@@ -73,6 +73,7 @@ public enum ErrorCode {
     // 404 Not Found
     STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR022-404", "스터디가 존재하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR023-404", "유저를 찾을 수 없습니다."),
+    DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR147-404", "학과를 찾을 수 없습니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR024-404", "공지사항이 없습니다."),
     SPECIFIC_NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR025-404", "해당 공지사항이 없습니다."),
     FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR026-404", "FAQ가 없습니다."),
@@ -139,7 +140,8 @@ public enum ErrorCode {
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "FOR100-500", "서버 내부 오류가 발생했습니다."),
     INVALID_STATUS_VALUE(HttpStatus.INTERNAL_SERVER_ERROR, "FOR101-500", "유효하지 않은 상태 값입니다."),
-    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다.");
+    NOTIFICATION_TEMPLATE_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR102-500", "알림톡 템플릿 조회에 실패했습니다."),
+    NOTIFICATION_HISTORY_FETCH_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "FOR147-500", "알림톡 발송 이력 조회에 실패했습니다.");
 
     private final HttpStatus httpStatus;
     private final String code;

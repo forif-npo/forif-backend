@@ -305,7 +305,8 @@ public class StaffAccountController {
             @Parameter(description = "수정할 부원의 유저 ID") @PathVariable Long userId,
             @Valid @RequestBody UpdateMemberInfoRequest request
     ) {
-        userService.updateMemberInfo(userId, request.department(), request.phoneNum());
+        userService.updateMemberInfo(
+                userId, request.departmentId(), request.department(), request.phoneNum());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 

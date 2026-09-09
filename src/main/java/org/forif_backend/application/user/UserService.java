@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.dues.DuesService;
+import org.forif_backend.application.department.DepartmentService;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.user.dto.*;
 import org.forif_backend.common.auth.JwtProvider;
@@ -23,6 +24,7 @@ import org.forif_backend.domain.user.UserRepository;
 import org.forif_backend.common.util.DateUtils;
 import org.forif_backend.common.util.PhoneNumberUtils;
 import org.forif_backend.domain.user.*;
+import org.forif_backend.domain.department.Department;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -64,6 +66,7 @@ public class UserService {
     private final GoogleOAuthClient googleOAuthClient;
     private final RefreshTokenService refreshTokenService;
     private final FilePort filePort;
+    private final DepartmentService departmentService;
 
     /**
      * 부원 회원가입
@@ -84,13 +87,16 @@ public class UserService {
         }
 
         // 3. 사용자 생성
+        Department department = departmentService.getRequired(
+                command.departmentId(), command.legacyDepartmentName());
         User user = User.createUser(
                 command.studentId(),
                 command.userName(),
                 command.email(),
                 PhoneNumberUtils.normalizePhoneNumber(command.phoneNum()),
-                command.department()
+                department.getDepartmentName()
         );
+        user.updateDepartment(department);
 
         User savedUser = userRepository.save(user);
 
@@ -333,10 +339,24 @@ public class UserService {
     }
 
     @Transactional
-    public User updateUserProfile(Long userId, String department, MultipartFile profileImage) {
+    public User updateUserProfile(
+            Long userId,
+            Long departmentId,
+            String legacyDepartmentName,
+            MultipartFile profileImage
+    ) {
         User user = getUserInfo(userId);
-        user.updateProfile(department, uploadProfileImage(user, profileImage));
+        user.updateDepartment(departmentService.getRequired(departmentId, legacyDepartmentName));
+        user.updateProfile(null, uploadProfileImage(user, profileImage));
         return user;
+    }
+
+    public User updateUserProfile(Long userId, Long departmentId, MultipartFile profileImage) {
+        return updateUserProfile(userId, departmentId, null, profileImage);
+    }
+
+    public User updateUserProfile(Long userId, String legacyDepartmentName, MultipartFile profileImage) {
+        return updateUserProfile(userId, null, legacyDepartmentName, profileImage);
     }
 
     /** 운영진 관리 등 다른 경로에서도 같은 부원 프로필 사진을 갱신한다. */
@@ -356,10 +376,18 @@ public class UserService {
 
     /** 어드민이 부원의 변경 가능한 기본 정보만 수정한다. 학번과 이름은 수정 대상이 아니다. */
     @Transactional
-    public void updateMemberInfo(Long userId, String department, String phoneNum) {
+    public void updateMemberInfo(Long userId, Long departmentId, String legacyDepartmentName, String phoneNum) {
         User user = getUserInfo(userId);
-        user.updateProfile(department, null);
+        user.updateDepartment(departmentService.getRequired(departmentId, legacyDepartmentName));
         user.updatePhoneNum(PhoneNumberUtils.normalizePhoneNumber(phoneNum));
+    }
+
+    public void updateMemberInfo(Long userId, Long departmentId, String phoneNum) {
+        updateMemberInfo(userId, departmentId, null, phoneNum);
+    }
+
+    public void updateMemberInfo(Long userId, String legacyDepartmentName, String phoneNum) {
+        updateMemberInfo(userId, null, legacyDepartmentName, phoneNum);
     }
 
     public String getProfileImageUrl(String imgUrl) {
@@ -587,6 +615,7 @@ public class UserService {
         return users.stream()
                 .map(u -> MemberInfo.builder()
                         .userId(u.getId())
+                        .departmentId(u.getDepartmentId())
                         .department(u.getDepartment())
                         .userName(u.getUserName())
                         .phoneNum(u.getPhoneNum())
