@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 class NotificationClientHistoryTest {
 
     @Test
-    void getsOnlyRecentAlimTalkHistoryWithSolapiCursor() {
+    void preservesSolapiHistoryOrderWithCursor() {
         DefaultMessageService messageService = mock(DefaultMessageService.class);
         NotificationClient notificationClient = new NotificationClient();
         ReflectionTestUtils.setField(notificationClient, "messageService", messageService);
@@ -52,8 +52,8 @@ class NotificationClientHistoryTest {
         assertThat(request.getStartDate()).isBetween(before.minusMonths(6), after.minusMonths(6));
         assertThat(request.getEndDate()).isBetween(before, after);
         assertThat(result.content()).extracting(history -> history.messageId())
-                .containsExactly("message-2", "message-1");
-        assertThat(result.content().get(1)).satisfies(history -> {
+                .containsExactly("message-1", "message-2");
+        assertThat(result.content().get(0)).satisfies(history -> {
             assertThat(history.messageId()).isEqualTo("message-1");
             assertThat(history.templateId()).isEqualTo("template-1");
             assertThat(history.receiver()).isEqualTo("01012345678");

@@ -86,7 +86,7 @@ public class NotificationController {
 
     @Operation(
             summary = "알림톡 발송 이력 조회 (어드민 전용)",
-            description = "Solapi에 보관된 최근 6개월 알림톡(ATA) 발송 이력을 최신순으로 조회합니다. next_cursor를 cursor로 전달해 다음 페이지를 조회합니다."
+            description = "Solapi에 보관된 최근 6개월 알림톡(ATA) 발송 이력을 Solapi 커서 순서로 조회합니다. next_cursor를 cursor로 전달해 다음 페이지를 조회합니다."
     )
     @GetMapping("/history")
     @PreAuthorize("hasRole('ADMIN')")

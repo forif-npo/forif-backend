@@ -30,7 +30,6 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -264,10 +263,6 @@ public class NotificationClient implements NotificationSendPort {
                     ? List.of()
                     : messageList.values().stream()
                     .map(NotificationClient::toHistoryItem)
-                    .sorted(Comparator.comparing(
-                            NotificationHistoryItem::createdAt,
-                            Comparator.nullsLast(Comparator.reverseOrder())
-                    ))
                     .toList();
             String nextCursor = response.getNextKey();
 
