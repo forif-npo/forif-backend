@@ -51,15 +51,28 @@ class AutonomousStudyVisibilityTest {
                 mock(StaffAccountRepository.class),
                 mock(MentorConfirmationRepository.class)
         );
+        Study regularStudy = mock(Study.class);
+        when(regularStudy.isAutonomousStudy()).thenReturn(false);
+        when(regularStudy.getId()).thenReturn(100);
+        when(regularStudy.getActYear()).thenReturn(2099);
+        when(regularStudy.getActSemester()).thenReturn(1);
+        when(regularStudy.getTags()).thenReturn(List.of());
+
         Study autonomousStudy = mock(Study.class);
         when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
-        when(studyRepository.findStudiesByMentorId(999L)).thenReturn(List.of(autonomousStudy));
-        when(studyRepository.findStudiesByUserId(999L)).thenReturn(List.of(autonomousStudy));
+        when(studyRepository.findStudiesByMentorId(999L))
+                .thenReturn(List.of(regularStudy, autonomousStudy));
+        when(studyRepository.findStudiesByUserId(999L))
+                .thenReturn(List.of(regularStudy, autonomousStudy));
         when(studyUserRepository.findAllByUserId(999L)).thenReturn(List.of());
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2099, 1));
 
-        assertThat(service.getMyCreatedStudies(999L)).isEmpty();
-        assertThat(service.getUserStudies(999L).semesters()).isEmpty();
+        assertThat(service.getMyCreatedStudies(999L))
+                .extracting(study -> study.getId())
+                .containsExactly(100);
+        assertThat(service.getUserStudies(999L).semesters())
+                .extracting(semester -> semester.study().studyId())
+                .containsExactly(100);
     }
 
     @Test
