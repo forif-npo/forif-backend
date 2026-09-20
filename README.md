@@ -1,6 +1,6 @@
 # FORIF Backend
 
-한양대학교 IT 학회 **FORIF** 웹사이트([forif.org](https://forif.org))의 백엔드 서비스입니다.
+한양대학교 중앙동아리 **FORIF** 웹사이트([forif.org](https://forif.org))의 백엔드 서비스입니다.
 스터디 개설·수강 신청, 해커톤 운영, 수료증 발급, 운영진 관리 기능을 REST API로 제공합니다.
 
 ## 기술 스택
@@ -175,5 +175,5 @@ SOFTWARE.
 
 ## 문의
 
-- 학회: forif.contact@gmail.com
+- 동아리: forif.contact@gmail.com
 - 웹사이트: [forif.org](https://forif.org)
