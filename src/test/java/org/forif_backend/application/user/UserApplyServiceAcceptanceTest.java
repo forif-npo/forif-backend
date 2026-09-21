@@ -65,7 +65,7 @@ class UserApplyServiceAcceptanceTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getApplier()).thenReturn(applicant);
 
@@ -86,8 +86,8 @@ class UserApplyServiceAcceptanceTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
-        when(userRepository.findUserApplyById(101L)).thenReturn(Optional.of(remainingApplication));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.empty());
+        when(userApplyRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(remainingApplication));
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
         when(remainingApplication.getApplier()).thenReturn(applicant);
 
@@ -113,7 +113,7 @@ class UserApplyServiceAcceptanceTest {
                         ((ForifException) exception).getErrorCode())
                         .isEqualTo(ErrorCode.SEMESTER_PHASE_CLOSED));
 
-        verify(userRepository, never()).findUserApplyById(anyLong());
+        verify(userApplyRepository, never()).findByIdForUpdate(anyLong());
         verifyNoInteractions(duesService, studyUserRepository);
     }
 
@@ -128,7 +128,7 @@ class UserApplyServiceAcceptanceTest {
         when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(autonomousStudy));
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
         when(application.getApplier()).thenReturn(applicant);
@@ -152,7 +152,7 @@ class UserApplyServiceAcceptanceTest {
         when(autonomousStudy.getActSemester()).thenReturn(2);
         when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(application.getApplier()).thenReturn(applicant);
@@ -175,7 +175,7 @@ class UserApplyServiceAcceptanceTest {
         when(autonomousStudy.getActSemester()).thenReturn(2);
         when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
         when(application.getApplier()).thenReturn(applicant);
@@ -193,7 +193,7 @@ class UserApplyServiceAcceptanceTest {
         UserApply application = mock(UserApply.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(application.getApplier()).thenReturn(applicant);
@@ -211,7 +211,7 @@ class UserApplyServiceAcceptanceTest {
         UserApply application = mock(UserApply.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
         when(application.getApplier()).thenReturn(applicant);
@@ -229,7 +229,7 @@ class UserApplyServiceAcceptanceTest {
         UserApply application = mock(UserApply.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getApplier()).thenReturn(applicant);
 

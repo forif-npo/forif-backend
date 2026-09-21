@@ -13,6 +13,7 @@ import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.semester.SemesterPhase;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
+import org.forif_backend.domain.user.UserApplyRepository;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,8 @@ class UserApplyServiceDeletedApplicationTest {
     @Mock
     private UserRepository userRepository;
     @Mock
+    private UserApplyRepository userApplyRepository;
+    @Mock
     private StudyRepository studyRepository;
     @Mock
     private StudyUserRepository studyUserRepository;
@@ -62,8 +65,8 @@ class UserApplyServiceDeletedApplicationTest {
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
-        when(userRepository.findUserApplyById(101L)).thenReturn(Optional.of(remainingApplication));
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.empty());
+        when(userApplyRepository.findByIdForUpdate(101L)).thenReturn(Optional.of(remainingApplication));
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
         when(remainingApplication.getApplier()).thenReturn(applicant);
 
@@ -89,7 +92,7 @@ class UserApplyServiceDeletedApplicationTest {
         Study study = mock(Study.class);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
-        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
+        when(userApplyRepository.findByIdForUpdate(100L)).thenReturn(Optional.empty());
 
         assertError(() -> userApplyService.updateApplyStatus(
                 99L, 10, 100L, UserApplyStatus.REJECT));
@@ -110,7 +113,7 @@ class UserApplyServiceDeletedApplicationTest {
         assertPhaseClosed(() -> userApplyService.updateApplyStatus(
                 99L, 10, 100L, UserApplyStatus.REJECT));
 
-        verify(userRepository, never()).findUserApplyById(anyLong());
+        verify(userApplyRepository, never()).findByIdForUpdate(anyLong());
     }
 
     private void assertError(Runnable action) {

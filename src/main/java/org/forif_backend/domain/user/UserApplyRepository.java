@@ -36,6 +36,12 @@ public interface UserApplyRepository {
 
     Optional<UserApply> findByApplierIdAndYearSemester(Long userId, int year, int semester);
 
+    /** 회비 확인·합불 변경과 수강 관계 동기화를 직렬화하기 위한 신청서 행 잠금 조회. */
+    Optional<UserApply> findByApplierIdAndYearSemesterForUpdate(Long userId, int year, int semester);
+
+    /** 단건 합불 변경 시 해당 신청서의 상태와 수강 관계를 함께 갱신하기 위한 잠금 조회. */
+    Optional<UserApply> findByIdForUpdate(Long applyId);
+
     /** 해당 스터디를 1·2순위로 지원한 신청서가 하나라도 있는지 */
     boolean existsByStudyId(Integer studyId);
 

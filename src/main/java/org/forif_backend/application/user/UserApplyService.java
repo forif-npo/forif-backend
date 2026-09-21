@@ -190,8 +190,8 @@ public class UserApplyService {
     public void acceptAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
         Study study = getAutonomousStudyForAdminDecision(studyId);
 
-        for (Long applyId : applyIds) {
-            Optional<UserApply> applyOpt = findApplication(applyId);
+        for (Long applyId : applyIds.stream().sorted().toList()) {
+            Optional<UserApply> applyOpt = findApplicationForUpdate(applyId);
             if (applyOpt.isEmpty()) {
                 continue;
             }
@@ -212,8 +212,8 @@ public class UserApplyService {
     public void rejectAutonomousStudyApplications(Integer studyId, List<Long> applyIds) {
         getAutonomousStudyForAdminDecision(studyId);
 
-        for (Long applyId : applyIds) {
-            Optional<UserApply> applyOpt = findApplication(applyId);
+        for (Long applyId : applyIds.stream().sorted().toList()) {
+            Optional<UserApply> applyOpt = findApplicationForUpdate(applyId);
             if (applyOpt.isEmpty()) {
                 continue;
             }
@@ -324,6 +324,10 @@ public class UserApplyService {
         return userRepository.findUserApplyById(applyId);
     }
 
+    private Optional<UserApply> findApplicationForUpdate(Long applyId) {
+        return userApplyRepository.findByIdForUpdate(applyId);
+    }
+
     /**
      * 합격 처리 메서드
      * @param userId 멘토 유저 id
@@ -335,8 +339,8 @@ public class UserApplyService {
         Study study = getStudyIfActiveMentor(userId, studyId);
         semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
-        for (Long applyId : applyIds) {
-            Optional<UserApply> applyOpt = findApplication(applyId);
+        for (Long applyId : applyIds.stream().sorted().toList()) {
+            Optional<UserApply> applyOpt = findApplicationForUpdate(applyId);
             if (applyOpt.isEmpty()) {
                 continue;
             }
@@ -386,8 +390,8 @@ public class UserApplyService {
         getStudyIfActiveMentor(userId, studyId);
         semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
 
-        for (Long applyId : applyIds) {
-            Optional<UserApply> applyOpt = findApplication(applyId);
+        for (Long applyId : applyIds.stream().sorted().toList()) {
+            Optional<UserApply> applyOpt = findApplicationForUpdate(applyId);
             if (applyOpt.isEmpty()) {
                 continue;
             }
@@ -498,7 +502,8 @@ public class UserApplyService {
     public void updateApplyStatus(Long userId, Integer studyId, Long applyId, UserApplyStatus newStatus) {
         Study study = getStudyIfActiveMentor(userId, studyId);
         semesterPhaseGuard.requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
-        UserApply userApply = getApplication(applyId);
+        UserApply userApply = findApplicationForUpdate(applyId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STUDY_APPLY_NOT_FOUND));
 
         // 신청서가 해당 스터디에 대한 것인지 검증
         if (userApply.getPrimaryStudy() != study.getId() && !study.getId().equals(userApply.getSecondaryStudy())) {
