@@ -165,6 +165,28 @@ class UserApplyServiceAcceptanceTest {
     }
 
     @Test
+    void adminRejectRetriesAlsoRemoveStaleAutonomousStudyMembership() {
+        Study autonomousStudy = mock(Study.class);
+        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
+        UserApply application = mock(UserApply.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(autonomousStudy));
+        when(autonomousStudy.isAutonomousStudy()).thenReturn(true);
+        when(autonomousStudy.getActYear()).thenReturn(2026);
+        when(autonomousStudy.getActSemester()).thenReturn(2);
+        when(autonomousStudy.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(semesterService.getActive()).thenReturn(org.forif_backend.application.semester.dto.SemesterInfo.of(2026, 2));
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(application.getPrimaryStudy()).thenReturn(10);
+        when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
+        when(application.getApplier()).thenReturn(applicant);
+
+        userApplyService.rejectAutonomousStudyApplications(10, List.of(100L));
+
+        verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
+        verify(application, never()).updateStatus(10, UserApplyStatus.REJECT);
+    }
+
+    @Test
     void mentorRejectionOfAnAcceptedApplicationPreservesTheSemesterCheck() {
         Study study = mock(Study.class);
         User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
@@ -183,7 +205,7 @@ class UserApplyServiceAcceptanceTest {
     }
 
     @Test
-    void statusUpdateFromAcceptedToRejectedRemovesOnlyTheStudyMembership() {
+    void mentorRejectRetriesAlsoRemoveStaleStudyMembership() {
         Study study = mock(Study.class);
         User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply application = mock(UserApply.class);
@@ -191,7 +213,24 @@ class UserApplyServiceAcceptanceTest {
         when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
         when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
         when(application.getPrimaryStudy()).thenReturn(10);
-        when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
+        when(application.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
+        when(application.getApplier()).thenReturn(applicant);
+
+        userApplyService.rejectApplications(99L, 10, List.of(100L));
+
+        verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
+        verify(application, never()).updateStatus(10, UserApplyStatus.REJECT);
+    }
+
+    @Test
+    void statusUpdateRemovesOnlyTheStudyMembership() {
+        Study study = mock(Study.class);
+        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
+        UserApply application = mock(UserApply.class);
+        when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
+        when(study.getStudyStatus()).thenReturn(StudyStatus.APPROVED);
+        when(userRepository.findUserApplyById(100L)).thenReturn(Optional.of(application));
+        when(application.getPrimaryStudy()).thenReturn(10);
         when(application.getApplier()).thenReturn(applicant);
 
         userApplyService.updateApplyStatus(99L, 10, 100L, UserApplyStatus.REJECT);

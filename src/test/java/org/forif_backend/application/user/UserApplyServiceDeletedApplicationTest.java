@@ -57,6 +57,7 @@ class UserApplyServiceDeletedApplicationTest {
     @Test
     void skipsDeletedApplicationAndRejectsRemainingApplications() {
         Study study = mock(Study.class);
+        User applicant = User.createUser(1L, "신청자", "applicant@hanyang.ac.kr", "01011112222", "컴퓨터학부");
         UserApply remainingApplication = mock(UserApply.class);
 
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(study));
@@ -64,10 +65,12 @@ class UserApplyServiceDeletedApplicationTest {
         when(userRepository.findUserApplyById(100L)).thenReturn(Optional.empty());
         when(userRepository.findUserApplyById(101L)).thenReturn(Optional.of(remainingApplication));
         when(remainingApplication.getPrimaryStudy()).thenReturn(10);
+        when(remainingApplication.getApplier()).thenReturn(applicant);
 
         userApplyService.rejectApplications(99L, 10, List.of(100L, 101L));
 
         verify(semesterPhaseGuard).requireOpenForUpdate(SemesterPhase.MENTEE_REVIEW);
+        verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
         verify(remainingApplication).updateStatus(10, UserApplyStatus.REJECT);
     }
 

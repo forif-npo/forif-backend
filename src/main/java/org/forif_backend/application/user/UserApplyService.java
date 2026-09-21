@@ -220,11 +220,11 @@ public class UserApplyService {
             UserApply apply = applyOpt.get();
             requireAutonomousPrimaryApplication(apply, studyId);
 
+            // 과거 데이터에 남아 있을 수 있는 수강 관계도 함께 정리한다.
+            // 이미 REJECT인 경우에도 삭제는 멱등적이므로 안전하다.
+            removeIneligibleStudyMembership(studyId, apply);
             if (apply.getPrimaryStatus() == UserApplyStatus.REJECT) {
                 continue;
-            }
-            if (apply.getPrimaryStatus() == UserApplyStatus.ACCEPT) {
-                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
         }
@@ -401,12 +401,10 @@ public class UserApplyService {
 
             UserApplyStatus currentStatus = isPrimary ? apply.getPrimaryStatus() : apply.getSecondaryStatus();
 
+            // 상태가 이미 REJECT여도 남아 있는 수강 관계를 복구 목적으로 제거한다.
+            removeIneligibleStudyMembership(studyId, apply);
             if (currentStatus == UserApplyStatus.REJECT) {
                 continue;
-            }
-
-            if (currentStatus == UserApplyStatus.ACCEPT) {
-                removeRevertedAcceptanceStudyMembership(studyId, apply);
             }
 
             apply.updateStatus(studyId, UserApplyStatus.REJECT);
@@ -512,12 +510,9 @@ public class UserApplyService {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
-        UserApplyStatus currentStatus = userApply.getPrimaryStudy() == studyId
-                ? userApply.getPrimaryStatus()
-                : userApply.getSecondaryStatus();
-        if (currentStatus == UserApplyStatus.ACCEPT) {
-            removeRevertedAcceptanceStudyMembership(studyId, userApply);
-        }
+        // PENDING/REJECT로 바뀌는 모든 요청은 수강 관계가 남지 않도록 멱등적으로 정리한다.
+        // 이로써 과거 버전에서 남은 관계도 같은 상태 변경 요청으로 복구할 수 있다.
+        removeIneligibleStudyMembership(studyId, userApply);
         userApply.updateStatus(studyId, newStatus);
     }
 
@@ -570,10 +565,10 @@ public class UserApplyService {
     }
 
     /**
-     * 멘토/운영진이 심사 중 특정 스터디의 합격을 번복한 경우의 정리다.
-     * 회비·구글폼 확인 기록은 사용자·학기 단위의 사실이므로, 다른 스터디 합격 여부와 무관하게 보존한다.
+     * 해당 스터디에 더 이상 합격 상태가 아닌 신청자의 수강 관계를 멱등적으로 정리한다.
+     * 회비·구글폼 확인 기록은 사용자·학기 단위의 사실이므로 보존한다.
      */
-    private void removeRevertedAcceptanceStudyMembership(Integer studyId, UserApply apply) {
+    private void removeIneligibleStudyMembership(Integer studyId, UserApply apply) {
         Long userId = apply.getApplier().getId();
         studyUserRepository.deleteByUserIdAndStudyId(userId, studyId);
     }
