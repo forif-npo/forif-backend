@@ -580,6 +580,9 @@ public class UserApplyService {
 
     /** 신청자 이력은 승인·개설 스터디에서만 조회한다. */
     private void requireApplicantManagementTarget(Study study) {
+        if (study.isAutonomousStudy()) {
+            throw new ForifException(ErrorCode.AUTONOMOUS_STUDY_APPLICATION_DECISION_NOT_ALLOWED);
+        }
         if (study.getStudyStatus() != StudyStatus.APPROVED
                 && study.getStudyStatus() != StudyStatus.STARTED) {
             throw new ForifException(ErrorCode.BAD_REQUEST);
