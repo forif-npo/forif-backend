@@ -112,7 +112,9 @@ public class DuesService {
     @Transactional
     public void updateCurrentSemesterDuesBatch(List<UpdateDuesMemberCommand> commands) {
         SemesterInfo semester = semesterService.getActive();
-        commands.forEach(command -> updateCurrentSemesterDues(command, semester));
+        commands.stream()
+                .sorted(Comparator.comparing(UpdateDuesMemberCommand::userId))
+                .forEach(command -> updateCurrentSemesterDues(command, semester));
     }
 
     /**
@@ -125,6 +127,7 @@ public class DuesService {
         SemesterInfo semester = semesterService.getActive();
         userIds.stream()
                 .distinct()
+                .sorted()
                 .forEach(userId -> withdrawCurrentSemesterRegistration(userId, semester));
     }
 
@@ -133,11 +136,7 @@ public class DuesService {
             SemesterInfo semester
     ) {
         Long userId = command.userId();
-        boolean isAccepted = userApplyRepository.existsAcceptedByApplierIdAndYearSemester(
-                userId, semester.actYear(), semester.actSemester());
-        if (!isAccepted) {
-            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
-        }
+        UserApply acceptedApply = getAcceptedApplicationForUpdate(userId, semester);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -150,15 +149,11 @@ public class DuesService {
         }
         memberCheck.update(command.duesPaid(), command.googleFormSubmitted());
         memberSemesterCheckRepository.save(memberCheck);
-        synchronizeStudyMembership(user, semester, memberCheck);
+        synchronizeStudyMembership(user, memberCheck, acceptedApply);
     }
 
     private void withdrawCurrentSemesterRegistration(Long userId, SemesterInfo semester) {
-        boolean isAccepted = userApplyRepository.existsAcceptedByApplierIdAndYearSemester(
-                userId, semester.actYear(), semester.actSemester());
-        if (!isAccepted) {
-            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
-        }
+        getAcceptedApplicationForUpdate(userId, semester);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -211,12 +206,10 @@ public class DuesService {
 
     private void synchronizeStudyMembership(
             User user,
-            SemesterInfo semester,
-            MemberSemesterCheck memberCheck
+            MemberSemesterCheck memberCheck,
+            UserApply acceptedApply
     ) {
-        userApplyRepository.findByApplierIdAndYearSemester(
-                        user.getId(), semester.actYear(), semester.actSemester())
-                .flatMap(this::acceptedStudyId)
+        acceptedStudyId(acceptedApply)
                 .flatMap(studyRepository::findStudyById)
                 .ifPresent(study -> {
                     if (!memberCheck.isRegistrationWithdrawn()
@@ -227,6 +220,16 @@ public class DuesService {
                         studyUserRepository.deleteByUserIdAndStudyId(user.getId(), study.getId());
                     }
                 });
+    }
+
+    private UserApply getAcceptedApplicationForUpdate(Long userId, SemesterInfo semester) {
+        UserApply apply = userApplyRepository.findByApplierIdAndYearSemesterForUpdate(
+                        userId, semester.actYear(), semester.actSemester())
+                .orElseThrow(() -> new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND));
+        if (acceptedStudyId(apply).isEmpty()) {
+            throw new ForifException(ErrorCode.CURRENT_SEMESTER_MEMBER_NOT_FOUND);
+        }
+        return apply;
     }
 
     private Optional<Integer> acceptedStudyId(UserApply apply) {
