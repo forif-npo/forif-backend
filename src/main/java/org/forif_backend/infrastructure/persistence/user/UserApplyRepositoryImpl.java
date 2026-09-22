@@ -82,6 +82,16 @@ public class UserApplyRepositoryImpl implements UserApplyRepository {
     }
 
     @Override
+    public Optional<UserApply> findByApplierIdAndYearSemesterForUpdate(Long userId, int year, int semester) {
+        return userApplyJpaRepository.findByApplierIdAndYearSemesterForUpdate(userId, year, semester);
+    }
+
+    @Override
+    public Optional<UserApply> findByIdForUpdate(Long applyId) {
+        return userApplyJpaRepository.findByIdForUpdate(applyId);
+    }
+
+    @Override
     public boolean existsByStudyId(Integer studyId) {
         return userApplyJpaRepository.existsByStudyId(studyId);
     }

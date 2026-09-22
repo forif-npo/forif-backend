@@ -87,6 +87,7 @@ public class StudyService {
 
         return studyRepository.findStudiesByMentorId(mentorId)
             .stream()
+            .filter(study -> !study.isAutonomousStudy())
             .map(this::toStudyDto)
             .toList();
     }
@@ -138,7 +139,9 @@ public class StudyService {
     @Transactional(readOnly = true)
     public UserStudiesResult getUserStudies(Long userId) {
         // 1. userId로 스터디 목록 조회 (이미 연도, 학기 내림차순으로 정렬됨)
-        List<Study> studies = studyRepository.findStudiesByUserId(userId);
+        List<Study> studies = studyRepository.findStudiesByUserId(userId).stream()
+                .filter(study -> !study.isAutonomousStudy())
+                .toList();
 
         // 스터디별 수료증 발급 여부 (마이페이지 다운로드 버튼 활성화 판단용)
         Map<Integer, Boolean> certificateIssuedMap = studyUserRepository.findAllByUserId(userId).stream()
