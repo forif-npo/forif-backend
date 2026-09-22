@@ -1,10 +1,12 @@
 package org.forif_backend.infrastructure.persistence.user;
 
+import jakarta.persistence.LockModeType;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserApply;
 import org.forif_backend.domain.user.UserApplyStatus;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -125,4 +127,21 @@ public interface UserApplyJpaRepository extends JpaRepository<UserApply, Long> {
                                                      @Param("acceptedStatus") UserApplyStatus acceptedStatus);
 
     Optional<UserApply> findByApplier_IdAndApplyYearAndApplySemester(Long applierId, int applyYear, int applySemester);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT ua FROM UserApply ua
+            WHERE ua.applier.id = :userId
+              AND ua.applyYear = :year
+              AND ua.applySemester = :semester
+            """)
+    Optional<UserApply> findByApplierIdAndYearSemesterForUpdate(
+            @Param("userId") Long userId,
+            @Param("year") int year,
+            @Param("semester") int semester
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT ua FROM UserApply ua WHERE ua.id = :applyId")
+    Optional<UserApply> findByIdForUpdate(@Param("applyId") Long applyId);
 }

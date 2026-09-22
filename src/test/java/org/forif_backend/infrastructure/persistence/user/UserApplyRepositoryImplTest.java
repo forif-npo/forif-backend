@@ -55,13 +55,29 @@ class UserApplyRepositoryImplTest {
                 .containsExactly(UserApplyStatus.ACCEPT, UserApplyStatus.REJECT);
     }
 
+    @Test
+    void findsCurrentSemesterApplicationForUpdate() {
+        User applicant = persistUser(960001L, "잠금 대상");
+        UserApply application = persistApplication(
+                applicant, 1, 2026, 2, UserApplyStatus.ACCEPT, null);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(userApplyRepository.findByApplierIdAndYearSemesterForUpdate(960001L, 2026, 2))
+                .isPresent()
+                .get()
+                .extracting(UserApply::getId, UserApply::getPrimaryStatus)
+                .containsExactly(application.getId(), UserApplyStatus.ACCEPT);
+        assertThat(userApplyRepository.findByIdForUpdate(application.getId())).isPresent();
+    }
+
     private User persistUser(Long id, String name) {
         User user = User.createUser(id, name, id + "@forif.org", "010-0000-0000", "컴퓨터공학과");
         entityManager.persist(user);
         return user;
     }
 
-    private void persistApplication(
+    private UserApply persistApplication(
             User user,
             int primaryStudyId,
             int year,
@@ -81,5 +97,6 @@ class UserApplyRepositoryImplTest {
             application.updateStatus(secondaryStudyId, secondaryStatus);
         }
         entityManager.persist(application);
+        return application;
     }
 }

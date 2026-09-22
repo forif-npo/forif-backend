@@ -96,7 +96,7 @@ class DuesServiceTest {
     @Test
     @DisplayName("체크 상태를 처음 수정하면 현재 학기 상태 행을 생성한다")
     void createsMemberCheckWhenUpdatingForTheFirstTime() {
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        lockAcceptedApplication();
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.empty());
@@ -270,7 +270,7 @@ class DuesServiceTest {
     @Test
     @DisplayName("현재 학기 합격자는 수강생 등록 전에도 회비 상태를 저장할 수 있다")
     void updatesDuesForAcceptedApplicantWhoIsNotStudyMember() {
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        lockAcceptedApplication();
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.empty());
@@ -287,7 +287,7 @@ class DuesServiceTest {
     @Test
     @DisplayName("등록 철회는 합격 상태를 바꾸지 않고 현재 학기 수강 관계만 제거한다")
     void withdrawsRegistrationWithoutChangingAcceptance() {
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        lockAcceptedApplication();
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.empty());
@@ -300,7 +300,7 @@ class DuesServiceTest {
         verify(memberSemesterCheckRepository).save(captor.capture());
         assertThat(captor.getValue().isRegistrationWithdrawn()).isTrue();
         verify(studyUserRepository).deleteByUserIdAndStudyYearSemester(1L, 2026, 2);
-        verify(userApplyRepository, never()).findByApplierIdAndYearSemester(1L, 2026, 2);
+        verify(userApplyRepository).findByApplierIdAndYearSemesterForUpdate(1L, 2026, 2);
     }
 
     @Test
@@ -308,7 +308,7 @@ class DuesServiceTest {
     void preventsDuesUpdatesAfterRegistrationWithdrawal() {
         MemberSemesterCheck withdrawnCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
         withdrawnCheck.withdrawRegistration();
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        lockAcceptedApplication();
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(withdrawnCheck));
@@ -326,7 +326,10 @@ class DuesServiceTest {
     @Test
     @DisplayName("합격하지 않은 신청자는 회비 상태를 저장할 수 없다")
     void rejectsDuesUpdateForApplicantWithoutAcceptedStudy() {
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(false);
+        UserApply rejectedApplication = mock(UserApply.class);
+        when(rejectedApplication.getPrimaryStatus()).thenReturn(UserApplyStatus.REJECT);
+        when(userApplyRepository.findByApplierIdAndYearSemesterForUpdate(1L, 2026, 2))
+                .thenReturn(Optional.of(rejectedApplication));
 
         assertThatThrownBy(() -> duesService.updateCurrentSemesterDuesBatch(List.of(
                 new UpdateDuesMemberCommand(1L, true, true)
@@ -346,12 +349,11 @@ class DuesServiceTest {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userApplyRepository.findByApplierIdAndYearSemesterForUpdate(1L, 2026, 2))
+                .thenReturn(Optional.of(acceptedApplication));
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(completedCheck));
-        when(userApplyRepository.findByApplierIdAndYearSemester(1L, 2026, 2))
-                .thenReturn(Optional.of(acceptedApplication));
         when(acceptedApplication.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(acceptedApplication.getPrimaryStudy()).thenReturn(10);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(acceptedStudy));
@@ -373,12 +375,11 @@ class DuesServiceTest {
         MemberSemesterCheck completedCheck = MemberSemesterCheck.create(duesUnpaidUser, 2026, 2);
         completedCheck.update(true, true);
 
-        when(userApplyRepository.existsAcceptedByApplierIdAndYearSemester(1L, 2026, 2)).thenReturn(true);
+        when(userApplyRepository.findByApplierIdAndYearSemesterForUpdate(1L, 2026, 2))
+                .thenReturn(Optional.of(acceptedApplication));
         when(userRepository.findById(1L)).thenReturn(Optional.of(duesUnpaidUser));
         when(memberSemesterCheckRepository.findByUserIdAndYearSemester(1L, 2026, 2))
                 .thenReturn(Optional.of(completedCheck));
-        when(userApplyRepository.findByApplierIdAndYearSemester(1L, 2026, 2))
-                .thenReturn(Optional.of(acceptedApplication));
         when(acceptedApplication.getPrimaryStatus()).thenReturn(UserApplyStatus.ACCEPT);
         when(acceptedApplication.getPrimaryStudy()).thenReturn(10);
         when(studyRepository.findStudyById(10)).thenReturn(Optional.of(acceptedStudy));
@@ -389,5 +390,18 @@ class DuesServiceTest {
         ));
 
         verify(studyUserRepository).deleteByUserIdAndStudyId(1L, 10);
+    }
+
+    private UserApply lockAcceptedApplication() {
+        return lockApplication(UserApplyStatus.ACCEPT);
+    }
+
+    private UserApply lockApplication(UserApplyStatus status) {
+        UserApply application = mock(UserApply.class);
+        when(application.getPrimaryStatus()).thenReturn(status);
+        when(application.getPrimaryStudy()).thenReturn(10);
+        when(userApplyRepository.findByApplierIdAndYearSemesterForUpdate(1L, 2026, 2))
+                .thenReturn(Optional.of(application));
+        return application;
     }
 }
