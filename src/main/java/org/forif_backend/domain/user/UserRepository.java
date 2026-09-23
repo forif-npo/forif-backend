@@ -48,6 +48,8 @@ public interface UserRepository {
 
     long countUsersByYearSemester(int year, int semester, String search);
 
+    List<User> findReturningMembers(int year, int semester, int previousYear, int previousSemester);
+
     List<User> searchNotificationUsersWithCursor(Long cursor, int size, String search);
 
     long countNotificationUsers(String search);
