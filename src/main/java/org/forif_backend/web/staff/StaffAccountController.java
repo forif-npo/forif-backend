@@ -247,6 +247,19 @@ public class StaffAccountController {
 
     // ==================== 어드민 부원 관리 API ====================
 
+    @Operation(summary = "현재 학기 재등록원 명부 조회 (어드민 전용)", description = """
+            서버에 설정된 현재 활동 학기의 합격자 중 직전 학기 부원만 반환합니다.
+            대기·불합격·현재 학기 등록 철회자는 제외하며 회비 납부 여부는 조건에 포함하지 않습니다.
+            정규·자율부원을 포함하고, 이름·학번 순으로 중복 없이 전체를 반환합니다.
+            학번은 문자열이며 학과 연결 정보가 없는 경우 단과대는 빈 문자열입니다.
+            """)
+    @GetMapping("/api/v1/admin/users/returning-members")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<ReturningMemberRosterResponse>> getReturningMemberRoster() {
+        return ResponseEntity.ok(ApiResponse.success(
+                ReturningMemberRosterResponse.from(userService.getReturningMemberRoster())));
+    }
+
     /**
      * [운영진 전용] 전체 부원 목록 조회 (커서 기반 페이지네이션)
      */
