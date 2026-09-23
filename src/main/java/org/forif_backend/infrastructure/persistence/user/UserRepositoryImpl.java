@@ -25,6 +25,8 @@ import static org.forif_backend.domain.study.QStudyUser.studyUser;
 import static org.forif_backend.domain.dues.QMemberSemesterCheck.memberSemesterCheck;
 import static org.forif_backend.domain.user.QUser.user;
 import static org.forif_backend.domain.user.QUserApply.userApply;
+import static org.forif_backend.domain.department.QDepartment.department;
+import static org.forif_backend.domain.department.QCollege.college;
 
 @Repository
 @RequiredArgsConstructor
@@ -33,6 +35,35 @@ public class UserRepositoryImpl implements UserRepository {
     private final UserJpaRepository userJpaRepository;
     private final JPAQueryFactory queryFactory;
     private final UserApplyJpaRepository userApplyJpaRepository;
+
+    /** 직전 학기 부원이면서 현재 학기 합격한 신청자. 회비 납부 여부와 무관하며 등록 철회자는 제외한다. */
+    @Override
+    public List<User> findReturningMembers(int year, int semester, int previousYear, int previousSemester) {
+        return queryFactory.selectFrom(user)
+                .leftJoin(user.departmentEntity, department).fetchJoin()
+                .leftJoin(department.college, college).fetchJoin()
+                .where(
+                        JPAExpressions.selectOne().from(studyUser)
+                                .join(studyUser.study, study)
+                                .where(studyUser.user.eq(user),
+                                        study.actYear.eq(previousYear),
+                                        study.actSemester.eq(previousSemester))
+                                .exists(),
+                        JPAExpressions.selectOne().from(userApply)
+                                .where(userApply.applier.eq(user),
+                                        userApply.applyYear.eq(year),
+                                        userApply.applySemester.eq(semester),
+                                        hasAcceptedStudyApplication())
+                                .exists(),
+                        JPAExpressions.selectOne().from(memberSemesterCheck)
+                                .where(memberSemesterCheck.user.eq(user),
+                                        memberSemesterCheck.actYear.eq(year),
+                                        memberSemesterCheck.actSemester.eq(semester),
+                                        memberSemesterCheck.registrationWithdrawn.isTrue())
+                                .notExists())
+                .orderBy(user.userName.asc(), user.id.asc())
+                .fetch();
+    }
 
     @Override
     public Optional<User> findUserById(Long id) {

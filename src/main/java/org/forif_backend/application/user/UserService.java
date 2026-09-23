@@ -465,6 +465,18 @@ public class UserService {
         return users.withContent(buildMemberInfos(users.content(), year, semester));
     }
 
+    /** 다운로드 시점의 활동 학기를 기준으로 재등록원 전체를 조회한다. */
+    @Transactional(readOnly = true)
+    public ReturningMemberRoster getReturningMemberRoster() {
+        SemesterInfo active = semesterService.getActive();
+        int previousYear = active.actSemester() == 1 ? active.actYear() - 1 : active.actYear();
+        int previousSemester = active.actSemester() == 1 ? 2 : 1;
+        List<ReturningMemberRoster.Member> members = userRepository.findReturningMembers(
+                        active.actYear(), active.actSemester(), previousYear, previousSemester)
+                .stream().map(ReturningMemberRoster.Member::from).toList();
+        return new ReturningMemberRoster(active.actYear(), active.actSemester(), members);
+    }
+
     /** 현재 활동 학기 부원 명단에서 제외하고, 합격 결과는 유지한다. */
     @Transactional
     public void deleteCurrentSemesterMember(Long userId) {
