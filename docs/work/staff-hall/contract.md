@@ -2,16 +2,16 @@
 
 ## 계약 메타데이터
 
-| 항목          | 값                                                       |
-| ------------- | -------------------------------------------------------- |
-| 계약 ID       | `staff-hall-contract-r1`                                 |
-| 작성일·시간대 | 2026-10-11 / Asia/Seoul                                  |
-| backend 기준  | local `dev` / `b6e986c`                                  |
-| frontend 기준 | local `main` / `6ca0204`                                 |
-| 이전 초안     | `staff-hall-contract-r0-front-draft`                     |
-| 합의 상태     | backend 초안 완료 / frontend 검토 및 운영 정책 결정 대기 |
+| 항목          | 값                                                     |
+| ------------- | ------------------------------------------------------ |
+| 계약 ID       | `staff-hall-contract-r2`                               |
+| 작성일·시간대 | 2026-10-11 / Asia/Seoul                                |
+| backend 기준  | local `dev` / `6e1f75b`                                |
+| frontend 기준 | local `dev` / `6fb6335`                                |
+| 이전 초안     | `staff-hall-contract-r0-front-draft`                   |
+| 합의 상태     | frontend 2단계 검토 완료 / backend 구현·공동 검증 대기 |
 
-이 문서는 1단계 설계 계약이며 아직 구현된 API가 아니다. `r1`을 양쪽 저장소에서 승인하기 전에는 실제 연동 완료로 간주하지 않는다.
+이 문서는 1단계 설계 계약이며 아직 구현된 API가 아니다. `r2`는 사용자가 지원서 개인정보의 DB 영구 보관을 확정한 리비전이며, 2단계 모집 endpoint와 상태 계약은 `r1`에서 바뀌지 않았다. 실제 API 구현·연동 전에는 기능 완료로 간주하지 않는다.
 
 ## 기존 구현과 신규 경계
 
@@ -49,7 +49,7 @@ AND tb_study_user에
 | 지원 자격      | 위 정회원 판정 + 유효한 USER 인증                            | 사용자 결정의 backend 구체화 |
 | 지원 횟수      | 한 회차당 회원 1명당 지원서 1개                              | 확정                         |
 | 지망           | 1지망 필수, 2지망 선택, 동일 부서 중복 금지                  | 사용자 결정의 backend 구체화 |
-| 보관           | 종료 기준 시각부터 6개월 후 지원서 aggregate 물리 삭제       | 임시 확정                    |
+| 보관           | 지원서 개인정보와 답변·지망을 DB에 영구 보관, 자동 삭제 없음 | 확정                         |
 | 활성 공개 회차 | 동시에 `PUBLISHED` 1개                                       | 제안, frontend 검토 필요     |
 | 접수 경계      | `starts_at <= now < ends_at`; 미설정은 닫힘                  | 제안, frontend 검토 필요     |
 | 제출 기능      | 1차는 즉시 제출만. 임시저장·수정·취소·재지원·첨부 없음       | 제안, 운영 승인 필요         |
@@ -112,18 +112,17 @@ reviewer 권한은 매 요청마다 DB의 회차 grant가 활성인지 검사한
 | `tb_hall_of_fame_entry`           | nullable user FK, 이름 snapshot, 학기, slug, 소개, image key, badges JSON, status/order/version | slug unique, 공개 시즌+순서 index                                                                   |
 | `tb_hall_of_fame_achievement`     | entry FK, 제목/설명/link/order                                                                  | entry+order index                                                                                   |
 
-`application`의 회원 FK는 `ON DELETE SET NULL`로 두고 제출 당시 최소 개인정보 snapshot을 보관 기간까지만 유지한다. 자식 choice/answer는 application 삭제 시 cascade한다. 모집·부서·문항은 제출이 생긴 뒤 물리 삭제하지 않는다. 전시 회원 FK도 `ON DELETE SET NULL`로 두어 공개 승인을 받은 snapshot은 회원 탈퇴와 별도 철회 절차로 관리한다.
+`application`의 회원 FK는 `ON DELETE SET NULL`로 두고 제출 당시 최소 개인정보 snapshot을 영구 보관한다. 자식 choice/answer도 application과 함께 영구 보관하며 application 삭제 API와 자동 삭제 작업을 두지 않는다. FK cascade는 예외적인 DB 무결성 보호용으로만 정의한다. 모집·부서·문항은 제출이 생긴 뒤 물리 삭제하지 않는다. 전시 회원 FK도 `ON DELETE SET NULL`로 두어 공개 승인을 받은 snapshot은 회원 탈퇴와 별도 철회 절차로 관리한다.
 
 MySQL에는 `PUBLISHED` 회차가 하나만 존재하도록 nullable 단일 슬롯 또는 동등한 DB 유일 제약을 둔다. 구체 DDL은 V5 번호를 예약하지 않고 구현 직전 현재 migration 목록과 MySQL 8 동작을 재확인한다.
 
-## 개인정보 보관·삭제
+## 개인정보 영구 보관
 
-- 기준 시각은 `ended_at`이다. 자연 종료는 원래 `ends_at`, 조기 마감·취소는 처리 시각이다.
-- 삭제 예정 시각은 `ended_at + 6 calendar months`다.
-- 매일 Asia/Seoul 기준 스케줄러가 만료 application을 batch로 삭제한다.
-- 물리 삭제 범위는 application의 회원 FK와 제출 snapshot, 답변, 지망이다. 비식별 집계가 필요하면 개인 행과 분리하고 이 계약을 개정한다.
-- audit에는 답변·연락처·이름을 기록하지 않는다. 조회 감사에는 application의 숫자 식별자와 reviewer actor/action/time만 두며, 삭제 뒤 지원자와 다시 연결할 별도 mapping을 보관하지 않는다.
-- 삭제 실행 자체는 `APPLICATION_RETENTION_DELETED` 건수와 회차만 기록하고 지원자 ID를 로그에 남기지 않는다.
+- 지원서 aggregate(application, 제출 당시 개인정보 snapshot, 답변, 지망)는 모집 종료·조기 마감·취소와 관계없이 DB에 영구 보관한다.
+- 기간 기반 만료 시각과 자동 삭제 scheduler/batch는 구현하지 않는다.
+- 회원 탈퇴 시 회원 FK는 `ON DELETE SET NULL`로 분리하되 제출 snapshot·답변·지망은 유지한다.
+- 향후 법적·운영상 삭제 요구를 도입하려면 삭제 권한, 감사, backup 처리와 복구 불가 범위를 별도 계약 리비전으로 먼저 확정한다.
+- audit에는 답변·연락처·이름을 기록하지 않고 application 숫자 식별자와 reviewer actor/action/time만 기록한다.
 - 개인 응답은 항상 `Cache-Control: no-store, private`; URL·서버 log에 답변이나 연락처를 넣지 않는다.
 
 ## 공통 API 규약

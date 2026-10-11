@@ -1,9 +1,9 @@
 # 1단계 frontend 인계 — 한지석
 
 ```text
-계약 ID: staff-hall-contract-r1
-기준 backend commit/PR: local dev b6e986c에서 작성 / PR 미게시
-합의 상태: backend 초안 완료, frontend 검토 및 운영 정책 결정 대기
+계약 ID: staff-hall-contract-r2
+기준 backend commit/PR: local dev 6e1f75b / PR 미게시
+합의 상태: frontend 2단계 검토 완료, 개인정보 영구 보관 반영 / 실제 구현 대기
 
 backend 제안 endpoint (frontend 합의 후 확정):
 - GET /api/v1/staff-recruitments/current (public, 없으면 200 data:null)
@@ -49,7 +49,8 @@ DB/migration:
 
 개인정보:
 - 자연 종료는 ends_at, 조기 마감·취소는 action 시각을 ended_at으로 기록
-- ended_at부터 6 calendar months 뒤 application snapshot/답변/지망 물리 삭제
+- application snapshot/답변/지망은 모집 종료와 관계없이 DB에 영구 보관
+- 기간 기반 자동 삭제 scheduler/batch는 구현하지 않음
 - 감사에는 답변·연락처·이름을 저장하지 않음
 
 frontend 변경 요청:
