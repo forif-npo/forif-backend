@@ -17,6 +17,9 @@ public interface StaffApplicationRepository {
 
     boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantUserId);
 
+    /** 제출이 생긴 뒤에는 부서·문항을 물리 삭제하지 않는다. 그 판단에 쓴다. */
+    boolean existsByRecruitmentId(Integer recruitmentId);
+
     /** 회장단 목록 — 부서 필터는 1·2지망 모두, 검색은 제출 당시 이름만 대상으로 한다. */
     long countForAdmin(Integer recruitmentId, Integer departmentId, String search);
 

@@ -29,17 +29,20 @@ public final class StaffRecruitmentRequests {
     }
 
     public record DepartmentRequest(
+            Integer departmentId,
             @NotBlank @Size(max = 50) String name,
             @Size(max = 200) String description,
             @Min(0) int displayOrder,
             Boolean active
     ) {
         StaffRecruitmentDepartmentCommand toCommand() {
-            return new StaffRecruitmentDepartmentCommand(name, description, displayOrder, active == null || active);
+            return new StaffRecruitmentDepartmentCommand(
+                    departmentId, name, description, displayOrder, active == null || active);
         }
     }
 
     public record QuestionRequest(
+            Integer questionId,
             @NotBlank @Size(max = 100) String label,
             @Size(max = 200) String description,
             @NotNull StaffRecruitmentQuestionType type,
@@ -49,7 +52,7 @@ public final class StaffRecruitmentRequests {
     ) {
         StaffRecruitmentQuestionCommand toCommand() {
             return new StaffRecruitmentQuestionCommand(
-                    label, description, type, required != null && required, maxLength, displayOrder);
+                    questionId, label, description, type, required != null && required, maxLength, displayOrder);
         }
     }
 

@@ -33,6 +33,8 @@ public interface StaffApplicationJpaRepository extends JpaRepository<StaffApplic
 
     boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantId);
 
+    boolean existsByRecruitmentId(Integer recruitmentId);
+
     @Query("""
             SELECT COUNT(DISTINCT a) FROM StaffApplication a
             LEFT JOIN a.choices c

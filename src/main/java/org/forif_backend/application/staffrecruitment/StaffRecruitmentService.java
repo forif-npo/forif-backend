@@ -11,9 +11,10 @@ import org.forif_backend.application.staffrecruitment.dto.UpdateStaffRecruitment
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
-import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartment;
-import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestion;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentStatus;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -36,6 +37,7 @@ import java.util.Optional;
 public class StaffRecruitmentService {
 
     private final StaffRecruitmentRepository staffRecruitmentRepository;
+    private final StaffApplicationRepository staffApplicationRepository;
     private final SemesterService semesterService;
 
     // ==================== 회장단 관리 ====================
@@ -49,8 +51,8 @@ public class StaffRecruitmentService {
         StaffRecruitment recruitment = StaffRecruitment.create(
                 actYear, actSemester, command.title(), command.summary(), command.description(),
                 command.startsAt(), command.endsAt());
-        recruitment.replaceDepartments(toDepartments(command.departments()));
-        recruitment.replaceQuestions(toQuestions(command.questions()));
+        recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), false);
+        recruitment.mergeQuestions(toQuestionSpecs(command.questions()), false);
 
         StaffRecruitment saved = staffRecruitmentRepository.save(recruitment);
         flushOrConflict();
@@ -64,11 +66,13 @@ public class StaffRecruitmentService {
 
         recruitment.updateDetails(command.title(), command.summary(), command.description(),
                 command.startsAt(), command.endsAt());
+        // 제출이 생긴 뒤에는 부서·문항을 지울 수 없다. 내용 수정과 숨김은 그대로 허용한다.
+        boolean hasApplications = staffApplicationRepository.existsByRecruitmentId(recruitmentId);
         if (command.departments() != null) {
-            recruitment.replaceDepartments(toDepartments(command.departments()));
+            recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), hasApplications);
         }
         if (command.questions() != null) {
-            recruitment.replaceQuestions(toQuestions(command.questions()));
+            recruitment.mergeQuestions(toQuestionSpecs(command.questions()), hasApplications);
         }
 
         flushOrConflict();
@@ -194,23 +198,24 @@ public class StaffRecruitmentService {
         }
     }
 
-    private List<StaffRecruitmentDepartment> toDepartments(List<StaffRecruitmentDepartmentCommand> commands) {
+    private List<StaffRecruitmentDepartmentSpec> toDepartmentSpecs(List<StaffRecruitmentDepartmentCommand> commands) {
         if (commands == null) {
             return List.of();
         }
         return commands.stream()
-                .map(command -> StaffRecruitmentDepartment.create(
-                        command.name(), command.description(), command.displayOrder(), command.active()))
+                .map(command -> new StaffRecruitmentDepartmentSpec(
+                        command.id(), command.name(), command.description(),
+                        command.displayOrder(), command.active()))
                 .toList();
     }
 
-    private List<StaffRecruitmentQuestion> toQuestions(List<StaffRecruitmentQuestionCommand> commands) {
+    private List<StaffRecruitmentQuestionSpec> toQuestionSpecs(List<StaffRecruitmentQuestionCommand> commands) {
         if (commands == null) {
             return List.of();
         }
         return commands.stream()
-                .map(command -> StaffRecruitmentQuestion.create(
-                        command.label(), command.description(), command.type(),
+                .map(command -> new StaffRecruitmentQuestionSpec(
+                        command.id(), command.label(), command.description(), command.type(),
                         command.required(), command.maxLength(), command.displayOrder()))
                 .toList();
     }

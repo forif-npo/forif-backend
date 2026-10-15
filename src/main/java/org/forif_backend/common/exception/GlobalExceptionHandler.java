@@ -10,6 +10,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -57,6 +58,19 @@ public class GlobalExceptionHandler {
     /**
      * 필수 요청 파라미터 누락 처리
      */
+    /**
+     * 읽을 수 없는 요청 본문 처리.
+     *
+     * 깨진 JSON이나 enum에 없는 값은 보낸 쪽의 잘못이다.
+     * 핸들러가 없으면 마지막 Exception 핸들러로 떨어져 500이 나가므로 400으로 돌려준다.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<?>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        log.warn("요청 본문을 읽을 수 없음: {}", e.getMostSpecificCause().getMessage());
+        ErrorCode errorCode = ErrorCode.BAD_REQUEST;
+        return new ResponseEntity<>(ApiResponse.error(errorCode), errorCode.getHttpStatus());
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<?>> handleMissingServletRequestParameter(MissingServletRequestParameterException e) {
         log.warn("Missing required parameter: {}", e.getParameterName());

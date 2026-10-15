@@ -47,6 +47,14 @@ public class StaffRecruitmentDepartment {
         return new StaffRecruitmentDepartment(name, description, displayOrder, active);
     }
 
+    /** 식별자를 유지한 채 내용만 바꾼다. 제출된 지원서의 부서 참조가 끊기지 않는다. */
+    void update(String name, String description, int displayOrder, boolean active) {
+        this.name = name;
+        this.description = description;
+        this.displayOrder = displayOrder;
+        this.active = active;
+    }
+
     void assignTo(StaffRecruitment recruitment) {
         this.recruitment = recruitment;
     }

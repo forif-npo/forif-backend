@@ -10,7 +10,13 @@ import org.forif_backend.common.exception.ForifException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 운영진 모집 회차.
@@ -110,21 +116,110 @@ public class StaffRecruitment extends BaseTimeEntity {
         this.endsAt = endsAt;
     }
 
-    public void replaceDepartments(List<StaffRecruitmentDepartment> next) {
+    /**
+     * 보낸 목록으로 부서를 맞춘다. id가 있으면 그 부서를 수정하고 없으면 추가하며,
+     * 목록에서 빠진 부서는 지운다.
+     *
+     * 전체 삭제 후 재삽입하지 않는 이유는 두 가지다.
+     * 같은 이름을 유지한 수정이 uk_staff_recruitment_department_name에 걸리고,
+     * 제출된 지원서가 참조하는 부서를 지울 수 없다.
+     *
+     * @param hasApplications 제출된 지원서가 있으면 삭제를 거절한다. 모집을 끝낸 부서는 active=false로 숨긴다.
+     */
+    public void mergeDepartments(List<StaffRecruitmentDepartmentSpec> specs, boolean hasApplications) {
         requireNotTerminal();
-        this.departments.clear();
-        next.forEach(department -> {
+        requireNoDuplicateName(specs);
+
+        Map<Integer, StaffRecruitmentDepartment> current = byId(this.departments, StaffRecruitmentDepartment::getId);
+        Set<Integer> kept = new LinkedHashSet<>();
+        List<StaffRecruitmentDepartment> added = new ArrayList<>();
+
+        for (StaffRecruitmentDepartmentSpec spec : specs) {
+            if (spec.id() == null) {
+                added.add(StaffRecruitmentDepartment.create(
+                        spec.name(), spec.description(), spec.displayOrder(), spec.active()));
+                continue;
+            }
+            StaffRecruitmentDepartment target = current.get(spec.id());
+            if (target == null) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            target.update(spec.name(), spec.description(), spec.displayOrder(), spec.active());
+            kept.add(spec.id());
+        }
+
+        List<StaffRecruitmentDepartment> removed = this.departments.stream()
+                .filter(department -> department.getId() != null && !kept.contains(department.getId()))
+                .toList();
+        requireRemovable(removed, hasApplications);
+
+        // 지울 부서와 이름이 겹치는 추가는 한 flush 안에서 유니크 제약에 걸린다. id를 보내 수정하는 쪽이 맞다.
+        Set<String> removedNames = removed.stream().map(StaffRecruitmentDepartment::getName).collect(Collectors.toSet());
+        if (added.stream().anyMatch(department -> removedNames.contains(department.getName()))) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+
+        this.departments.removeAll(removed);
+        added.forEach(department -> {
             department.assignTo(this);
             this.departments.add(department);
         });
     }
 
-    public void replaceQuestions(List<StaffRecruitmentQuestion> next) {
+    /** 부서와 같은 규칙으로 문항을 맞춘다. 제출된 답변이 있으면 문항 삭제를 거절한다. */
+    public void mergeQuestions(List<StaffRecruitmentQuestionSpec> specs, boolean hasApplications) {
         requireNotTerminal();
-        this.questions.clear();
-        next.forEach(question -> {
+
+        Map<Integer, StaffRecruitmentQuestion> current = byId(this.questions, StaffRecruitmentQuestion::getId);
+        Set<Integer> kept = new LinkedHashSet<>();
+        List<StaffRecruitmentQuestion> added = new ArrayList<>();
+
+        for (StaffRecruitmentQuestionSpec spec : specs) {
+            if (spec.id() == null) {
+                added.add(StaffRecruitmentQuestion.create(spec.label(), spec.description(), spec.type(),
+                        spec.required(), spec.maxLength(), spec.displayOrder()));
+                continue;
+            }
+            StaffRecruitmentQuestion target = current.get(spec.id());
+            if (target == null) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
+            target.update(spec.label(), spec.description(), spec.type(),
+                    spec.required(), spec.maxLength(), spec.displayOrder());
+            kept.add(spec.id());
+        }
+
+        List<StaffRecruitmentQuestion> removed = this.questions.stream()
+                .filter(question -> question.getId() != null && !kept.contains(question.getId()))
+                .toList();
+        requireRemovable(removed, hasApplications);
+
+        this.questions.removeAll(removed);
+        added.forEach(question -> {
             question.assignTo(this);
             this.questions.add(question);
+        });
+    }
+
+    private static <T> Map<Integer, T> byId(List<T> items, Function<T, Integer> idOf) {
+        Map<Integer, T> result = new LinkedHashMap<>();
+        items.stream().filter(item -> idOf.apply(item) != null)
+                .forEach(item -> result.put(idOf.apply(item), item));
+        return result;
+    }
+
+    private static void requireRemovable(List<?> removed, boolean hasApplications) {
+        if (!removed.isEmpty() && hasApplications) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_STRUCTURE_LOCKED);
+        }
+    }
+
+    private static void requireNoDuplicateName(List<StaffRecruitmentDepartmentSpec> specs) {
+        Set<String> names = new LinkedHashSet<>();
+        specs.forEach(spec -> {
+            if (!names.add(spec.name())) {
+                throw new ForifException(ErrorCode.INVALID_INPUT);
+            }
         });
     }
 
