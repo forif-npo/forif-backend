@@ -58,6 +58,17 @@ public class StaffRecruitmentQuestion {
         return new StaffRecruitmentQuestion(label, description, type, required, maxLength, displayOrder);
     }
 
+    /** 식별자를 유지한 채 내용만 바꾼다. 제출된 답변의 문항 참조가 끊기지 않는다. */
+    void update(String label, String description, StaffRecruitmentQuestionType type,
+                boolean required, int maxLength, int displayOrder) {
+        this.label = label;
+        this.description = description;
+        this.type = type;
+        this.required = required;
+        this.maxLength = maxLength;
+        this.displayOrder = displayOrder;
+    }
+
     void assignTo(StaffRecruitment recruitment) {
         this.recruitment = recruitment;
     }

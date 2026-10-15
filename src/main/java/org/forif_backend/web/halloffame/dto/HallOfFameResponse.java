@@ -1,6 +1,7 @@
 package org.forif_backend.web.halloffame.dto;
 
 import org.forif_backend.application.halloffame.dto.HallOfFameEntryDetail;
+import org.forif_backend.application.halloffame.dto.HallOfFameImageUpload;
 import org.forif_backend.domain.halloffame.HallOfFameStatus;
 
 import java.time.LocalDateTime;
@@ -108,8 +109,12 @@ public final class HallOfFameResponse {
         }
     }
 
-    /** 이미지 업로드 응답 */
-    public record ImageResponse(String imageUrl) {
+    /** 이미지 업로드 응답. version은 업로드로 올라간 값이다. */
+    public record ImageResponse(String imageUrl, Long version) {
+
+        public static ImageResponse from(HallOfFameImageUpload upload) {
+            return new ImageResponse(upload.imageUrl(), upload.version());
+        }
     }
 
     private static OffsetDateTime toOffset(LocalDateTime value) {

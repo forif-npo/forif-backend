@@ -29,7 +29,7 @@ frontend에 명예의 전당 코드가 없어 이 문서가 화면 작업의 기
 | `POST /api/v1/admin/hall-of-fame` | 201, 항상 `DRAFT`로 생성 |
 | `GET /api/v1/admin/hall-of-fame/{entry_id}` | 관리 상세. **미리보기도 이 경로를 쓴다** |
 | `PATCH /api/v1/admin/hall-of-fame/{entry_id}` | `version` 필수 |
-| `POST /api/v1/admin/hall-of-fame/{entry_id}/image` | multipart, 파트 이름 `file` |
+| `POST /api/v1/admin/hall-of-fame/{entry_id}/image` | multipart, 파트 이름 `file`. 응답은 `{image_url, version}` |
 | `POST /api/v1/admin/hall-of-fame/{entry_id}/publish` | `version` 필수 |
 | `POST /api/v1/admin/hall-of-fame/{entry_id}/unpublish` | `version` 필수 |
 
@@ -79,7 +79,7 @@ frontend에 명예의 전당 코드가 없어 이 문서가 화면 작업의 기
 | `badges` | 최대 10개, 각 30자 |
 | `achievements` | 최대 20개. `link_url`은 **https만** 허용 |
 | `display_order` | 0 이상. 공개 목록 정렬에 쓴다 |
-| 이미지 | 5MB 이하, `image/*`. 교체하면 이전 파일은 커밋 후 정리된다 |
+| 이미지 | 5MB 이하, `image/*`. 교체하면 이전 파일은 커밋 후 정리된다. 업로드도 `version`을 올리므로 응답의 `version`을 받아 두어야 다음 수정·게시가 409가 되지 않는다 |
 
 배지와 성취는 **전체 목록을 보내 교체**한다. 생략하면 빈 목록으로 교체되니 수정 시 기존 값을 함께 보내야 한다.
 
@@ -114,3 +114,13 @@ frontend에 명예의 전당 코드가 없어 이 문서가 화면 작업의 기
 4. `unpublish` 후 공개 상세는 404다. 캐시 때문에 목록은 최대 60초 늦게 반영될 수 있다.
 5. 같은 slug로 생성하면 409다.
 6. 지난 시즌(`act_year`·`act_semester`)으로 필터하면 과거 기록이 그대로 조회된다.
+
+## 2026-10-15 로컬 실서버 검증에서 바뀐 것
+
+- 게시·게시 중단·이미지 업로드 응답이 **올라간 `version`**을 돌려준다. 전에는 한 박자 느린 값이
+  나가서, 화면이 응답 값으로 다음 요청을 보내면 `FOR145-409`가 났다. 지금은
+  생성 0 → 게시 1 → 중단 2 → 재게시 3으로 이어진다.
+- 이미지 업로드 응답이 `{image_url}`에서 `{image_url, version}`으로 바뀌었다.
+- 이미 게시된 항목의 재게시는 `FOR163-400`이다. 전에는 `FOR145-409`가 먼저 났다.
+- 읽을 수 없는 요청 본문은 `FOR001-400`이다. 전에는 500이었다.
+- 전시 이미지 업로드는 실제 S3를 호출하므로 로컬 검증에서 제외했다. 7단계 통합 QA에서 본다.

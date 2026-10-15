@@ -8,6 +8,7 @@ import org.forif_backend.application.halloffame.dto.HallOfFameCommands.Achieveme
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.CreateCommand;
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.UpdateCommand;
 import org.forif_backend.application.halloffame.dto.HallOfFameEntryDetail;
+import org.forif_backend.application.halloffame.dto.HallOfFameImageUpload;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -95,6 +96,8 @@ public class HallOfFameService {
         HallOfFameEntry entry = findEntry(entryId);
         requireVersion(entry, version);
         entry.publish(LocalDateTime.now());
+        // 화면은 이 응답의 version으로 다음 요청을 보낸다. flush 전에는 증가 전 값이 나가 바로 409가 된다.
+        hallOfFameRepository.flush();
         return detail(entry);
     }
 
@@ -103,12 +106,13 @@ public class HallOfFameService {
         HallOfFameEntry entry = findEntry(entryId);
         requireVersion(entry, version);
         entry.unpublish();
+        hallOfFameRepository.flush();
         return detail(entry);
     }
 
     /** 공개 전시 이미지. 기존 파일 저장 모듈을 그대로 쓰고 교체 시 이전 파일을 정리한다. */
     @Transactional
-    public String uploadImage(Integer entryId, MultipartFile file) {
+    public HallOfFameImageUpload uploadImage(Integer entryId, MultipartFile file) {
         HallOfFameEntry entry = findEntry(entryId);
         validateImageFile(file);
 
@@ -120,7 +124,8 @@ public class HallOfFameService {
             TransactionalFileCleanup.deleteAfterCommit(filePort, previousObjectKey, FILE_CLEANUP_CONTEXT);
         }
 
-        return FileViewUrls.resolveViewUrl(filePort, objectKey);
+        hallOfFameRepository.flush();
+        return new HallOfFameImageUpload(FileViewUrls.resolveViewUrl(filePort, objectKey), entry.getVersion());
     }
 
     @Transactional(readOnly = true)

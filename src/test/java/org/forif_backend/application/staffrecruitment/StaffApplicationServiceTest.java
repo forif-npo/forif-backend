@@ -11,8 +11,8 @@ import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
-import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartment;
-import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestion;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
@@ -78,18 +78,18 @@ class StaffApplicationServiceTest {
         recruitment.publish();
         ReflectionTestUtils.setField(recruitment, "id", RECRUITMENT_ID);
 
-        StaffRecruitmentDepartment planning = StaffRecruitmentDepartment.create("기획팀", null, 1, true);
-        StaffRecruitmentDepartment dev = StaffRecruitmentDepartment.create("개발팀", null, 2, true);
-        StaffRecruitmentDepartment closed = StaffRecruitmentDepartment.create("디자인팀", null, 3, false);
-        ReflectionTestUtils.setField(planning, "id", PLANNING_TEAM);
-        ReflectionTestUtils.setField(dev, "id", DEV_TEAM);
-        ReflectionTestUtils.setField(closed, "id", CLOSED_TEAM);
-        recruitment.replaceDepartments(List.of(planning, dev, closed));
+        recruitment.mergeDepartments(List.of(
+                new StaffRecruitmentDepartmentSpec(null, "기획팀", null, 1, true),
+                new StaffRecruitmentDepartmentSpec(null, "개발팀", null, 2, true),
+                new StaffRecruitmentDepartmentSpec(null, "디자인팀", null, 3, false)), false);
+        List<Integer> departmentIds = List.of(PLANNING_TEAM, DEV_TEAM, CLOSED_TEAM);
+        for (int i = 0; i < departmentIds.size(); i++) {
+            ReflectionTestUtils.setField(recruitment.getDepartments().get(i), "id", departmentIds.get(i));
+        }
 
-        StaffRecruitmentQuestion motive = StaffRecruitmentQuestion.create(
-                "지원 동기", null, StaffRecruitmentQuestionType.LONG_TEXT, true, 100, 1);
-        ReflectionTestUtils.setField(motive, "id", MOTIVE_QUESTION);
-        recruitment.replaceQuestions(List.of(motive));
+        recruitment.mergeQuestions(List.of(new StaffRecruitmentQuestionSpec(
+                null, "지원 동기", null, StaffRecruitmentQuestionType.LONG_TEXT, true, 100, 1)), false);
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "id", MOTIVE_QUESTION);
 
         return recruitment;
     }

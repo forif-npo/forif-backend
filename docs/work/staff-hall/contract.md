@@ -112,7 +112,7 @@ reviewer 권한은 매 요청마다 DB의 회차 grant가 활성인지 검사한
 | `tb_hall_of_fame_entry`           | nullable user FK, 이름 snapshot, 학기, slug, 소개, image key, badges JSON, status/order/version | slug unique, 공개 시즌+순서 index                                                                   |
 | `tb_hall_of_fame_achievement`     | entry FK, 제목/설명/link/order                                                                  | entry+order index                                                                                   |
 
-`application`의 회원 FK는 `ON DELETE SET NULL`로 두고 제출 당시 최소 개인정보 snapshot을 영구 보관한다. 자식 choice/answer도 application과 함께 영구 보관하며 application 삭제 API와 자동 삭제 작업을 두지 않는다. FK cascade는 예외적인 DB 무결성 보호용으로만 정의한다. 모집·부서·문항은 제출이 생긴 뒤 물리 삭제하지 않는다. 전시 회원 FK도 `ON DELETE SET NULL`로 두어 공개 승인을 받은 snapshot은 회원 탈퇴와 별도 철회 절차로 관리한다.
+`application`의 회원 FK는 `ON DELETE SET NULL`로 두고 제출 당시 최소 개인정보 snapshot을 영구 보관한다. 자식 choice/answer도 application과 함께 영구 보관하며 application 삭제 API와 자동 삭제 작업을 두지 않는다. FK cascade는 예외적인 DB 무결성 보호용으로만 정의한다. 모집·부서·문항은 제출이 생긴 뒤 물리 삭제하지 않는다. 이를 지키기 위해 부서·문항 수정은 전체 교체가 아니라 식별자 기준 병합으로 처리하고, 제출이 생긴 뒤의 삭제 요청은 `FOR164-409`로 거절한다. 더 뽑지 않는 부서는 `active=false`로 숨긴다. 전시 회원 FK도 `ON DELETE SET NULL`로 두어 공개 승인을 받은 snapshot은 회원 탈퇴와 별도 철회 절차로 관리한다.
 
 MySQL에는 `PUBLISHED` 회차가 하나만 존재하도록 nullable 단일 슬롯 또는 동등한 DB 유일 제약을 둔다. 구체 DDL은 V5 번호를 예약하지 않고 구현 직전 현재 migration 목록과 MySQL 8 동작을 재확인한다.
 
@@ -310,6 +310,7 @@ slug는 영문 소문자·숫자·하이픈 3~80자, 앞뒤 하이픈 금지다.
 | `HALL_OF_FAME_ENTRY_NOT_FOUND` / `FOR161-404`           |  404 | 항목 없음 또는 비게시 공개 접근    |
 | `HALL_OF_FAME_SLUG_ALREADY_EXISTS` / `FOR162-409`       |  409 | slug 중복                          |
 | `HALL_OF_FAME_INVALID_STATUS` / `FOR163-400`            |  400 | 잘못된 게시 전이                   |
+| `STAFF_RECRUITMENT_STRUCTURE_LOCKED` / `FOR164-409`     |  409 | 제출이 생긴 회차의 부서·문항 삭제  |
 
 인증 오류는 기존 `FOR017-401`~`FOR019-401`, 일반 권한은 `FOR020-403`, validation은 `FOR003-400`, optimistic lock은 도메인별 409, 최종 DB 경합은 `FOR145-409`를 재사용한다.
 
