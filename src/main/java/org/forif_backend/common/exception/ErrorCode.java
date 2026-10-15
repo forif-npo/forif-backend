@@ -70,6 +70,7 @@ public enum ErrorCode {
     INSUFFICIENT_PERMISSION(HttpStatus.FORBIDDEN, "FOR020-403", "권한이 없습니다."),
     NOT_STUDY_MENTOR(HttpStatus.FORBIDDEN, "FOR021-403", "해당 스터디의 멘토가 아닙니다."),
     STAFF_APPLICATION_ELIGIBILITY_REQUIRED(HttpStatus.FORBIDDEN, "FOR153-403", "이번 학기 활동 부원만 운영진에 지원할 수 있습니다."),
+    STAFF_REVIEWER_NOT_ALLOWED(HttpStatus.FORBIDDEN, "FOR158-403", "이 모집 회차의 지원서를 열람할 권한이 없습니다."),
     STUDY_NOT_IN_ACTIVE_SEMESTER(HttpStatus.FORBIDDEN, "FOR127-403", "지난 학기 스터디는 관리할 수 없습니다."),
     STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER(HttpStatus.FORBIDDEN, "FOR129-403", "활동 학기가 아닌 스터디 신청은 취소할 수 없습니다."),
     HACKATHON_PARTICIPATION_NOT_ALLOWED(HttpStatus.FORBIDDEN, "FOR064-403", "해커톤 참가 자격이 없습니다."),
@@ -124,6 +125,8 @@ public enum ErrorCode {
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
     STAFF_RECRUITMENT_ACTIVE_CONFLICT(HttpStatus.CONFLICT, "FOR151-409", "이미 게시 중인 운영진 모집 회차가 있습니다."),
     STAFF_APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR154-409", "이미 이 모집 회차에 지원했습니다."),
+    STAFF_REVIEWER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR159-409", "이미 이 회차의 열람 권한을 가지고 있습니다."),
+    STAFF_REVIEWER_CONFLICT(HttpStatus.CONFLICT, "FOR160-409", "열람 권한을 부여할 수 없는 대상입니다."),
     REGISTRATION_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "FOR146-409", "이미 이번 학기 등록을 철회한 사용자입니다."),
 
     // Product (서비스 쇼케이스)

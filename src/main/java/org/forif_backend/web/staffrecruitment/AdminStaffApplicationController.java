@@ -4,8 +4,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.staffrecruitment.StaffApplicationService;
+import org.forif_backend.application.staffrecruitment.StaffReviewerService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
@@ -18,12 +18,12 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 회장단의 제출 지원서 조회.
+ * 제출 지원서 조회.
  *
- * 4단계에서 회차별 열람 권한(reviewer)을 추가할 때 이 컨트롤러의 권한 검사 지점만 확장한다.
- * 지금은 회장단만 열람할 수 있다.
+ * 회장단이거나 해당 회차의 유효한 열람 권한(reviewer)이 있어야 한다.
+ * 권한은 매 요청마다 다시 확인하므로 회수·만료 직후부터 거절된다.
  */
-@Tag(name = "운영진 지원 관리 (회장단)", description = "제출된 운영진 지원서 조회")
+@Tag(name = "운영진 지원 관리 (회장단·열람자)", description = "제출된 운영진 지원서 조회")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/admin/staff-recruitments/{recruitmentId}/applications")
@@ -33,7 +33,7 @@ public class AdminStaffApplicationController {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final StaffApplicationService staffApplicationService;
-    private final StaffAccountService staffAccountService;
+    private final StaffReviewerService staffReviewerService;
 
     @Operation(summary = "지원서 목록",
             description = "이름 검색과 지망 부서 필터를 지원합니다. 연락처와 답변은 상세에서만 반환합니다.")
@@ -47,7 +47,7 @@ public class AdminStaffApplicationController {
             @Parameter(description = "0부터 시작하는 페이지. 주면 오프셋 방식") @RequestParam(required = false) Integer page,
             @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(defaultValue = "20") int size
     ) {
-        staffAccountService.requirePresidentTeam(userId);
+        staffReviewerService.requireApplicationAccess(userId, recruitmentId);
 
         CursorPageResponse<StaffApplicationSummary> result =
                 staffApplicationService.getAdminList(recruitmentId, departmentId, search, cursor, page,
@@ -64,7 +64,7 @@ public class AdminStaffApplicationController {
             @PathVariable Integer recruitmentId,
             @PathVariable Integer applicationId
     ) {
-        staffAccountService.requirePresidentTeam(userId);
+        staffReviewerService.requireApplicationAccess(userId, recruitmentId);
 
         return noStore(ApiResponse.success(DetailResponse.from(
                 staffApplicationService.getAdminDetail(recruitmentId, applicationId))));

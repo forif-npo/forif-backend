@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.staffrecruitment.StaffRecruitmentService;
+import org.forif_backend.application.staffrecruitment.StaffReviewerService;
 import org.forif_backend.application.staffrecruitment.dto.StaffRecruitmentDetail;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
@@ -22,6 +23,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * 회장단 전용 운영진 모집 관리.
  * 일반 ADMIN은 진입할 수 없도록 기존 회장단 검증을 그대로 사용한다.
@@ -36,6 +39,7 @@ public class AdminStaffRecruitmentController {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final StaffRecruitmentService staffRecruitmentService;
+    private final StaffReviewerService staffReviewerService;
     private final StaffAccountService staffAccountService;
 
     @Operation(summary = "모집 회차 목록", description = "초안을 포함한 전체 목록입니다. 정렬은 모집 회차 ID 내림차순 고정입니다.")
@@ -53,6 +57,20 @@ public class AdminStaffRecruitmentController {
 
         return adminResponse(ApiResponse.success(
                 result.withContent(result.content().stream().map(AdminStaffRecruitmentResponse::from).toList())));
+    }
+
+    @Operation(summary = "열람 가능한 모집 회차",
+            description = "회장단은 전체 회차를, 회차별 열람자는 권한이 유효한 회차만 받습니다.")
+    @GetMapping("/reviewable")
+    public ResponseEntity<ApiResponse<List<AdminStaffRecruitmentResponse>>> getReviewable(
+            @AuthenticationPrincipal Long userId
+    ) {
+        List<StaffRecruitmentDetail> details = staffAccountService.isPresidentTeam(userId)
+                ? staffRecruitmentService.getAdminList(null, 0, MAX_PAGE_SIZE).content()
+                : staffRecruitmentService.getByIds(staffReviewerService.getReviewableRecruitmentIds(userId));
+
+        return adminResponse(ApiResponse.success(
+                details.stream().map(AdminStaffRecruitmentResponse::from).toList()));
     }
 
     @Operation(summary = "모집 회차 생성", description = "초안 상태로 만듭니다. 게시는 별도 요청입니다.")
