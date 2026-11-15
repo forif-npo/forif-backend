@@ -17,6 +17,7 @@ public enum ErrorCode {
     STAFF_RECRUITMENT_NOT_OPEN(HttpStatus.BAD_REQUEST, "FOR152-400", "지금은 운영진 모집 접수 기간이 아닙니다."),
     STAFF_APPLICATION_INVALID_CHOICE(HttpStatus.BAD_REQUEST, "FOR156-400", "지원 부서 선택이 올바르지 않습니다."),
     STAFF_APPLICATION_INVALID_ANSWER(HttpStatus.BAD_REQUEST, "FOR157-400", "자기소개서 답변이 올바르지 않습니다."),
+    HALL_OF_FAME_INVALID_STATUS(HttpStatus.BAD_REQUEST, "FOR163-400", "현재 게시 상태에서는 할 수 없는 작업입니다."),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "FOR003-400", "입력값 검증에 실패했습니다."),
     MISSING_PARAMETER(HttpStatus.BAD_REQUEST, "FOR004-400", "필수 파라미터가 누락되었습니다."),
     TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "FOR005-400", "파라미터 타입이 올바르지 않습니다."),
@@ -83,6 +84,7 @@ public enum ErrorCode {
     DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR147-404", "학과를 찾을 수 없습니다."),
     STAFF_RECRUITMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR148-404", "운영진 모집 회차를 찾을 수 없습니다."),
     STAFF_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR155-404", "운영진 지원서를 찾을 수 없습니다."),
+    HALL_OF_FAME_ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR161-404", "명예의 전당 항목을 찾을 수 없습니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR024-404", "공지사항이 없습니다."),
     SPECIFIC_NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR025-404", "해당 공지사항이 없습니다."),
     FAQ_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR026-404", "FAQ가 없습니다."),
@@ -127,6 +129,7 @@ public enum ErrorCode {
     STAFF_APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR154-409", "이미 이 모집 회차에 지원했습니다."),
     STAFF_REVIEWER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR159-409", "이미 이 회차의 열람 권한을 가지고 있습니다."),
     STAFF_REVIEWER_CONFLICT(HttpStatus.CONFLICT, "FOR160-409", "열람 권한을 부여할 수 없는 대상입니다."),
+    HALL_OF_FAME_SLUG_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR162-409", "이미 사용 중인 명예의 전당 주소입니다."),
     REGISTRATION_ALREADY_WITHDRAWN(HttpStatus.CONFLICT, "FOR146-409", "이미 이번 학기 등록을 철회한 사용자입니다."),
 
     // Product (서비스 쇼케이스)
