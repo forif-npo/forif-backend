@@ -22,8 +22,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 /**
@@ -76,6 +79,7 @@ public class HallOfFameService {
 
         User member = findMember(command.memberUserId());
         entry.updateContent(
+                member,
                 resolveMemberName(command.memberName(), member),
                 command.actYear(),
                 command.actSemester(),
@@ -249,8 +253,36 @@ public class HallOfFameService {
         if (file == null || file.isEmpty() || file.getSize() > MAX_IMAGE_SIZE) {
             throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
+
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
+        String filename = file.getOriginalFilename();
+        if (filename == null) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+
+        String lowerFilename = filename.toLowerCase(Locale.ROOT);
+        boolean png = "image/png".equals(contentType) && lowerFilename.endsWith(".png");
+        boolean jpeg = ("image/jpeg".equals(contentType) || "image/jpg".equals(contentType))
+                && (lowerFilename.endsWith(".jpg") || lowerFilename.endsWith(".jpeg"));
+        if (!png && !jpeg) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+
+        try (InputStream input = file.getInputStream()) {
+            byte[] signature = input.readNBytes(8);
+            boolean validPng = png && signature.length == 8
+                    && (signature[0] & 0xff) == 0x89 && signature[1] == 'P'
+                    && signature[2] == 'N' && signature[3] == 'G'
+                    && signature[4] == '\r' && signature[5] == '\n'
+                    && (signature[6] & 0xff) == 0x1a && signature[7] == '\n';
+            boolean validJpeg = jpeg && signature.length >= 3
+                    && (signature[0] & 0xff) == 0xff
+                    && (signature[1] & 0xff) == 0xd8
+                    && (signature[2] & 0xff) == 0xff;
+            if (!validPng && !validJpeg) {
+                throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+            }
+        } catch (IOException e) {
             throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
         }
     }

@@ -110,9 +110,10 @@ public class HallOfFameEntry extends BaseTimeEntity {
                 headline, introduction, displayOrder);
     }
 
-    public void updateContent(String memberName, int actYear, int actSemester, String slug,
+    public void updateContent(User member, String memberName, int actYear, int actSemester, String slug,
                               String headline, String introduction, int displayOrder) {
         validateSlug(slug);
+        this.member = member;
         this.memberName = memberName;
         this.actYear = actYear;
         this.actSemester = actSemester;
