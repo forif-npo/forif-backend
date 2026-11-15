@@ -122,12 +122,13 @@ SPRING_PROFILES_ACTIVE=local RDS_PASSWORD=<비밀번호> ./gradlew bootRun
 ## 브랜치 전략과 배포
 
 ```
-feature/FOR-*  ──PR──▶  dev  ──PR──▶  release  ──PR──▶  main
+작업 브랜치  ──PR──▶  dev  ──PR──▶  release  ──PR──▶  main
                                           │
                                           └─ push 시 자동 배포
 ```
 
-- 기능 개발은 `dev`에서 `feature/FOR-*` 브랜치를 따서 진행하고 PR로 `dev`에 머지합니다.
+- 이슈 번호 기반 작업 브랜치를 `dev`에서 만들고 PR로 `dev`에 머지합니다. 이름과 제목 규칙은 [Git 작업 흐름](docs/git-workflow.md)을 따릅니다.
+- **`dev`, `release`, `main`에는 직접 푸시하지 않습니다.** 세 브랜치의 변경은 PR로만 반영합니다.
 - 릴리즈는 `dev` → `release` PR로 올리고, 머지되면 **자동 배포**가 실행됩니다.
 - 배포가 확인되면 `release` → `main` PR로 반영하고 태그를 답니다.
 

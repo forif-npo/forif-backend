@@ -88,43 +88,9 @@ CREATE DATABASE forif_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 **이 테스트가 CI 에서 마이그레이션을 실제 MySQL 에 실행하는 유일한 지점입니다.** 다른 테스트는 모두 H2 라 MySQL 전용 문법을 검증하지 못합니다. 삭제하거나 비활성화하지 마세요.
 
-## 브랜치와 커밋
+## Git 작업 흐름
 
-### 브랜치
-
-`dev` 에서 `feature/FOR-<이슈번호>` 를 따서 작업하고 PR 로 `dev` 에 머지합니다. 자세한 흐름은 [deployment.md](deployment.md#브랜치와-릴리즈) 를 보세요.
-
-**머지된 피처 브랜치는 삭제하지 않습니다.** `gh pr merge` 에 `--delete-branch` 를 쓰지 마세요.
-
-브랜치를 만들기 전에 같은 이름이 원격에 있는지 확인하세요.
-
-```bash
-git ls-remote --heads origin 'feature/FOR-*'
-```
-
-### 커밋과 PR 제목
-
-`type(scope): 설명` 형식입니다.
-
-```
-feat(admin): 합격자 등록 철회 처리 추가
-fix(user): 문자 발송 서비스를 위한 전화번호 정규화
-chore: Flyway 도입으로 DB 스키마 변경 이력 관리
-docs: README 를 실제 구성에 맞게 다시 작성
-```
-
-**PR 제목이 `Feature/for 172` 처럼 자동 생성된 채로 남지 않게 하세요.** GitHub 이 브랜치명에서 만든 값이라 목록에서 변경 내용을 알 수 없습니다.
-
-### PR 을 올리기 전에
-
-- `./gradlew build` 가 통과하는지 확인합니다.
-- 엔티티를 바꿨으면 마이그레이션이 함께 있는지 확인합니다.
-- 마이그레이션을 추가했으면 **운영 데이터 복제본에 리허설**합니다 ([database.md](database.md#리허설-방법)).
-- 기본 브랜치가 `main` 이므로 **`--base dev` 를 명시**합니다.
-
-```bash
-gh pr create --base dev --head feature/FOR-000 --title "..." --body "..."
-```
+이슈 번호 기반 브랜치 이름, 커밋·PR 제목, `dev` 대상 PR과 병합 기준은 [git-workflow.md](git-workflow.md)에 정리했습니다.
 
 ## 코드 스타일
 
