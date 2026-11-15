@@ -2,9 +2,9 @@ name: FORIF Backend CI/CD
 
 on:
   push:
-    branches: [ "main", "release", "dev", "feature/**" ]
+    branches: [ "main", "release", "dev", "feature/**", "fix/**" ]
   pull_request:
-    branches: [ "main", "release", "dev" ]
+    branches: [ "main", "release", "dev", "feature/**" ]
   workflow_dispatch:
 
 permissions:

@@ -6,6 +6,7 @@ import org.forif_backend.application.halloffame.dto.HallOfFameCommands.Achieveme
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.CreateCommand;
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.UpdateCommand;
 import org.forif_backend.application.halloffame.dto.HallOfFameEntryDetail;
+import org.forif_backend.application.halloffame.dto.HallOfFameImageUpload;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.halloffame.HallOfFameEntry;
@@ -172,9 +173,10 @@ class HallOfFameServiceTest {
         when(filePort.generatePresignedViewUrl("hall-of-fame/images/portrait.png"))
                 .thenReturn(new FileInfo("hall-of-fame/images/portrait.png", "https://example.com/portrait.png"));
 
-        String url = hallOfFameService.uploadImage(ENTRY_ID, image);
+        HallOfFameImageUpload upload = hallOfFameService.uploadImage(ENTRY_ID, image);
 
-        assertThat(url).isEqualTo("https://example.com/portrait.png");
+        assertThat(upload.imageUrl()).isEqualTo("https://example.com/portrait.png");
+        verify(hallOfFameRepository).flush();
         verify(filePort).uploadFile(image, "hall-of-fame/images");
     }
 
