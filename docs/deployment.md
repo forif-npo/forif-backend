@@ -108,16 +108,18 @@ Flyway 가 스키마를 바꾼 뒤 부팅이 실패하면 JAR 롤백으로 서�
 ## 브랜치와 릴리즈
 
 ```
-feature/FOR-*  ──PR──▶  dev  ──PR──▶  release  ──PR──▶  main
+작업 브랜치  ──PR──▶  dev  ──PR──▶  release  ──PR──▶  main
                                          │
                                          └─ push 시 자동배포
 ```
 
-1. `dev` 에서 `feature/FOR-*` 를 따서 작업하고 PR 로 `dev` 에 머지합니다.
+1. [Git 작업 흐름](git-workflow.md)에 따라 `dev` 에서 이슈 브랜치를 만들고 PR 로 `dev` 에 머지합니다.
 2. 릴리즈는 `dev` → `release` PR 로 올리고, 머지되면 **자동배포**가 실행됩니다.
 3. 배포가 확인되면 `release` → `main` PR 로 반영하고 태그를 답니다.
 
-`main` 과 `release` 둘 다 영구 브랜치입니다. **머지된 피처 브랜치는 삭제하지 않습니다.**
+**`dev`, `release`, `main` 에 직접 푸시하지 않습니다.** 세 브랜치의 변경은 PR 병합으로만 반영합니다. `release` push 배포 트리거는 PR 병합 결과에 반응하며, 직접 푸시를 허용한다는 뜻이 아닙니다.
+
+`main` 과 `release` 둘 다 영구 브랜치입니다. **머지된 작업 브랜치는 삭제하지 않습니다.**
 
 ## 운영 점검
 

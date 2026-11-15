@@ -12,7 +12,8 @@
 | [api.md](api.md) | API 규약과 리소스별 엔드포인트 개요 |
 | [database.md](database.md) | 스키마 관리, Flyway 운영 규칙, 마이그레이션 작성법 |
 | [deployment.md](deployment.md) | 자동배포, 서버 구성, 롤백, 운영 점검 |
-| [development.md](development.md) | 로컬 실행, 테스트, 브랜치 전략 |
+| [development.md](development.md) | 로컬 실행, 테스트 |
+| [git-workflow.md](git-workflow.md) | 이슈 브랜치, 커밋·PR 제목, 병합 경로 |
 
 ## 규모
 
