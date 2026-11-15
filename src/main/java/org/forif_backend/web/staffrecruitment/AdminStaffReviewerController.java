@@ -37,7 +37,7 @@ public class AdminStaffReviewerController {
     private final StaffAccountService staffAccountService;
 
     @Operation(summary = "열람자 초대 후보",
-            description = "회차 학기의 운영진 명단입니다. ADMIN 계정이 없는 사람은 부여할 수 없습니다.")
+            description = "현재 활동 학기의 운영진 명단입니다. ADMIN 계정이 없는 사람은 부여할 수 없습니다.")
     @GetMapping("/reviewer-candidates")
     public ResponseEntity<ApiResponse<List<CandidateResponse>>> getCandidates(
             @AuthenticationPrincipal Long userId,
