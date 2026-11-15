@@ -103,7 +103,7 @@ public class AdminHallOfFameController {
             @RequestPart("file") MultipartFile file
     ) {
         staffAccountService.requirePresidentTeam(userId);
-        return noStore(ApiResponse.success(new ImageResponse(hallOfFameService.uploadImage(entryId, file))));
+        return noStore(ApiResponse.success(ImageResponse.from(hallOfFameService.uploadImage(entryId, file))));
     }
 
     @Operation(summary = "전시 항목 게시", description = "공개 목록과 상세에 나타납니다.")

@@ -67,8 +67,8 @@ class StaffRecruitmentServiceTest {
 
         StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
                 null, null, "2027-1 운영진 모집", "요약", "안내", STARTS_AT, ENDS_AT,
-                List.of(new StaffRecruitmentDepartmentCommand("기획팀", null, 1, true)),
-                List.of(new StaffRecruitmentQuestionCommand("지원 동기", null,
+                List.of(new StaffRecruitmentDepartmentCommand(null, "기획팀", null, 1, true)),
+                List.of(new StaffRecruitmentQuestionCommand(null, "지원 동기", null,
                         StaffRecruitmentQuestionType.LONG_TEXT, true, 1000, 1))));
 
         assertThat(detail.actYear()).isEqualTo(2027);

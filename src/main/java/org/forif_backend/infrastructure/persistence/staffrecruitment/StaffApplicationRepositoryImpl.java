@@ -42,6 +42,11 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
     }
 
     @Override
+    public boolean existsByRecruitmentId(Integer recruitmentId) {
+        return staffApplicationJpaRepository.existsByRecruitmentId(recruitmentId);
+    }
+
+    @Override
     public long countForAdmin(Integer recruitmentId, Integer departmentId, String search) {
         return staffApplicationJpaRepository.countForAdmin(recruitmentId, departmentId, search);
     }

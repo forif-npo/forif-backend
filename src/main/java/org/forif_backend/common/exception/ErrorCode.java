@@ -126,6 +126,8 @@ public enum ErrorCode {
     STUDY_APPLICATION_UPDATE_CONFLICT(HttpStatus.CONFLICT, "FOR138-409", "스터디 신청서가 다른 요청으로 변경되었습니다. 새로고침 후 다시 시도해주세요."),
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
     STAFF_RECRUITMENT_ACTIVE_CONFLICT(HttpStatus.CONFLICT, "FOR151-409", "이미 게시 중인 운영진 모집 회차가 있습니다."),
+    STAFF_RECRUITMENT_STRUCTURE_LOCKED(HttpStatus.CONFLICT, "FOR164-409",
+            "제출된 지원서가 있어 부서·문항을 지울 수 없습니다. 더 뽑지 않는 부서는 숨김으로 바꿔 주세요."),
     STAFF_APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR154-409", "이미 이 모집 회차에 지원했습니다."),
     STAFF_REVIEWER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR159-409", "이미 이 회차의 열람 권한을 가지고 있습니다."),
     STAFF_REVIEWER_CONFLICT(HttpStatus.CONFLICT, "FOR160-409", "열람 권한을 부여할 수 없는 대상입니다."),
