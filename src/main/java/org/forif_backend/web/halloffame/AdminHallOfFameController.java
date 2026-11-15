@@ -95,7 +95,7 @@ public class AdminHallOfFameController {
                 AdminResponse.from(hallOfFameService.update(entryId, request.toCommand()))));
     }
 
-    @Operation(summary = "전시 이미지 업로드", description = "기존 이미지는 교체 후 정리됩니다. 5MB 이하 이미지만 허용합니다.")
+    @Operation(summary = "전시 이미지 업로드", description = "기존 이미지는 교체 후 정리됩니다. 5MB 이하 PNG/JPEG 이미지만 허용합니다.")
     @PostMapping(value = "/{entryId}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<ImageResponse>> uploadImage(
             @AuthenticationPrincipal Long userId,

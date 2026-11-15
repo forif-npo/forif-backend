@@ -1,5 +1,6 @@
 package org.forif_backend.application.halloffame;
 
+import org.forif_backend.application.file.dto.FileInfo;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.AchievementCommand;
 import org.forif_backend.application.halloffame.dto.HallOfFameCommands.CreateCommand;
@@ -17,15 +18,19 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -109,6 +114,68 @@ class HallOfFameServiceTest {
                 1L, MEMBER_ID, "홍길동", 2026, 2, "hong-gildong", "바뀐 소개", "본문", 1, List.of(), List.of())))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DATA_INTEGRITY_VIOLATION);
+    }
+
+    @Test
+    void 수정할_때_연결_회원을_변경한다() {
+        Long newMemberId = 2021123456L;
+        User newMember = User.createUser(newMemberId, "김영희", "kim@hanyang.ac.kr", "01011111111", "컴퓨터소프트웨어학부");
+        HallOfFameEntry entry = entry(false);
+        when(hallOfFameRepository.findDetailById(ENTRY_ID)).thenReturn(Optional.of(entry));
+        when(userRepository.findById(newMemberId)).thenReturn(Optional.of(newMember));
+        when(hallOfFameRepository.save(entry)).thenReturn(entry);
+
+        HallOfFameEntryDetail detail = hallOfFameService.update(ENTRY_ID, new UpdateCommand(
+                3L, newMemberId, null, 2026, 2, "hong-gildong", "바뀐 소개", "본문", 1, List.of(), List.of()));
+
+        assertThat(detail.memberUserId()).isEqualTo(newMemberId);
+        assertThat(detail.memberName()).isEqualTo("김영희");
+        assertThat(entry.getMember()).isSameAs(newMember);
+    }
+
+    @Test
+    void 수정할_때_회원_연결을_해제하고_표시_이름은_남긴다() {
+        HallOfFameEntry entry = entry(false);
+        when(hallOfFameRepository.findDetailById(ENTRY_ID)).thenReturn(Optional.of(entry));
+        when(hallOfFameRepository.save(entry)).thenReturn(entry);
+
+        HallOfFameEntryDetail detail = hallOfFameService.update(ENTRY_ID, new UpdateCommand(
+                3L, null, "홍길동", 2026, 2, "hong-gildong", "바뀐 소개", "본문", 1, List.of(), List.of()));
+
+        assertThat(detail.memberUserId()).isNull();
+        assertThat(detail.memberName()).isEqualTo("홍길동");
+        assertThat(entry.getMember()).isNull();
+    }
+
+    @Test
+    void 이미지로_위장한_HTML과_SVG_파일은_업로드하지_않는다() {
+        when(hallOfFameRepository.findDetailById(ENTRY_ID)).thenReturn(Optional.of(entry(false)));
+        List<MockMultipartFile> invalidFiles = List.of(
+                new MockMultipartFile("file", "payload.html", "image/png", "<script>alert(1)</script>".getBytes()),
+                new MockMultipartFile("file", "payload.svg", "image/svg+xml", "<svg/>".getBytes()),
+                new MockMultipartFile("file", "payload.png", "image/png", "<script>alert(1)</script>".getBytes()));
+
+        for (MockMultipartFile invalidFile : invalidFiles) {
+            assertThatThrownBy(() -> hallOfFameService.uploadImage(ENTRY_ID, invalidFile))
+                    .isInstanceOf(ForifException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+        verifyNoInteractions(filePort);
+    }
+
+    @Test
+    void PNG_이미지는_업로드할_수_있다() {
+        MockMultipartFile image = new MockMultipartFile("file", "portrait.png", "image/png",
+                Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lZkAAAAASUVORK5CYII="));
+        when(hallOfFameRepository.findDetailById(ENTRY_ID)).thenReturn(Optional.of(entry(false)));
+        when(filePort.uploadFile(image, "hall-of-fame/images")).thenReturn("hall-of-fame/images/portrait.png");
+        when(filePort.generatePresignedViewUrl("hall-of-fame/images/portrait.png"))
+                .thenReturn(new FileInfo("hall-of-fame/images/portrait.png", "https://example.com/portrait.png"));
+
+        String url = hallOfFameService.uploadImage(ENTRY_ID, image);
+
+        assertThat(url).isEqualTo("https://example.com/portrait.png");
+        verify(filePort).uploadFile(image, "hall-of-fame/images");
     }
 
     @Test
