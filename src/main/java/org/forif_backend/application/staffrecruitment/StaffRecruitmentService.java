@@ -132,6 +132,17 @@ public class StaffRecruitmentService {
         return CursorPageResponse.ofOffset(content, hasNext, totalElements, page, size);
     }
 
+    /** 지정한 회차들의 관리 상세. 열람 권한이 있는 회차 목록을 만들 때 쓴다. */
+    @Transactional(readOnly = true)
+    public List<StaffRecruitmentDetail> getByIds(List<Integer> recruitmentIds) {
+        LocalDateTime now = LocalDateTime.now();
+        return recruitmentIds.stream()
+                .map(staffRecruitmentRepository::findDetailById)
+                .flatMap(Optional::stream)
+                .map(recruitment -> StaffRecruitmentDetail.from(recruitment, now))
+                .toList();
+    }
+
     // ==================== 공개 조회 ====================
 
     /** 현재 게시 중인 회차. 없으면 빈 값이며 공개 응답은 data:null이다. */
