@@ -4,6 +4,9 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
+// Docker Engine 29 requires a newer API than Testcontainers 1.21.3 uses.
+ext['testcontainers.version'] = '1.21.4'
+
 group = 'org'
 version = '0.0.1-SNAPSHOT'
 description = 'forif_backend'
