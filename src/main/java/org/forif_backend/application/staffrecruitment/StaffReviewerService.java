@@ -2,6 +2,8 @@ package org.forif_backend.application.staffrecruitment;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.staff.StaffAccountService;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffReviewerCandidateInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffReviewerInfo;
 import org.forif_backend.common.exception.ErrorCode;
@@ -44,20 +46,22 @@ public class StaffReviewerService {
     private final ForifTeamRepository forifTeamRepository;
     private final UserRepository userRepository;
     private final StaffAccountService staffAccountService;
+    private final SemesterService semesterService;
 
     // ==================== 회장단 관리 ====================
 
     /**
-     * 초대 후보 — 회차 학기의 운영진 명단.
+     * 초대 후보 — 현재 활동 학기의 운영진 명단.
      * ADMIN 계정이 없는 사람도 목록에는 보이되 부여는 거절한다. 화면에서 이유를 보여줄 수 있게 한다.
      */
     @Transactional(readOnly = true)
     public List<StaffReviewerCandidateInfo> getCandidates(Integer recruitmentId) {
-        StaffRecruitment recruitment = requireRecruitment(recruitmentId);
+        requireRecruitment(recruitmentId);
+        SemesterInfo active = semesterService.getActive();
         LocalDateTime now = LocalDateTime.now();
 
         List<ForifTeam> team = forifTeamRepository.findByYearAndSemester(
-                recruitment.getActYear(), recruitment.getActSemester());
+                active.actYear(), active.actSemester());
         List<Long> userIds = team.stream().map(member -> member.getUser().getId()).toList();
         Map<Long, StaffRole> roles = staffAccountRepository.findStaffRolesByUserIds(userIds);
         Map<Long, StaffReviewerStatus> grantedStatuses = staffRecruitmentReviewerRepository
@@ -100,7 +104,7 @@ public class StaffReviewerService {
         if (expiresAt == null || !expiresAt.isAfter(now)) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
-        requireGrantable(recruitment, recruitmentId, targetUserId);
+        requireGrantable(recruitmentId, targetUserId);
 
         StaffRecruitmentReviewer reviewer = staffRecruitmentReviewerRepository
                 .findByRecruitmentIdAndUserIdForUpdate(recruitmentId, targetUserId)
@@ -174,11 +178,12 @@ public class StaffReviewerService {
 
     /**
      * 부여 가능 대상인지 확인한다.
-     * 회차 학기의 운영진이면서 ADMIN 계정이 있어야 하고, 같은 회차 지원자는 제외한다.
+     * 현재 활동 학기의 운영진이면서 ADMIN 계정이 있어야 하고, 같은 회차 지원자는 제외한다.
      */
-    private void requireGrantable(StaffRecruitment recruitment, Integer recruitmentId, Long targetUserId) {
+    private void requireGrantable(Integer recruitmentId, Long targetUserId) {
+        SemesterInfo active = semesterService.getActive();
         boolean teamMember = forifTeamRepository.existsByActYearAndActSemesterAndUserId(
-                recruitment.getActYear(), recruitment.getActSemester(), targetUserId);
+                active.actYear(), active.actSemester(), targetUserId);
         if (!teamMember) {
             throw new ForifException(ErrorCode.STAFF_REVIEWER_CONFLICT);
         }

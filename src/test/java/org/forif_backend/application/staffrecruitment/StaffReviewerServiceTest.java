@@ -1,6 +1,8 @@
 package org.forif_backend.application.staffrecruitment;
 
 import org.forif_backend.application.staff.StaffAccountService;
+import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffReviewerCandidateInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffReviewerInfo;
 import org.forif_backend.common.exception.ErrorCode;
@@ -65,6 +67,9 @@ class StaffReviewerServiceTest {
     @Mock
     private StaffAccountService staffAccountService;
 
+    @Mock
+    private SemesterService semesterService;
+
     @InjectMocks
     private StaffReviewerService staffReviewerService;
 
@@ -89,20 +94,26 @@ class StaffReviewerServiceTest {
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment()));
     }
 
+    private void givenActiveSemester() {
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+    }
+
     private void givenGrantableTarget() {
-        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2027, 1, REVIEWER_ID)).thenReturn(true);
+        givenActiveSemester();
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
         when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(true);
         when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
                 .thenReturn(false);
     }
 
     @Test
-    void 후보는_학기_운영진_전원이며_ADMIN_계정_여부를_함께_알려준다() {
+    void 후보는_현재_활동_학기_운영진_전원이며_ADMIN_계정_여부를_함께_알려준다() {
         givenRecruitment();
+        givenActiveSemester();
         User withoutAccount = User.createUser(OUTSIDER_ID, "박신입", "new@hanyang.ac.kr", "01033334444", "기계공학부");
-        when(forifTeamRepository.findByYearAndSemester(2027, 1)).thenReturn(List.of(
-                ForifTeam.create(reviewer, 2027, 1, "개발팀"),
-                ForifTeam.create(withoutAccount, 2027, 1, "기획팀")));
+        when(forifTeamRepository.findByYearAndSemester(2026, 2)).thenReturn(List.of(
+                ForifTeam.create(reviewer, 2026, 2, "개발팀"),
+                ForifTeam.create(withoutAccount, 2026, 2, "기획팀")));
         when(staffAccountRepository.findStaffRolesByUserIds(anyList()))
                 .thenReturn(Map.of(REVIEWER_ID, StaffRole.ADMIN));
         when(staffRecruitmentReviewerRepository.findAllByRecruitmentId(RECRUITMENT_ID)).thenReturn(List.of());
@@ -117,9 +128,10 @@ class StaffReviewerServiceTest {
     }
 
     @Test
-    void 회차_학기_운영진이_아니면_부여할_수_없다() {
+    void 현재_활동_학기_운영진이_아니면_부여할_수_없다() {
         givenRecruitment();
-        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2027, 1, OUTSIDER_ID)).thenReturn(false);
+        givenActiveSemester();
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, OUTSIDER_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> staffReviewerService.grant(
                 RECRUITMENT_ID, PRESIDENT_ID, OUTSIDER_ID, LocalDateTime.now().plusDays(7)))
@@ -130,7 +142,8 @@ class StaffReviewerServiceTest {
     @Test
     void ADMIN_계정이_없으면_부여할_수_없다() {
         givenRecruitment();
-        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2027, 1, REVIEWER_ID)).thenReturn(true);
+        givenActiveSemester();
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
         when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(false);
 
         assertThatThrownBy(() -> staffReviewerService.grant(
@@ -142,7 +155,8 @@ class StaffReviewerServiceTest {
     @Test
     void 같은_회차_지원자에게는_부여할_수_없다() {
         givenRecruitment();
-        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2027, 1, REVIEWER_ID)).thenReturn(true);
+        givenActiveSemester();
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
         when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(true);
         when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
                 .thenReturn(true);
