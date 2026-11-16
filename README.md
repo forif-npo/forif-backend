@@ -106,7 +106,7 @@ SPRING_PROFILES_ACTIVE=local RDS_PASSWORD=<비밀번호> ./gradlew bootRun
 
 ## API 규약
 
-- **응답 래퍼** — 모든 응답이 `ApiResponse<T>`(`timestamp`, `data`, `error_code`, `message`)로 감싸집니다. 예외는 파일 서빙(`GET /api/v1/files/**`)뿐입니다.
+- **응답 래퍼** — 일반 API 응답은 `ApiResponse<T>`(`timestamp`, `data`, `error_code`, `message`)로 감쌉니다. 파일 다운로드 성공 응답은 파일 바이트를 직접 반환합니다.
 - **네이밍** — 요청·응답 바디는 `SNAKE_CASE`입니다. 쿼리 파라미터는 전역 전략의 영향을 받지 않아 이름이 혼재합니다.
 - **시간대** — `Asia/Seoul`
 - **인증** — Access Token은 `Authorization: Bearer` 헤더로, Refresh Token은 HttpOnly 쿠키로 전달합니다. 인증·인가 실패도 동일한 `ApiResponse` 포맷을 유지합니다.

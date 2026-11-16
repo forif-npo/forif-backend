@@ -79,8 +79,13 @@ public class LocalFileClient implements FilePort {
             file.transferTo(targetPath);
             log.info("로컬 파일 업로드 성공: {}", objectKey);
             return objectKey;
-        } catch (IOException e) {
+        } catch (IOException | IllegalStateException e) {
             log.error("로컬 파일 업로드 중 오류 발생: {}", objectKey, e);
+            try {
+                Files.deleteIfExists(targetPath);
+            } catch (IOException cleanupError) {
+                log.warn("실패한 업로드 파일 정리 실패: {}", objectKey, cleanupError);
+            }
             throw new ForifException(ErrorCode.INTERNAL_SERVER_ERROR);
         }
     }

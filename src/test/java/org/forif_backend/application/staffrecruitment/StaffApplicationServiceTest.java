@@ -1,6 +1,7 @@
 package org.forif_backend.application.staffrecruitment;
 
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand;
@@ -18,20 +19,24 @@ import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
+import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +65,9 @@ class StaffApplicationServiceTest {
 
     @Mock
     private SemesterService semesterService;
+
+    @Mock
+    private FilePort filePort;
 
     @InjectMocks
     private StaffApplicationService staffApplicationService;
@@ -108,6 +116,90 @@ class StaffApplicationServiceTest {
 
     private void givenOpenRecruitment() {
         when(staffRecruitmentRepository.findDetailById(RECRUITMENT_ID)).thenReturn(Optional.of(openRecruitment()));
+    }
+
+    private void givenQuestionType(StaffRecruitmentQuestionType type) {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", type);
+        when(staffRecruitmentRepository.findDetailById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+    }
+
+    @Test
+    void 필수_파일_문항은_파일이_없으면_제출할_수_없다() {
+        givenQuestionType(StaffRecruitmentQuestionType.FILE);
+        givenActiveMember();
+        givenApplicantLoaded();
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "")))))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        verify(staffApplicationRepository, never()).save(any());
+    }
+
+    @Test
+    void 파일_문항은_5메가바이트_초과_파일을_거부한다() {
+        givenQuestionType(StaffRecruitmentQuestionType.FILE);
+        givenActiveMember();
+        givenApplicantLoaded();
+        MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf",
+                new byte[5 * 1024 * 1024 + 1]);
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),
+                Map.of(MOTIVE_QUESTION, file)))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_FILE_ATTACHMENT);
+        verify(filePort, never()).uploadFile(any(), any());
+    }
+
+    @Test
+    void 파일_답변은_비공개_경로에_저장하고_상세에는_파일명만_표시한다() {
+        givenQuestionType(StaffRecruitmentQuestionType.FILE);
+        givenActiveMember();
+        givenApplicantLoaded();
+        MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf", new byte[]{1});
+        String key = "staff-applications/12/123e4567-e89b-12d3-a456-426614174000-portfolio.pdf";
+        when(filePort.uploadFile(eq(file), eq("staff-applications/12"))).thenReturn(key);
+        when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(filePort.downloadBytes(key)).thenReturn(new byte[]{1});
+
+        StaffApplicationDetail detail = staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),
+                Map.of(MOTIVE_QUESTION, file));
+
+        assertThat(detail.answers().get(0).answer()).isEqualTo(key);
+        assertThat(StaffApplicationResponse.DetailResponse.from(detail).answers().get(0).answer())
+                .isEqualTo("portfolio.pdf");
+        assertThat(staffApplicationService.downloadAttachment(detail, MOTIVE_QUESTION).bytes())
+                .containsExactly((byte) 1);
+    }
+
+    @Test
+    void 저장된_파일이_사라졌다면_404를_반환한다() {
+        String key = "staff-applications/12/123e4567-e89b-12d3-a456-426614174000-portfolio.pdf";
+        StaffApplicationDetail detail = new StaffApplicationDetail(
+                7, RECRUITMENT_ID, APPLICANT_ID, "Applicant", "applicant@example.com", null, null,
+                List.of(), null, LocalDateTime.now(),
+                List.of(new StaffApplicationDetail.AnswerInfo(
+                        MOTIVE_QUESTION, "파일", StaffRecruitmentQuestionType.FILE, key)));
+        when(filePort.downloadBytes(key)).thenThrow(new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT));
+
+        assertThatThrownBy(() -> staffApplicationService.downloadAttachment(detail, MOTIVE_QUESTION))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.FILE_NOT_FOUND);
+    }
+
+    @Test
+    void 링크_문항은_http_스킴만_허용한다() {
+        givenQuestionType(StaffRecruitmentQuestionType.LINK);
+        givenActiveMember();
+        givenApplicantLoaded();
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "javascript:alert(1)")))))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
     }
 
     private void givenActiveMember() {

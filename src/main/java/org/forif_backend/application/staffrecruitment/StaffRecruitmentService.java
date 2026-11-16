@@ -15,6 +15,7 @@ import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentStatus;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -216,7 +217,8 @@ public class StaffRecruitmentService {
         return commands.stream()
                 .map(command -> new StaffRecruitmentQuestionSpec(
                         command.id(), command.label(), command.description(), command.type(),
-                        command.required(), command.maxLength(), command.displayOrder()))
+                        command.required(), command.type() == StaffRecruitmentQuestionType.FILE
+                                ? 5000 : command.maxLength(), command.displayOrder()))
                 .toList();
     }
 }

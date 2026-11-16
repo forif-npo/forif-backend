@@ -10,7 +10,7 @@
 
 응답 래퍼, 예외, 직렬화, 페이지네이션 규약은 [architecture.md](architecture.md#공통-규약) 에 정리돼 있습니다. 요약하면 이렇습니다.
 
-- 모든 응답은 `ApiResponse<T>` 로 감쌉니다 (파일 서빙 제외).
+- 모든 응답은 `ApiResponse<T>` 로 감쌉니다 (파일 다운로드 성공 응답 제외).
 - 바디는 `SNAKE_CASE`, 쿼리 파라미터는 아닙니다.
 - 목록은 `CursorPageResponse<T>` 이며 `cursor`·`page` 를 모두 생략하면 커서 모드 첫 페이지입니다.
 - 인증은 `Authorization: Bearer`, 갱신은 `refreshToken` 쿠키입니다.
@@ -123,6 +123,18 @@ Google OAuth 기반 회원가입·로그인·토큰 재발급·로그아웃과 �
 | `/api/v1/error-codes` | `ErrorCodeController` | 1 | 전체 에러 코드 목록 |
 
 `FileController` 는 `app.file.storage=local` 일 때만 등록됩니다(`@ConditionalOnProperty`). `download=true` 를 붙이면 `Content-Disposition: attachment` 로 내려줍니다.
+`staff-applications/` 아래의 운영진 지원서 첨부파일은 이 공개 경로에서 제공하지 않습니다.
+
+### 운영진 지원서 파일·링크 문항
+
+모집 문항의 `type` 에는 `SHORT_TEXT`, `LONG_TEXT`, `LINK`, `FILE` 을 사용할 수 있습니다.
+`LINK` 답변은 `http` 또는 `https` URL 문자열입니다. `FILE` 답변은 문항당 파일 1개(최대 5MB)이며, 여러 파일을 함께 제출할 때도 요청 전체 20MB 제한이 적용됩니다.
+파일 문항의 `max_length` 는 파일 경로 저장을 위해 서버가 5000으로 설정합니다.
+`POST /api/v1/staff-recruitments/{recruitmentId}/applications` 에 `multipart/form-data` 로 제출합니다.
+`request` 파트는 기존 제출 JSON, 파일 파트 이름은 `file_{questionId}` 입니다. 파일이 없는 제출은 기존 JSON 요청도 지원합니다.
+상세 응답의 `FILE` 답변은 저장소 경로 대신 파일명만 반환합니다.
+본인은 `GET /api/v1/staff-recruitments/{recruitmentId}/applications/me/files/{questionId}` 로,
+권한이 있는 운영진은 `GET /api/v1/admin/staff-recruitments/{recruitmentId}/applications/{applicationId}/files/{questionId}` 로 인증 후 다운로드합니다.
 
 ## 새 엔드포인트를 추가할 때
 

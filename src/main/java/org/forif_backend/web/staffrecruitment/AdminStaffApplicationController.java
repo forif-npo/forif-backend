@@ -12,10 +12,15 @@ import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.DetailResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.SummaryResponse;
 import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.nio.charset.StandardCharsets;
 
 /**
  * 제출 지원서 조회.
@@ -68,6 +73,24 @@ public class AdminStaffApplicationController {
 
         return noStore(ApiResponse.success(DetailResponse.from(
                 staffApplicationService.getAdminDetail(recruitmentId, applicationId))));
+    }
+
+    @Operation(summary = "지원서 첨부파일 다운로드", description = "해당 회차의 지원서 열람 권한을 매 요청 확인합니다.")
+    @GetMapping("/{applicationId}/files/{questionId}")
+    public ResponseEntity<byte[]> downloadFile(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId,
+            @PathVariable Integer applicationId,
+            @PathVariable Integer questionId
+    ) {
+        staffReviewerService.requireApplicationAccess(userId, recruitmentId);
+        var detail = staffApplicationService.getAdminDetail(recruitmentId, applicationId);
+        var attachment = staffApplicationService.downloadAttachment(detail, questionId);
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
+                        .filename(attachment.filename(), StandardCharsets.UTF_8).build().toString())
+                .body(attachment.bytes());
     }
 
     private int clampSize(int size) {
