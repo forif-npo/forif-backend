@@ -64,7 +64,7 @@ web  ──▶  application  ──▶  domain  ◀──  infrastructure
 }
 ```
 
-예외는 파일 서빙(`GET /api/v1/files/**`)뿐입니다. 파일 바이트를 직접 반환해야 하므로 `ResponseEntity<Resource>` 를 씁니다.
+파일 다운로드 응답은 JSON 래퍼를 사용하지 않고 파일 바이트를 직접 반환합니다. 공개 파일 조회(`GET /api/v1/files/**`)는 `ResponseEntity<Resource>` 를, 운영진 지원서의 권한 검사된 첨부파일 다운로드는 `ResponseEntity<byte[]>` 를 씁니다. 실패 응답은 아래 예외 처리 규칙에 따라 `ApiResponse` 로 반환합니다.
 
 ### 예외 처리
 

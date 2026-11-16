@@ -80,6 +80,20 @@ class StaffRecruitmentServiceTest {
     }
 
     @Test
+    void 파일_문항의_내부_답변_길이는_클라이언트_값과_무관하게_설정한다() {
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2027, 1));
+        when(staffRecruitmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
+                null, null, "2027-1 운영진 모집", null, "안내", STARTS_AT, ENDS_AT,
+                List.of(new StaffRecruitmentDepartmentCommand(null, "기획팀", null, 1, true)),
+                List.of(new StaffRecruitmentQuestionCommand(null, "포트폴리오", null,
+                        StaffRecruitmentQuestionType.FILE, true, 1, 1))));
+
+        assertThat(detail.questions().get(0).maxLength()).isEqualTo(5000);
+    }
+
+    @Test
     void 게시_중인_다른_회차가_있으면_게시를_거절한다() {
         StaffRecruitment target = recruitment(2, false);
         when(staffRecruitmentRepository.findByIdForUpdate(2)).thenReturn(Optional.of(target));
