@@ -3,6 +3,7 @@ package org.forif_backend.web.staffrecruitment.dto;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.StaffApplicationService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
+import org.forif_backend.application.staffrecruitment.dto.MyStaffApplicationSummary;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 
@@ -49,6 +50,26 @@ public final class StaffApplicationResponse {
                     detail.recruitmentId(),
                     detail.status(),
                     StaffRecruitmentResponse.toOffset(detail.submittedAt()));
+        }
+    }
+
+    /** 본인의 회차별 지원 이력. 상세 답변과 개인정보는 포함하지 않는다. */
+    public record MySummaryResponse(
+            Integer applicationId,
+            Integer recruitmentId,
+            int actYear,
+            int actSemester,
+            StaffApplicationStatus status,
+            OffsetDateTime submittedAt
+    ) {
+        public static MySummaryResponse from(MyStaffApplicationSummary summary) {
+            return new MySummaryResponse(
+                    summary.applicationId(),
+                    summary.recruitmentId(),
+                    summary.actYear(),
+                    summary.actSemester(),
+                    summary.status(),
+                    StaffRecruitmentResponse.toOffset(summary.submittedAt()));
         }
     }
 

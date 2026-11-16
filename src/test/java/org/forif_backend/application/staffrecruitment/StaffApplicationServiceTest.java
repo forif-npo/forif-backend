@@ -361,6 +361,24 @@ class StaffApplicationServiceTest {
     }
 
     @Test
+    void 본인_지원_이력은_회차와_제출일만_반환한다() {
+        StaffRecruitment recruitment = openRecruitment();
+        StaffApplication application = StaffApplication.submit(recruitment, applicant, "홍길동",
+                "hong@hanyang.ac.kr", "01000000000", "컴퓨터소프트웨어학부", LocalDateTime.now());
+        ReflectionTestUtils.setField(application, "id", 500);
+        when(staffApplicationRepository.findByApplicantId(APPLICANT_ID)).thenReturn(List.of(application));
+
+        var history = staffApplicationService.getMyHistory(APPLICANT_ID);
+
+        assertThat(history).hasSize(1);
+        assertThat(history.get(0).applicationId()).isEqualTo(500);
+        assertThat(history.get(0).recruitmentId()).isEqualTo(RECRUITMENT_ID);
+        assertThat(history.get(0).actYear()).isEqualTo(2027);
+        assertThat(history.get(0).actSemester()).isEqualTo(1);
+        verify(staffApplicationRepository).findByApplicantId(APPLICANT_ID);
+    }
+
+    @Test
     void 다른_회차의_지원서는_관리_상세에서도_찾을_수_없다() {
         StaffRecruitment other = openRecruitment();
         ReflectionTestUtils.setField(other, "id", 99);
