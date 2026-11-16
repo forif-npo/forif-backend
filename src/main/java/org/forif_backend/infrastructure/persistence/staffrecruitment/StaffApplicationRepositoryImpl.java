@@ -37,6 +37,11 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
     }
 
     @Override
+    public List<StaffApplication> findByApplicantId(Long applicantUserId) {
+        return staffApplicationJpaRepository.findByApplicantId(applicantUserId);
+    }
+
+    @Override
     public boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantUserId) {
         return staffApplicationJpaRepository.existsByRecruitmentIdAndApplicantId(recruitmentId, applicantUserId);
     }

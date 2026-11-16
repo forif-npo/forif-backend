@@ -7,6 +7,7 @@ import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
+import org.forif_backend.application.staffrecruitment.dto.MyStaffApplicationSummary;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
@@ -109,6 +110,13 @@ public class StaffApplicationService {
         return staffApplicationRepository.findDetailByRecruitmentIdAndApplicantId(recruitmentId, userId)
                 .map(StaffApplicationDetail::from)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_APPLICATION_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyStaffApplicationSummary> getMyHistory(Long userId) {
+        return staffApplicationRepository.findByApplicantId(userId).stream()
+                .map(MyStaffApplicationSummary::from)
+                .toList();
     }
 
     // ==================== 회장단 ====================

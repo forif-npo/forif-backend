@@ -31,6 +31,14 @@ public interface StaffApplicationJpaRepository extends JpaRepository<StaffApplic
             @Param("recruitmentId") Integer recruitmentId,
             @Param("applicantUserId") Long applicantUserId);
 
+    @Query("""
+            SELECT a FROM StaffApplication a
+            JOIN FETCH a.recruitment
+            WHERE a.applicant.id = :applicantUserId
+            ORDER BY a.submittedAt DESC, a.id DESC
+            """)
+    List<StaffApplication> findByApplicantId(@Param("applicantUserId") Long applicantUserId);
+
     boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantId);
 
     boolean existsByRecruitmentId(Integer recruitmentId);
