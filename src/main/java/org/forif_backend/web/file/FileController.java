@@ -75,6 +75,10 @@ public class FileController {
         for (String candidate : buildObjectKeyCandidates(objectKey)) {
             Path filePath = root.resolve(candidate).normalize();
             if (filePath.startsWith(root) && Files.isRegularFile(filePath)) {
+                Path relative = root.relativize(filePath);
+                if (relative.getNameCount() > 0 && "staff-applications".equalsIgnoreCase(relative.getName(0).toString())) {
+                    throw new ForifException(ErrorCode.FILE_NOT_FOUND);
+                }
                 return filePath;
             }
         }

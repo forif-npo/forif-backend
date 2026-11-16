@@ -2,6 +2,8 @@ package org.forif_backend.application.staffrecruitment;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.file.TransactionalFileCleanup;
+import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
@@ -16,6 +18,7 @@ import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestion;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
@@ -23,7 +26,9 @@ import org.forif_backend.domain.user.UserRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -48,11 +53,20 @@ public class StaffApplicationService {
     private final UserRepository userRepository;
     private final StudyUserRepository studyUserRepository;
     private final SemesterService semesterService;
+    private final FilePort filePort;
+    private static final long MAX_ATTACHMENT_BYTES = 5L * 1024 * 1024;
+    private static final String PRIVATE_FILE_DIRECTORY = "staff-applications";
 
     // ==================== 지원자 ====================
 
     @Transactional
     public StaffApplicationDetail submit(Integer recruitmentId, Long userId, SubmitStaffApplicationCommand command) {
+        return submit(recruitmentId, userId, command, Map.of());
+    }
+
+    @Transactional
+    public StaffApplicationDetail submit(Integer recruitmentId, Long userId, SubmitStaffApplicationCommand command,
+                                         Map<Integer, MultipartFile> files) {
         StaffRecruitment recruitment = staffRecruitmentRepository.findDetailById(recruitmentId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
         if (!recruitment.isPubliclyVisible()) {
@@ -77,7 +91,7 @@ public class StaffApplicationService {
                 LocalDateTime.now());
 
         addChoices(application, recruitment, command.departmentChoices());
-        addAnswers(application, recruitment, command.answers());
+        addAnswers(application, recruitment, command.answers(), files);
 
         StaffApplication saved = staffApplicationRepository.save(application);
         try {
@@ -128,6 +142,35 @@ public class StaffApplicationService {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_NOT_FOUND);
         }
         return StaffApplicationDetail.from(application);
+    }
+
+    /** 호출자가 본인 또는 열람 권한을 검사한 뒤에만 이 메서드에 접근한다. */
+    public Attachment downloadAttachment(StaffApplicationDetail detail, Integer questionId) {
+        StaffApplicationDetail.AnswerInfo answer = detail.answers().stream()
+                .filter(item -> item.questionId().equals(questionId)
+                        && item.questionType() == StaffRecruitmentQuestionType.FILE)
+                .findFirst()
+                .orElseThrow(() -> new ForifException(ErrorCode.FILE_NOT_FOUND));
+        String objectKey = answer.answer();
+        if (objectKey == null || !objectKey.startsWith(PRIVATE_FILE_DIRECTORY + "/")) {
+            throw new ForifException(ErrorCode.FILE_NOT_FOUND);
+        }
+        try {
+            return new Attachment(filePort.downloadBytes(objectKey), attachmentName(objectKey));
+        } catch (ForifException e) {
+            if (e.getErrorCode() == ErrorCode.INVALID_FILE_ATTACHMENT) {
+                throw new ForifException(ErrorCode.FILE_NOT_FOUND);
+            }
+            throw e;
+        }
+    }
+
+    public record Attachment(byte[] bytes, String filename) {}
+
+    public static String attachmentName(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) return "";
+        String basename = objectKey.substring(objectKey.lastIndexOf('/') + 1);
+        return basename.replaceFirst("^[0-9a-fA-F-]{36}-", "");
     }
 
     // ==================== 내부 ====================
@@ -194,9 +237,15 @@ public class StaffApplicationService {
     }
 
     private void addAnswers(StaffApplication application, StaffRecruitment recruitment,
-                            List<SubmitStaffApplicationCommand.AnswerCommand> answers) {
+                            List<SubmitStaffApplicationCommand.AnswerCommand> answers,
+                            Map<Integer, MultipartFile> files) {
         Map<Integer, StaffRecruitmentQuestion> questions = recruitment.getQuestions().stream()
                 .collect(Collectors.toMap(StaffRecruitmentQuestion::getId, Function.identity()));
+
+        if (files == null || files.keySet().stream().anyMatch(id -> !questions.containsKey(id)
+                || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE)) {
+            throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        }
 
         Set<Integer> answered = new HashSet<>();
         List<StaffApplicationAnswer> created = new ArrayList<>();
@@ -207,8 +256,25 @@ public class StaffApplicationService {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
             String value = answer.answer();
+            if (question.getType() == StaffRecruitmentQuestionType.FILE) {
+                MultipartFile file = files.get(question.getId());
+                if (value != null && !value.isBlank()) {
+                    throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+                }
+                if (file != null && !file.isEmpty()) {
+                    validateAttachment(file);
+                    value = filePort.uploadFile(file, PRIVATE_FILE_DIRECTORY + "/" + recruitment.getId());
+                    TransactionalFileCleanup.deleteOnRollback(filePort, value, "운영진 지원서");
+                }
+            } else if (files.containsKey(question.getId())) {
+                throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+            }
             if (value != null && value.length() > question.getMaxLength()) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+            }
+            if (question.getType() == StaffRecruitmentQuestionType.LINK && value != null && !value.isBlank()) {
+                value = value.trim();
+                validateLink(value);
             }
             if (question.isRequired() && (value == null || value.isBlank())) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
@@ -218,9 +284,30 @@ public class StaffApplicationService {
 
         boolean missingRequired = questions.values().stream()
                 .anyMatch(question -> question.isRequired() && !answered.contains(question.getId()));
-        if (missingRequired) {
+        if (missingRequired || !answered.containsAll(files.keySet())) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
         }
         created.forEach(application::addAnswer);
+    }
+
+    private void validateAttachment(MultipartFile file) {
+        String name = file.getOriginalFilename();
+        if (file.getSize() > MAX_ATTACHMENT_BYTES || name == null || name.isBlank()
+                || name.length() > 200 || name.contains("/") || name.contains("\\")
+                || name.chars().anyMatch(character -> character < 32 || "<>:\"|?*".indexOf(character) >= 0)) {
+            throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+        }
+    }
+
+    private void validateLink(String value) {
+        try {
+            URI uri = URI.create(value.trim());
+            if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                    || uri.getHost() == null) {
+                throw new IllegalArgumentException();
+            }
+        } catch (IllegalArgumentException e) {
+            throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        }
     }
 }

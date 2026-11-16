@@ -1,6 +1,7 @@
 package org.forif_backend.web.staffrecruitment.dto;
 
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
+import org.forif_backend.application.staffrecruitment.StaffApplicationService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
@@ -82,7 +83,9 @@ public final class StaffApplicationResponse {
                                     answer.questionId(),
                                     answer.questionLabel(),
                                     answer.questionType(),
-                                    answer.answer()))
+                                    answer.questionType() == StaffRecruitmentQuestionType.FILE
+                                            ? StaffApplicationService.attachmentName(answer.answer())
+                                            : answer.answer()))
                             .toList());
         }
     }
