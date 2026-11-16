@@ -15,6 +15,9 @@ public interface StaffApplicationRepository {
 
     Optional<StaffApplication> findDetailByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantUserId);
 
+    /** 모집 회차와 관계없이 본인이 제출한 지원서 이력 */
+    List<StaffApplication> findByApplicantId(Long applicantUserId);
+
     boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantUserId);
 
     /** 제출이 생긴 뒤에는 부서·문항을 물리 삭제하지 않는다. 그 판단에 쓴다. */
