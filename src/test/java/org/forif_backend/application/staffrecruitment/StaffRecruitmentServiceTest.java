@@ -119,6 +119,17 @@ class StaffRecruitmentServiceTest {
     }
 
     @Test
+    void 게시된_회차는_수정_요청을_거절한다() {
+        StaffRecruitment target = recruitment(3, true);
+        when(staffRecruitmentRepository.findByIdForUpdate(3)).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> staffRecruitmentService.update(3, new UpdateStaffRecruitmentCommand(
+                null, "바뀐 제목", null, null, STARTS_AT, ENDS_AT, null, null)))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        assertThat(target.getTitle()).isEqualTo("2027-1 운영진 모집");
+    }
+
+    @Test
     void 초안은_공개_상세에서_찾을_수_없다() {
         when(staffRecruitmentRepository.findDetailById(4)).thenReturn(Optional.of(recruitment(4, false)));
 

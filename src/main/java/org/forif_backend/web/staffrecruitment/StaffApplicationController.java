@@ -10,6 +10,7 @@ import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationRequests.SubmitRequest;
+import org.forif_backend.web.staffrecruitment.dto.StaffApplicationRequests.UpdateRequest;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.DetailResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.SubmitResponse;
 import org.springframework.http.CacheControl;
@@ -25,7 +26,9 @@ import org.springframework.web.multipart.MultipartHttpServletRequest;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 지원자 본인의 운영진 지원 API.
@@ -63,6 +66,58 @@ public class StaffApplicationController {
             @Valid @RequestPart("request") SubmitRequest request,
             MultipartHttpServletRequest multipartRequest
     ) {
+        Map<Integer, MultipartFile> files = attachmentParts(multipartRequest);
+        SubmitResponse response = SubmitResponse.from(
+                staffApplicationService.submit(recruitmentId, userId, request.toCommand(), files));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .body(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 운영진 지원서 수정", description = "접수 중인 본인 지원서만 수정할 수 있습니다.")
+    @PatchMapping(value = "/me", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<DetailResponse>> updateMine(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId,
+            @Valid @RequestBody UpdateRequest request
+    ) {
+        DetailResponse response = DetailResponse.from(staffApplicationService.update(
+                recruitmentId, userId, request.toCommand(), Map.of(), removedFiles(request)), true);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
+                .body(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "첨부파일을 포함한 내 운영진 지원서 수정")
+    @PatchMapping(value = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<DetailResponse>> updateMineWithFiles(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId,
+            @Valid @RequestPart("request") UpdateRequest request,
+            MultipartHttpServletRequest multipartRequest
+    ) {
+        DetailResponse response = DetailResponse.from(staffApplicationService.update(
+                recruitmentId, userId, request.toCommand(), attachmentParts(multipartRequest), removedFiles(request)), true);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
+                .body(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 운영진 지원 취소", description = "접수 중인 본인 지원서와 첨부파일을 삭제합니다.")
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> cancelMine(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId
+    ) {
+        staffApplicationService.cancel(recruitmentId, userId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore().cachePrivate())
+                .body(ApiResponse.success(null));
+    }
+
+    private Set<Integer> removedFiles(UpdateRequest request) {
+        return request.removedFileQuestionIds() == null
+                ? Set.of() : new HashSet<>(request.removedFileQuestionIds());
+    }
+
+    private Map<Integer, MultipartFile> attachmentParts(MultipartHttpServletRequest multipartRequest) {
         Map<Integer, MultipartFile> files = new HashMap<>();
         multipartRequest.getMultiFileMap().forEach((partName, parts) -> {
             // FormData의 JSON Blob도 filename이 있어 MultipartFile 목록에 포함된다.
@@ -78,11 +133,7 @@ public class StaffApplicationController {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
         });
-        SubmitResponse response = SubmitResponse.from(
-                staffApplicationService.submit(recruitmentId, userId, request.toCommand(), files));
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .cacheControl(CacheControl.noStore().cachePrivate())
-                .body(ApiResponse.success(response));
+        return files;
     }
 
     @Operation(summary = "내 지원서 첨부파일 다운로드", description = "본인이 제출한 파일 문항의 첨부파일만 받을 수 있습니다.")
@@ -108,7 +159,9 @@ public class StaffApplicationController {
             @AuthenticationPrincipal Long userId,
             @PathVariable Integer recruitmentId
     ) {
-        DetailResponse response = DetailResponse.from(staffApplicationService.getMine(recruitmentId, userId));
+        DetailResponse response = DetailResponse.from(
+                staffApplicationService.getMine(recruitmentId, userId),
+                staffApplicationService.canModifyMine(recruitmentId, userId));
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore().cachePrivate())

@@ -32,8 +32,26 @@ public final class StaffApplicationRequests {
     }
 
     public record SubmitRequest(
-            @NotEmpty @Valid List<ChoiceRequest> departmentChoices,
-            @Valid List<AnswerRequest> answers
+            @NotEmpty List<@NotNull @Valid ChoiceRequest> departmentChoices,
+            List<@NotNull @Valid AnswerRequest> answers
+    ) {
+        public SubmitStaffApplicationCommand toCommand() {
+            return new SubmitStaffApplicationCommand(
+                    departmentChoices == null ? List.of() : departmentChoices.stream()
+                            .map(choice -> new SubmitStaffApplicationCommand.ChoiceCommand(
+                                    choice.departmentId(), choice.priority()))
+                            .toList(),
+                    answers == null ? List.of() : answers.stream()
+                            .map(answer -> new SubmitStaffApplicationCommand.AnswerCommand(
+                                    answer.questionId(), answer.answer()))
+                            .toList());
+        }
+    }
+
+    public record UpdateRequest(
+            @NotEmpty List<@NotNull @Valid ChoiceRequest> departmentChoices,
+            List<@NotNull @Valid AnswerRequest> answers,
+            List<@NotNull Integer> removedFileQuestionIds
     ) {
         public SubmitStaffApplicationCommand toCommand() {
             return new SubmitStaffApplicationCommand(

@@ -10,6 +10,8 @@ import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplication
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationAnswer;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationChoice;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
@@ -32,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,7 +86,6 @@ class StaffApplicationServiceTest {
     private StaffRecruitment recruitment(LocalDateTime startsAt, LocalDateTime endsAt) {
         StaffRecruitment recruitment =
                 StaffRecruitment.create(2027, 1, "2027-1 운영진 모집", null, null, startsAt, endsAt);
-        recruitment.publish();
         ReflectionTestUtils.setField(recruitment, "id", RECRUITMENT_ID);
 
         recruitment.mergeDepartments(List.of(
@@ -99,6 +101,7 @@ class StaffApplicationServiceTest {
                 null, "지원 동기", null, StaffRecruitmentQuestionType.LONG_TEXT, true, 100, 1)), false);
         ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "id", MOTIVE_QUESTION);
 
+        recruitment.publish();
         return recruitment;
     }
 
@@ -114,8 +117,38 @@ class StaffApplicationServiceTest {
         return List.of(new AnswerCommand(MOTIVE_QUESTION, "함께 운영하고 싶습니다."));
     }
 
+    private StaffApplication existingApplication(StaffRecruitment recruitment, String answer) {
+        StaffApplication application = StaffApplication.submit(recruitment, applicant, "홍길동",
+                "hong@hanyang.ac.kr", "01000000000", "컴퓨터소프트웨어학부", LocalDateTime.now());
+        application.addChoice(StaffApplicationChoice.create(recruitment.getDepartments().get(0), 1));
+        application.addAnswer(StaffApplicationAnswer.create(recruitment.getQuestions().get(0), answer));
+        when(staffApplicationRepository.findForMutation(RECRUITMENT_ID, APPLICANT_ID))
+                .thenReturn(Optional.of(application));
+        return application;
+    }
+
     private void givenOpenRecruitment() {
         when(staffRecruitmentRepository.findDetailById(RECRUITMENT_ID)).thenReturn(Optional.of(openRecruitment()));
+    }
+
+    @Test
+    void 본인_지원서_수정_가능_여부는_접수_상태와_현재_활동_여부로_판정한다() {
+        when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(openRecruitment()));
+        givenActiveMember();
+        assertThat(staffApplicationService.canModifyMine(RECRUITMENT_ID, APPLICANT_ID)).isTrue();
+
+        when(studyUserRepository.existsByUserIdAndStudyYearSemester(APPLICANT_ID, 2026, 2))
+                .thenReturn(false);
+        assertThat(staffApplicationService.canModifyMine(RECRUITMENT_ID, APPLICANT_ID)).isFalse();
+    }
+
+    @Test
+    void 모집이_마감되면_활동_부원도_수정할_수_없다() {
+        LocalDateTime now = LocalDateTime.now();
+        when(staffRecruitmentRepository.findById(RECRUITMENT_ID))
+                .thenReturn(Optional.of(recruitment(now.minusDays(10), now.minusDays(1))));
+
+        assertThat(staffApplicationService.canModifyMine(RECRUITMENT_ID, APPLICANT_ID)).isFalse();
     }
 
     private void givenQuestionType(StaffRecruitmentQuestionType type) {
@@ -389,5 +422,143 @@ class StaffApplicationServiceTest {
         assertThatThrownBy(() -> staffApplicationService.getAdminDetail(RECRUITMENT_ID, 500))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_NOT_FOUND);
+    }
+
+    @Test
+    void 접수_중인_본인_지원서는_지망과_답변을_수정한다() {
+        StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
+        givenActiveMember();
+
+        StaffApplicationDetail result = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(List.of(new ChoiceCommand(DEV_TEAM, 1)), validAnswers()), Map.of(), Set.of());
+
+        assertThat(result.appliedDepartments().get(0).name()).isEqualTo("개발팀");
+        assertThat(result.answers().get(0).answer()).isEqualTo("함께 운영하고 싶습니다.");
+        assertThat(application.getAnswers()).hasSize(1);
+        verify(staffApplicationRepository).flush();
+    }
+
+    @Test
+    void 수정_요청에서_선택_문항을_누락해도_기존_답변을_지우지_않는다() {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "required", false);
+        StaffApplication application = existingApplication(recruitment, "기존 답변");
+        givenActiveMember();
+
+        assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of()), Map.of(), Set.of()))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        assertThat(application.getAnswers().get(0).getAnswer()).isEqualTo("기존 답변");
+        verify(staffApplicationRepository, never()).flush();
+    }
+
+    @Test
+    void 이번_학기_활동_부원이_아니면_수정은_막고_취소는_허용한다() {
+        StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+
+        assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), validAnswers()), Map.of(), Set.of()))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_ELIGIBILITY_REQUIRED);
+        assertThat(application.getAnswers().get(0).getAnswer()).isEqualTo("기존 답변");
+
+        staffApplicationService.cancel(RECRUITMENT_ID, APPLICANT_ID);
+        verify(staffApplicationRepository).delete(application);
+    }
+
+    @Test
+    void 잘못된_수정_요청은_기존_지원서를_바꾸지_않는다() {
+        StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
+        givenActiveMember();
+
+        assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(List.of(new ChoiceCommand(CLOSED_TEAM, 1)), validAnswers()), Map.of(), Set.of()))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_CHOICE);
+        assertThat(application.getAnswers().get(0).getAnswer()).isEqualTo("기존 답변");
+        verify(staffApplicationRepository, never()).flush();
+    }
+
+    @Test
+    void 기존_파일은_유지하고_새_파일로_교체하면_이전_파일을_정리한다() {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", StaffRecruitmentQuestionType.FILE);
+        String oldKey = "staff-applications/12/old.pdf";
+        existingApplication(recruitment, oldKey);
+        givenActiveMember();
+        StaffApplicationDetail retained = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))), Map.of(), Set.of());
+        assertThat(retained.answers().get(0).answer()).isEqualTo(oldKey);
+        verify(filePort, never()).deleteFile(any());
+
+        MockMultipartFile replacement = new MockMultipartFile("file_41", "new.pdf", "application/pdf", new byte[]{1});
+        String newKey = "staff-applications/12/new.pdf";
+        when(filePort.uploadFile(eq(replacement), eq("staff-applications/12"))).thenReturn(newKey);
+        StaffApplicationDetail updated = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),
+                Map.of(MOTIVE_QUESTION, replacement), Set.of());
+        assertThat(updated.answers().get(0).answer()).isEqualTo(newKey);
+        verify(filePort).deleteFile(oldKey);
+    }
+
+    @Test
+    void 선택_파일을_제거하면_저장된_파일도_정리한다() {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", StaffRecruitmentQuestionType.FILE);
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "required", false);
+        String oldKey = "staff-applications/12/old.pdf";
+        existingApplication(recruitment, oldKey);
+        givenActiveMember();
+
+        StaffApplicationDetail updated = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),
+                Map.of(), Set.of(MOTIVE_QUESTION));
+
+        assertThat(updated.answers().get(0).answer()).isBlank();
+        verify(filePort).deleteFile(oldKey);
+    }
+
+    @Test
+    void 접수_마감_후에는_수정과_취소를_거부한다() {
+        LocalDateTime now = LocalDateTime.now();
+        StaffRecruitment closed = recruitment(now.minusDays(10), now.minusDays(1));
+        StaffApplication application = StaffApplication.submit(closed, applicant, "홍길동",
+                "hong@hanyang.ac.kr", null, null, now.minusDays(5));
+        when(staffApplicationRepository.findForMutation(RECRUITMENT_ID, APPLICANT_ID))
+                .thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), validAnswers()), Map.of(), Set.of()))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_NOT_OPEN);
+        assertThatThrownBy(() -> staffApplicationService.cancel(RECRUITMENT_ID, APPLICANT_ID))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_NOT_OPEN);
+        verify(staffApplicationRepository, never()).delete(any());
+    }
+
+    @Test
+    void 본인_지원서가_없으면_수정과_취소를_거부한다() {
+        when(staffApplicationRepository.findForMutation(RECRUITMENT_ID, APPLICANT_ID))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), validAnswers()), Map.of(), Set.of()))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_NOT_FOUND);
+        assertThatThrownBy(() -> staffApplicationService.cancel(RECRUITMENT_ID, APPLICANT_ID))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_NOT_FOUND);
+    }
+
+    @Test
+    void 취소하면_지원서와_첨부파일을_삭제한다() {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", StaffRecruitmentQuestionType.FILE);
+        String key = "staff-applications/12/portfolio.pdf";
+        StaffApplication application = existingApplication(recruitment, key);
+
+        staffApplicationService.cancel(RECRUITMENT_ID, APPLICANT_ID);
+
+        verify(staffApplicationRepository).delete(application);
+        verify(filePort).deleteFile(key);
     }
 }

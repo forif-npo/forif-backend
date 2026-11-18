@@ -64,8 +64,8 @@ public final class StaffRecruitmentRequests {
             String description,
             OffsetDateTime startsAt,
             OffsetDateTime endsAt,
-            @Valid List<DepartmentRequest> departments,
-            @Valid List<QuestionRequest> questions
+            List<@NotNull @Valid DepartmentRequest> departments,
+            List<@NotNull @Valid QuestionRequest> questions
     ) {
         public CreateStaffRecruitmentCommand toCommand() {
             return new CreateStaffRecruitmentCommand(
@@ -83,8 +83,8 @@ public final class StaffRecruitmentRequests {
             String description,
             OffsetDateTime startsAt,
             OffsetDateTime endsAt,
-            @Valid List<DepartmentRequest> departments,
-            @Valid List<QuestionRequest> questions
+            List<@NotNull @Valid DepartmentRequest> departments,
+            List<@NotNull @Valid QuestionRequest> questions
     ) {
         public UpdateStaffRecruitmentCommand toCommand() {
             return new UpdateStaffRecruitmentCommand(

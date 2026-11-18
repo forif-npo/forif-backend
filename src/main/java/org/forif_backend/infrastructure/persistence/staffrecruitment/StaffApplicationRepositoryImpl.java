@@ -21,6 +21,11 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
     }
 
     @Override
+    public void delete(StaffApplication application) {
+        staffApplicationJpaRepository.delete(application);
+    }
+
+    @Override
     public void flush() {
         staffApplicationJpaRepository.flush();
     }
@@ -34,6 +39,11 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
     public Optional<StaffApplication> findDetailByRecruitmentIdAndApplicantId(Integer recruitmentId,
                                                                               Long applicantUserId) {
         return staffApplicationJpaRepository.findDetailByRecruitmentIdAndApplicantId(recruitmentId, applicantUserId);
+    }
+
+    @Override
+    public Optional<StaffApplication> findForMutation(Integer recruitmentId, Long applicantUserId) {
+        return staffApplicationJpaRepository.findForMutation(recruitmentId, applicantUserId);
     }
 
     @Override

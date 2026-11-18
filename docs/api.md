@@ -1,6 +1,6 @@
 # API
 
-컨트롤러 22개, 엔드포인트 155개입니다. 여기서는 규약과 리소스별 개요만 다룹니다. **파라미터·스키마의 정본은 Swagger 입니다.**
+여기서는 규약과 리소스별 개요만 다룹니다. **파라미터·스키마의 정본은 Swagger 입니다.**
 
 - [Swagger UI](https://dev.forif.org/swagger-ui/index.html)
 - Scalar: `/scalar`
@@ -76,10 +76,15 @@ Google OAuth 기반 회원가입·로그인·토큰 재발급·로그아웃과 �
 |---|---|---|
 | `/api/v1/staff`, `/api/v1/president`, `/api/v1/admin/mentors`, `/api/v1/admin/users` | `StaffAccountController` | 15 |
 | `/api/v1/forif-team`, `/api/v1/admin/forif-team` | `ForifTeamController` | 6 |
+| `/api/v1/staff-recruitments` | `StaffRecruitmentController`, `StaffApplicationController` | 9 |
+| `/api/v1/staff-applications` | `MyStaffApplicationController` | 1 |
+| `/api/v1/admin/staff-recruitments` | `AdminStaffRecruitmentController`, `AdminStaffReviewerController`, `AdminStaffApplicationController` | 15 |
 
 `StaffAccountController` 는 세 갈래를 한 클래스에서 다룹니다 — 운영진 로그인·내 정보·비밀번호 변경(`/staff`), 계정 CRUD 와 회장 위임(`/president`), 멘토·부원 목록 조회와 부원 수정·삭제(`/admin`).
 
 `/president` 계열은 `@PreAuthorize` 로는 `hasRole('ADMIN')` 만 걸고, 회장단 여부는 서비스에서 `requirePresidentTeam` 으로 검사합니다.
+
+운영진 모집은 초안에서만 수정할 수 있습니다. 지원서는 접수 중에 제출·수정·취소할 수 있으며, 첨부파일 다운로드는 본인 또는 권한이 있는 운영진에게만 허용됩니다.
 
 ### 학기
 
@@ -123,18 +128,6 @@ Google OAuth 기반 회원가입·로그인·토큰 재발급·로그아웃과 �
 | `/api/v1/error-codes` | `ErrorCodeController` | 1 | 전체 에러 코드 목록 |
 
 `FileController` 는 `app.file.storage=local` 일 때만 등록됩니다(`@ConditionalOnProperty`). `download=true` 를 붙이면 `Content-Disposition: attachment` 로 내려줍니다.
-`staff-applications/` 아래의 운영진 지원서 첨부파일은 이 공개 경로에서 제공하지 않습니다.
-
-### 운영진 지원서 파일·링크 문항
-
-모집 문항의 `type` 에는 `SHORT_TEXT`, `LONG_TEXT`, `LINK`, `FILE` 을 사용할 수 있습니다.
-`LINK` 답변은 `http` 또는 `https` URL 문자열입니다. `FILE` 답변은 문항당 파일 1개(최대 5MB)이며, 여러 파일을 함께 제출할 때도 요청 전체 20MB 제한이 적용됩니다.
-파일 문항의 `max_length` 는 파일 경로 저장을 위해 서버가 5000으로 설정합니다.
-`POST /api/v1/staff-recruitments/{recruitmentId}/applications` 에 `multipart/form-data` 로 제출합니다.
-`request` 파트는 기존 제출 JSON, 파일 파트 이름은 `file_{questionId}` 입니다. 파일이 없는 제출은 기존 JSON 요청도 지원합니다.
-상세 응답의 `FILE` 답변은 저장소 경로 대신 파일명만 반환합니다.
-본인은 `GET /api/v1/staff-recruitments/{recruitmentId}/applications/me/files/{questionId}` 로,
-권한이 있는 운영진은 `GET /api/v1/admin/staff-recruitments/{recruitmentId}/applications/{applicationId}/files/{questionId}` 로 인증 후 다운로드합니다.
 
 ## 새 엔드포인트를 추가할 때
 

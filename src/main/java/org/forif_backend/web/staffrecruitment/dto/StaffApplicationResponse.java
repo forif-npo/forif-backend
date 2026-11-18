@@ -85,9 +85,14 @@ public final class StaffApplicationResponse {
             List<AppliedDepartmentResponse> appliedDepartments,
             StaffApplicationStatus status,
             OffsetDateTime submittedAt,
-            List<AnswerResponse> answers
+            List<AnswerResponse> answers,
+            boolean canModify
     ) {
         public static DetailResponse from(StaffApplicationDetail detail) {
+            return from(detail, false);
+        }
+
+        public static DetailResponse from(StaffApplicationDetail detail, boolean canModify) {
             return new DetailResponse(
                     detail.applicationId(),
                     detail.recruitmentId(),
@@ -107,7 +112,8 @@ public final class StaffApplicationResponse {
                                     answer.questionType() == StaffRecruitmentQuestionType.FILE
                                             ? StaffApplicationService.attachmentName(answer.answer())
                                             : answer.answer()))
-                            .toList());
+                            .toList(),
+                    canModify);
         }
     }
 

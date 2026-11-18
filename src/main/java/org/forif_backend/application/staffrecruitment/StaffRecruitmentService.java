@@ -67,7 +67,7 @@ public class StaffRecruitmentService {
 
         recruitment.updateDetails(command.title(), command.summary(), command.description(),
                 command.startsAt(), command.endsAt());
-        // 제출이 생긴 뒤에는 부서·문항을 지울 수 없다. 내용 수정과 숨김은 그대로 허용한다.
+        // 초안만 수정할 수 있으며 기존 지원서가 참조하는 항목은 삭제하지 않는다.
         boolean hasApplications = staffApplicationRepository.existsByRecruitmentId(recruitmentId);
         if (command.departments() != null) {
             recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), hasApplications);
