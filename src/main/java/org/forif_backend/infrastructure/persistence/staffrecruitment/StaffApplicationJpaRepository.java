@@ -1,7 +1,9 @@
 package org.forif_backend.infrastructure.persistence.staffrecruitment;
 
+import jakarta.persistence.LockModeType;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,6 +32,14 @@ public interface StaffApplicationJpaRepository extends JpaRepository<StaffApplic
     Optional<StaffApplication> findDetailByRecruitmentIdAndApplicantId(
             @Param("recruitmentId") Integer recruitmentId,
             @Param("applicantUserId") Long applicantUserId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT a FROM StaffApplication a
+            WHERE a.recruitment.id = :recruitmentId AND a.applicant.id = :applicantUserId
+            """)
+    Optional<StaffApplication> findForMutation(@Param("recruitmentId") Integer recruitmentId,
+                                               @Param("applicantUserId") Long applicantUserId);
 
     @Query("""
             SELECT a FROM StaffApplication a

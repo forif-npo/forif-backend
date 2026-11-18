@@ -98,6 +98,11 @@ public class StaffApplication extends BaseTimeEntity {
         this.answers.add(answer);
     }
 
+    public void clearSubmission() {
+        this.choices.clear();
+        this.answers.clear();
+    }
+
     /** 본인 지원서인지. ID 추측으로 타인 지원서를 열람하지 못하게 한다. */
     public boolean isOwnedBy(Long userId) {
         return this.applicant != null && this.applicant.getId().equals(userId);

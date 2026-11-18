@@ -30,6 +30,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class StaffApplicationControllerMultipartTest {
@@ -93,5 +96,60 @@ class StaffApplicationControllerMultipartTest {
         assertThatThrownBy(() -> controller.submitWithFiles(1L, 12, request, multipart))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+    }
+
+    @Test
+    void 본인_지원서_수정은_JSON_요청을_바인딩한다() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+        var mapper = new ObjectMapper().findAndRegisterModules()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE);
+        var mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(mapper))
+                .build();
+        when(service.update(eq(12), eq(1L), any(), any(), any())).thenReturn(new StaffApplicationDetail(
+                7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+
+        mockMvc.perform(patch("/api/v1/staff-recruitments/12/applications/me")
+                        .contentType("application/json")
+                        .content("{\"department_choices\":[{\"department_id\":31,\"priority\":1}],"
+                                + "\"answers\":[{\"question_id\":41,\"answer\":\"수정 답변\"}],"
+                                + "\"removed_file_question_ids\":[]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.application_id").value(7));
+        verify(service).update(eq(12), eq(1L), argThat(command ->
+                command.answers().get(0).answer().equals("수정 답변")), eq(java.util.Map.of()), eq(java.util.Set.of()));
+    }
+
+    @Test
+    void 본인_지원서_수정은_파일_교체와_제거_목록을_바인딩한다() {
+        MockMultipartHttpServletRequest multipart = new MockMultipartHttpServletRequest();
+        multipart.addFile(new MockMultipartFile("request", "blob", "application/json", "{}".getBytes()));
+        MockMultipartFile replacement = new MockMultipartFile("file_41", "new.pdf", "application/pdf", new byte[]{1});
+        multipart.addFile(replacement);
+        var update = new StaffApplicationRequests.UpdateRequest(request.departmentChoices(), request.answers(), List.of(42));
+        when(service.update(eq(12), eq(1L), any(), any(), any())).thenReturn(new StaffApplicationDetail(
+                7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+
+        controller.updateMineWithFiles(1L, 12, update, multipart);
+
+        verify(service).update(eq(12), eq(1L), any(), argThat(files -> files.get(41) == replacement),
+                eq(java.util.Set.of(42)));
+    }
+
+    @Test
+    void 취소는_인증된_본인_ID로_서비스를_호출한다() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+        var mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .build();
+
+        mockMvc.perform(delete("/api/v1/staff-recruitments/12/applications/me"))
+                .andExpect(status().isOk());
+        verify(service).cancel(12, 1L);
     }
 }

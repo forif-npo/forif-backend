@@ -104,10 +104,10 @@ public class StaffRecruitment extends BaseTimeEntity {
         return new StaffRecruitment(actYear, actSemester, title, summary, description, startsAt, endsAt);
     }
 
-    /** 종단 상태가 아닌 회차의 안내 정보를 수정한다. */
+    /** 초안 회차의 안내 정보를 수정한다. */
     public void updateDetails(String title, String summary, String description,
                               LocalDateTime startsAt, LocalDateTime endsAt) {
-        requireNotTerminal();
+        requireDraft();
         validatePeriod(startsAt, endsAt);
         this.title = title;
         this.summary = summary;
@@ -124,10 +124,10 @@ public class StaffRecruitment extends BaseTimeEntity {
      * 같은 이름을 유지한 수정이 uk_staff_recruitment_department_name에 걸리고,
      * 제출된 지원서가 참조하는 부서를 지울 수 없다.
      *
-     * @param hasApplications 제출된 지원서가 있으면 삭제를 거절한다. 모집을 끝낸 부서는 active=false로 숨긴다.
+     * @param hasApplications 제출된 지원서가 있으면 삭제를 거절한다.
      */
     public void mergeDepartments(List<StaffRecruitmentDepartmentSpec> specs, boolean hasApplications) {
-        requireNotTerminal();
+        requireDraft();
         requireNoDuplicateName(specs);
 
         Map<Integer, StaffRecruitmentDepartment> current = byId(this.departments, StaffRecruitmentDepartment::getId);
@@ -168,7 +168,10 @@ public class StaffRecruitment extends BaseTimeEntity {
 
     /** 부서와 같은 규칙으로 문항을 맞춘다. 제출된 답변이 있으면 문항 삭제를 거절한다. */
     public void mergeQuestions(List<StaffRecruitmentQuestionSpec> specs, boolean hasApplications) {
-        requireNotTerminal();
+        requireDraft();
+        if (specs.stream().filter(spec -> spec.type() == StaffRecruitmentQuestionType.FILE).count() > 1) {
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
 
         Map<Integer, StaffRecruitmentQuestion> current = byId(this.questions, StaffRecruitmentQuestion::getId);
         Set<Integer> kept = new LinkedHashSet<>();
@@ -291,8 +294,8 @@ public class StaffRecruitment extends BaseTimeEntity {
         return this.status.isPubliclyVisible() && this.startsAt != null && this.endsAt != null;
     }
 
-    private void requireNotTerminal() {
-        if (this.status.isTerminal()) {
+    private void requireDraft() {
+        if (this.status != StaffRecruitmentStatus.DRAFT) {
             throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
         }
     }
