@@ -101,7 +101,7 @@ public class AdminStaffRecruitmentController {
     }
 
     @Operation(summary = "모집 회차 수정",
-            description = "마감·취소된 회차는 수정할 수 없습니다. version이 다르면 409로 거절합니다.")
+            description = "초안 회차만 수정할 수 있습니다. version이 다르면 409로 거절합니다.")
     @PatchMapping("/{recruitmentId}")
     public ResponseEntity<ApiResponse<AdminStaffRecruitmentResponse>> update(
             @AuthenticationPrincipal Long userId,

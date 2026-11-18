@@ -7,6 +7,8 @@ public interface StaffApplicationRepository {
 
     StaffApplication save(StaffApplication application);
 
+    void delete(StaffApplication application);
+
     /** 중복 제출 유니크 위반을 서비스 계층에서 바로 처리할 수 있도록 변경을 DB에 반영한다. */
     void flush();
 
@@ -14,6 +16,9 @@ public interface StaffApplicationRepository {
     Optional<StaffApplication> findDetailById(Integer applicationId);
 
     Optional<StaffApplication> findDetailByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantUserId);
+
+    /** 수정·취소가 같은 지원서에서 경합하지 않도록 행 잠금을 획득한다. */
+    Optional<StaffApplication> findForMutation(Integer recruitmentId, Long applicantUserId);
 
     /** 모집 회차와 관계없이 본인이 제출한 지원서 이력 */
     List<StaffApplication> findByApplicantId(Long applicantUserId);

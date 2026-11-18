@@ -40,7 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * 운영진 지원서 제출·조회.
+ * 운영진 지원서 제출·수정·취소·조회.
  *
  * 자격·기간·문항 검증을 한 트랜잭션에서 수행하고, 중복 제출은 DB 유니크 제약으로 최종 방어한다.
  * 지원자 식별은 인증 컨텍스트의 userId만 사용하며 요청 본문의 사용자 값을 믿지 않는다.
@@ -91,8 +91,9 @@ public class StaffApplicationService {
                 departmentNameOf(applicant),
                 LocalDateTime.now());
 
-        addChoices(application, recruitment, command.departmentChoices());
-        addAnswers(application, recruitment, command.answers(), files);
+        createChoices(recruitment, command.departmentChoices()).forEach(application::addChoice);
+        createAnswers(recruitment, command.answers(), files, Map.of(), Set.of())
+                .forEach(application::addAnswer);
 
         StaffApplication saved = staffApplicationRepository.save(application);
         try {
@@ -104,12 +105,84 @@ public class StaffApplicationService {
         return StaffApplicationDetail.from(saved);
     }
 
+    /** 접수 중인 본인 지원서만 수정한다. 새 파일은 롤백 시, 교체·제거한 파일은 커밋 후 정리한다. */
+    @Transactional
+    public StaffApplicationDetail update(Integer recruitmentId, Long userId,
+                                         SubmitStaffApplicationCommand command,
+                                         Map<Integer, MultipartFile> files, Set<Integer> removedFileQuestionIds) {
+        StaffApplication application = requireMutableMine(recruitmentId, userId);
+        requireActiveMember(userId);
+        StaffRecruitment recruitment = application.getRecruitment();
+        List<StaffApplicationChoice> choices = createChoices(recruitment, command.departmentChoices());
+        Set<Integer> currentQuestionIds = recruitment.getQuestions().stream()
+                .map(StaffRecruitmentQuestion::getId).collect(Collectors.toSet());
+        if (command.answers() == null || command.answers().stream().anyMatch(answer -> answer == null
+                || answer.questionId() == null)
+                || !command.answers().stream().map(SubmitStaffApplicationCommand.AnswerCommand::questionId)
+                .collect(Collectors.toSet()).equals(currentQuestionIds)
+                || command.answers().size() != currentQuestionIds.size()) {
+            throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        }
+        Map<Integer, String> existingFiles = application.getAnswers().stream()
+                .filter(answer -> answer.getQuestionType() == StaffRecruitmentQuestionType.FILE
+                        && answer.getAnswer() != null && !answer.getAnswer().isBlank())
+                .collect(Collectors.toMap(answer -> answer.getQuestion().getId(), StaffApplicationAnswer::getAnswer));
+        List<StaffApplicationAnswer> answers = createAnswers(
+                recruitment, command.answers(), files, existingFiles, removedFileQuestionIds);
+
+        Set<String> retainedFiles = answers.stream()
+                .filter(answer -> answer.getQuestionType() == StaffRecruitmentQuestionType.FILE)
+                .map(StaffApplicationAnswer::getAnswer)
+                .filter(value -> value != null && !value.isBlank())
+                .collect(Collectors.toSet());
+        List<String> replacedFiles = existingFiles.values().stream()
+                .filter(value -> value != null && !value.isBlank() && !retainedFiles.contains(value))
+                .toList();
+
+        application.clearSubmission();
+        staffApplicationRepository.flush();
+        choices.forEach(application::addChoice);
+        answers.forEach(application::addAnswer);
+        TransactionalFileCleanup.deleteAfterCommit(filePort, replacedFiles, "운영진 지원서 수정");
+        return StaffApplicationDetail.from(application);
+    }
+
+    /** 접수 중인 본인 지원서를 삭제해 같은 회차에 다시 지원할 수 있게 한다. */
+    @Transactional
+    public void cancel(Integer recruitmentId, Long userId) {
+        StaffApplication application = requireMutableMine(recruitmentId, userId);
+        List<String> storedFiles = application.getAnswers().stream()
+                .filter(answer -> answer.getQuestionType() == StaffRecruitmentQuestionType.FILE)
+                .map(StaffApplicationAnswer::getAnswer)
+                .filter(value -> value != null && !value.isBlank())
+                .toList();
+        staffApplicationRepository.delete(application);
+        TransactionalFileCleanup.deleteAfterCommit(filePort, storedFiles, "운영진 지원서 취소");
+    }
+
+    private StaffApplication requireMutableMine(Integer recruitmentId, Long userId) {
+        StaffApplication application = staffApplicationRepository
+                .findForMutation(recruitmentId, userId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_APPLICATION_NOT_FOUND));
+        if (!application.getRecruitment().isApplicationOpen(LocalDateTime.now())) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_OPEN);
+        }
+        return application;
+    }
+
     /** 본인 지원서. 다른 사람의 지원서는 ID를 알아도 이 경로로 볼 수 없다. */
     @Transactional(readOnly = true)
     public StaffApplicationDetail getMine(Integer recruitmentId, Long userId) {
         return staffApplicationRepository.findDetailByRecruitmentIdAndApplicantId(recruitmentId, userId)
                 .map(StaffApplicationDetail::from)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_APPLICATION_NOT_FOUND));
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canModifyMine(Integer recruitmentId, Long userId) {
+        return staffRecruitmentRepository.findById(recruitmentId)
+                .filter(recruitment -> recruitment.isApplicationOpen(LocalDateTime.now()))
+                .isPresent() && isActiveMember(userId);
     }
 
     @Transactional(readOnly = true)
@@ -188,12 +261,15 @@ public class StaffApplicationService {
      * 회비 납부 플래그만으로 판정하지 않는다. 등록 철회 시 해당 학기 관계가 삭제되기 때문이다.
      */
     private void requireActiveMember(Long userId) {
-        SemesterInfo active = semesterService.getActive();
-        boolean activeMember = studyUserRepository.existsByUserIdAndStudyYearSemester(
-                userId, active.actYear(), active.actSemester());
-        if (!activeMember) {
+        if (!isActiveMember(userId)) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_ELIGIBILITY_REQUIRED);
         }
+    }
+
+    private boolean isActiveMember(Long userId) {
+        SemesterInfo active = semesterService.getActive();
+        return studyUserRepository.existsByUserIdAndStudyYearSemester(
+                userId, active.actYear(), active.actSemester());
     }
 
     private void requireRecruitment(Integer recruitmentId) {
@@ -209,8 +285,8 @@ public class StaffApplicationService {
         return applicant.getDepartment();
     }
 
-    private void addChoices(StaffApplication application, StaffRecruitment recruitment,
-                            List<SubmitStaffApplicationCommand.ChoiceCommand> choices) {
+    private List<StaffApplicationChoice> createChoices(StaffRecruitment recruitment,
+                                                       List<SubmitStaffApplicationCommand.ChoiceCommand> choices) {
         if (choices == null || choices.isEmpty()) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_CHOICE);
         }
@@ -241,17 +317,22 @@ public class StaffApplicationService {
         if (!usedPriorities.contains(StaffApplicationChoice.FIRST_PRIORITY)) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_CHOICE);
         }
-        created.forEach(application::addChoice);
+        return created;
     }
 
-    private void addAnswers(StaffApplication application, StaffRecruitment recruitment,
-                            List<SubmitStaffApplicationCommand.AnswerCommand> answers,
-                            Map<Integer, MultipartFile> files) {
+    private List<StaffApplicationAnswer> createAnswers(StaffRecruitment recruitment,
+                                                       List<SubmitStaffApplicationCommand.AnswerCommand> answers,
+                                                       Map<Integer, MultipartFile> files,
+                                                       Map<Integer, String> existingFiles,
+                                                       Set<Integer> removedFileQuestionIds) {
         Map<Integer, StaffRecruitmentQuestion> questions = recruitment.getQuestions().stream()
                 .collect(Collectors.toMap(StaffRecruitmentQuestion::getId, Function.identity()));
 
         if (files == null || files.keySet().stream().anyMatch(id -> !questions.containsKey(id)
-                || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE)) {
+                || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE)
+                || removedFileQuestionIds == null || removedFileQuestionIds.stream().anyMatch(id ->
+                !questions.containsKey(id) || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE
+                        || files.containsKey(id))) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
         }
 
@@ -269,15 +350,21 @@ public class StaffApplicationService {
                 if (value != null && !value.isBlank()) {
                     throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
                 }
-                if (file != null && !file.isEmpty()) {
+                if (file != null && file.isEmpty()) {
+                    throw new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT);
+                }
+                if (file != null) {
                     validateAttachment(file);
                     value = filePort.uploadFile(file, PRIVATE_FILE_DIRECTORY + "/" + recruitment.getId());
                     TransactionalFileCleanup.deleteOnRollback(filePort, value, "운영진 지원서");
+                } else if (!removedFileQuestionIds.contains(question.getId())) {
+                    value = existingFiles.get(question.getId());
                 }
             } else if (files.containsKey(question.getId())) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
-            if (value != null && value.length() > question.getMaxLength()) {
+            if (question.getType() != StaffRecruitmentQuestionType.FILE
+                    && value != null && value.length() > question.getMaxLength()) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
             if (question.getType() == StaffRecruitmentQuestionType.LINK && value != null && !value.isBlank()) {
@@ -295,7 +382,11 @@ public class StaffApplicationService {
         if (missingRequired || !answered.containsAll(files.keySet())) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
         }
-        created.forEach(application::addAnswer);
+        if (created.stream().filter(answer -> answer.getQuestionType() == StaffRecruitmentQuestionType.FILE
+                && answer.getAnswer() != null && !answer.getAnswer().isBlank()).count() > 1) {
+            throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        }
+        return created;
     }
 
     private void validateAttachment(MultipartFile file) {

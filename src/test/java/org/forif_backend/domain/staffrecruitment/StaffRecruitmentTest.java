@@ -90,6 +90,18 @@ class StaffRecruitmentTest {
     }
 
     @Test
+    void 게시된_회차는_안내_부서_문항을_수정할_수_없다() {
+        StaffRecruitment recruitment = published();
+
+        assertThatThrownBy(() -> recruitment.updateDetails("새 제목", null, null, STARTS_AT, ENDS_AT))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        assertThatThrownBy(() -> recruitment.mergeDepartments(List.of(), false))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        assertThatThrownBy(() -> recruitment.mergeQuestions(List.of(), false))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+    }
+
+    @Test
     void 종료_시각_이후의_마감은_자연_종료로_기록한다() {
         StaffRecruitment recruitment = published();
 
@@ -141,6 +153,20 @@ class StaffRecruitmentTest {
         assertThat(recruitment.getDepartments()).hasSize(2);
         assertThat(recruitment.getDepartments().get(0).getRecruitment()).isSameAs(recruitment);
         assertThat(recruitment.getQuestions()).hasSize(1);
+    }
+
+    @Test
+    void 파일_문항은_모집당_하나만_허용한다() {
+        StaffRecruitment recruitment = draft();
+
+        assertThatThrownBy(() -> recruitment.mergeQuestions(List.of(
+                new StaffRecruitmentQuestionSpec(null, "포트폴리오", null,
+                        StaffRecruitmentQuestionType.FILE, false, 5000, 1),
+                new StaffRecruitmentQuestionSpec(null, "자기소개서", null,
+                        StaffRecruitmentQuestionType.FILE, false, 5000, 2)), false))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+        assertThat(recruitment.getQuestions()).isEmpty();
     }
 
     @Test
