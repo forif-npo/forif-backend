@@ -2,6 +2,7 @@ package org.forif_backend.application.staffrecruitment;
 
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.application.team.ClubDepartmentService;
 import org.forif_backend.application.staffrecruitment.dto.CreateStaffRecruitmentCommand;
 import org.forif_backend.application.staffrecruitment.dto.StaffRecruitmentDepartmentCommand;
 import org.forif_backend.application.staffrecruitment.dto.StaffRecruitmentDetail;
@@ -14,9 +15,11 @@ import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentStatus;
+import org.forif_backend.domain.team.ClubDepartment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -29,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class StaffRecruitmentServiceTest {
@@ -41,6 +45,9 @@ class StaffRecruitmentServiceTest {
 
     @Mock
     private SemesterService semesterService;
+
+    @Mock
+    private ClubDepartmentService clubDepartmentService;
 
     @InjectMocks
     private StaffRecruitmentService staffRecruitmentService;
@@ -62,8 +69,10 @@ class StaffRecruitmentServiceTest {
 
     @Test
     void 학기를_지정하지_않으면_현재_활동_학기를_값으로_복사한다() {
+        ClubDepartment planning = ClubDepartment.create("기획팀");
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2027, 1));
         when(staffRecruitmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(planning);
 
         StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
                 null, null, "2027-1 운영진 모집", "요약", "안내", STARTS_AT, ENDS_AT,
@@ -76,6 +85,10 @@ class StaffRecruitmentServiceTest {
         assertThat(detail.semesterLabel()).isEqualTo("27-1");
         assertThat(detail.publicationStatus()).isEqualTo(StaffRecruitmentStatus.DRAFT);
         assertThat(detail.departments()).hasSize(1);
+        assertThat(detail.departments().get(0).name()).isEqualTo("기획팀");
+        ArgumentCaptor<StaffRecruitment> saved = ArgumentCaptor.forClass(StaffRecruitment.class);
+        verify(staffRecruitmentRepository).save(saved.capture());
+        assertThat(saved.getValue().getDepartments().get(0).getClubDepartment()).isSameAs(planning);
         assertThat(detail.questions()).hasSize(1);
     }
 
@@ -83,6 +96,7 @@ class StaffRecruitmentServiceTest {
     void 파일_문항의_내부_답변_길이는_클라이언트_값과_무관하게_설정한다() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2027, 1));
         when(staffRecruitmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(ClubDepartment.create("기획팀"));
 
         StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
                 null, null, "2027-1 운영진 모집", null, "안내", STARTS_AT, ENDS_AT,

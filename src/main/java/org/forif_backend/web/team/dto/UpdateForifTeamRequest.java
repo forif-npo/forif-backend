@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 public record UpdateForifTeamRequest(
         @Size(max = 30)
         String userTitle,
-        @Size(max = 30)
+        @Size(max = 50)
         String clubDepartment,
         @Size(max = 100)
         String introTag,
