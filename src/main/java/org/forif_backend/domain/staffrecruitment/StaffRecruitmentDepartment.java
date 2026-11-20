@@ -4,9 +4,10 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.forif_backend.domain.team.ClubDepartment;
 
 /**
- * 모집 회차의 지원 부서. 대학 학과(tb_department)와는 다른 개념이다.
+ * 모집 회차의 지원 부서. 공통 운영진 부서를 참조하며 이름은 이 회차의 표시 값으로 보관한다.
  */
 @Entity
 @Getter
@@ -25,6 +26,10 @@ public class StaffRecruitmentDepartment {
 
     @Column(nullable = false, length = 50)
     private String name;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_department_id")
+    private ClubDepartment clubDepartment;
 
     @Column(length = 200)
     private String description;
@@ -57,5 +62,10 @@ public class StaffRecruitmentDepartment {
 
     void assignTo(StaffRecruitment recruitment) {
         this.recruitment = recruitment;
+    }
+
+    public void assignClubDepartment(ClubDepartment department) {
+        this.clubDepartment = department;
+        this.name = department.getName();
     }
 }

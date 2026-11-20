@@ -3,6 +3,7 @@ package org.forif_backend.application.staffrecruitment;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
+import org.forif_backend.application.team.ClubDepartmentService;
 import org.forif_backend.application.staffrecruitment.dto.CreateStaffRecruitmentCommand;
 import org.forif_backend.application.staffrecruitment.dto.StaffRecruitmentDepartmentCommand;
 import org.forif_backend.application.staffrecruitment.dto.StaffRecruitmentDetail;
@@ -40,6 +41,7 @@ public class StaffRecruitmentService {
     private final StaffRecruitmentRepository staffRecruitmentRepository;
     private final StaffApplicationRepository staffApplicationRepository;
     private final SemesterService semesterService;
+    private final ClubDepartmentService clubDepartmentService;
 
     // ==================== 회장단 관리 ====================
 
@@ -53,6 +55,7 @@ public class StaffRecruitmentService {
                 actYear, actSemester, command.title(), command.summary(), command.description(),
                 command.startsAt(), command.endsAt());
         recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), false);
+        linkDepartments(recruitment);
         recruitment.mergeQuestions(toQuestionSpecs(command.questions()), false);
 
         StaffRecruitment saved = staffRecruitmentRepository.save(recruitment);
@@ -71,6 +74,7 @@ public class StaffRecruitmentService {
         boolean hasApplications = staffApplicationRepository.existsByRecruitmentId(recruitmentId);
         if (command.departments() != null) {
             recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), hasApplications);
+            linkDepartments(recruitment);
         }
         if (command.questions() != null) {
             recruitment.mergeQuestions(toQuestionSpecs(command.questions()), hasApplications);
@@ -205,9 +209,14 @@ public class StaffRecruitmentService {
         }
         return commands.stream()
                 .map(command -> new StaffRecruitmentDepartmentSpec(
-                        command.id(), command.name(), command.description(),
+                        command.id(), ClubDepartmentService.normalizeName(command.name()), command.description(),
                         command.displayOrder(), command.active()))
                 .toList();
+    }
+
+    private void linkDepartments(StaffRecruitment recruitment) {
+        recruitment.getDepartments().forEach(department ->
+                department.assignClubDepartment(clubDepartmentService.getOrCreate(department.getName())));
     }
 
     private List<StaffRecruitmentQuestionSpec> toQuestionSpecs(List<StaffRecruitmentQuestionCommand> commands) {

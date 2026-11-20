@@ -28,6 +28,7 @@ public class ForifTeamService {
     private final SemesterService semesterService;
     private final UserService userService;
     private final StaffAccountService staffAccountService;
+    private final ClubDepartmentService clubDepartmentService;
 
     @Transactional(readOnly = true)
     public List<ForifTeamResponse> getAllMembers() {
@@ -62,6 +63,9 @@ public class ForifTeamService {
         }
 
         ForifTeam forifTeam = ForifTeam.create(user, year, semester, clubDepartment);
+        if (clubDepartment != null && !clubDepartment.isBlank()) {
+            forifTeam.assignClubDepartment(clubDepartmentService.getOrCreate(clubDepartment));
+        }
         if (userTitle != null && !userTitle.isBlank()) {
             forifTeam.update(userTitle, null, null, null, null);
         }
@@ -76,6 +80,10 @@ public class ForifTeamService {
 
         if (staffAccountService.isPresidentTeam(requesterId)) {
             forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
+            if (clubDepartment != null) {
+                forifTeam.assignClubDepartment(clubDepartment.isBlank()
+                        ? null : clubDepartmentService.getOrCreate(clubDepartment));
+            }
         } else {
             validateOwner(requesterId, forifTeam);
             validateSelfUpdateFields(forifTeam, userTitle, clubDepartment);

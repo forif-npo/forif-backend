@@ -6,6 +6,7 @@ import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.team.ForifTeam;
+import org.forif_backend.domain.team.ClubDepartment;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
@@ -36,6 +37,7 @@ class ForifTeamServiceAuthorizationTest {
     @Mock private SemesterService semesterService;
     @Mock private UserService userService;
     @Mock private StaffAccountService staffAccountService;
+    @Mock private ClubDepartmentService clubDepartmentService;
     @InjectMocks private ForifTeamService forifTeamService;
 
     @Test
@@ -120,14 +122,17 @@ class ForifTeamServiceAuthorizationTest {
     @Test
     void presidentTeamCanUpdateAnyProfileField() {
         ForifTeam team = team(OWNER_ID);
+        ClubDepartment planning = ClubDepartment.create("기획");
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
         when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(planning);
 
         forifTeamService.updateMember(
                 OTHER_OPERATOR_ID, TEAM_ID, "부회장", "기획팀", "소개", "자기소개", 2028);
 
         assertEquals("부회장", team.getUserTitle());
-        assertEquals("기획팀", team.getClubDepartment());
+        assertEquals("기획", team.getClubDepartment());
+        assertEquals(planning, team.getClubDepartmentRef());
         assertEquals("소개", team.getIntroTag());
         assertEquals("자기소개", team.getSelfIntro());
         assertEquals(2028, team.getGraduateYear());
