@@ -8,6 +8,7 @@ import org.forif_backend.application.team.ForifTeamService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -85,6 +86,7 @@ public class ForifTeamController {
         private Integer actSemester;
 
         @NotBlank
+        @Size(max = 50)
         private String clubDepartment;
 
         /** 회장/부회장/팀장 등 직책 (선택) */

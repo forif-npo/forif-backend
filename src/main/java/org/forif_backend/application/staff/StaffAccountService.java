@@ -8,6 +8,7 @@ import org.forif_backend.application.staff.dto.MentorHistory;
 import org.forif_backend.application.staff.dto.MentorSummary;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
+import org.forif_backend.application.team.ClubDepartmentService;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.type.SortCriteria;
@@ -49,6 +50,7 @@ public class StaffAccountService {
     private final UserRepository userRepository;
     private final StudyRepository studyRepository;
     private final ForifTeamRepository forifTeamRepository;
+    private final ClubDepartmentService clubDepartmentService;
     private final FilePort filePort;
 
     /** 운영진 스태프 로그인 */
@@ -267,6 +269,9 @@ public class StaffAccountService {
         int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
             ForifTeam forifTeam = ForifTeam.create(user, currentYear, currentSemester, command.affiliation());
+            if (command.affiliation() != null && !command.affiliation().isBlank()) {
+                forifTeam.assignClubDepartment(clubDepartmentService.getOrCreate(command.affiliation()));
+            }
             forifTeamRepository.save(forifTeam);
         }
 

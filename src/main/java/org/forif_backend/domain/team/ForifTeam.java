@@ -35,8 +35,12 @@ public class ForifTeam extends BaseTimeEntity {
     @Column(length = 30)
     private String userTitle;
 
-    @Column(length = 30)
+    @Column(length = 50)
     private String clubDepartment;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_department_id")
+    private ClubDepartment clubDepartmentRef;
 
     @Column(length = 100)
     private String introTag;
@@ -49,7 +53,7 @@ public class ForifTeam extends BaseTimeEntity {
         team.user = user;
         team.actYear = actYear;
         team.actSemester = actSemester;
-        team.clubDepartment = clubDepartment;
+        team.clubDepartment = clubDepartment == null || clubDepartment.isBlank() ? null : clubDepartment;
         return team;
     }
 
@@ -59,5 +63,10 @@ public class ForifTeam extends BaseTimeEntity {
         if (introTag != null) this.introTag = introTag;
         if (selfIntro != null) this.selfIntro = selfIntro;
         if (graduateYear != null) this.graduateYear = graduateYear;
+    }
+
+    public void assignClubDepartment(ClubDepartment department) {
+        this.clubDepartmentRef = department;
+        this.clubDepartment = department == null ? null : department.getName();
     }
 }
