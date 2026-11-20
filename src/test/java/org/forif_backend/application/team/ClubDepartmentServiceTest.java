@@ -23,24 +23,24 @@ class ClubDepartmentServiceTest {
     @InjectMocks private ClubDepartmentService service;
 
     @Test
-    void 없는_부서는_새로_만들고_팀_접미사는_저장하지_않는다() {
-        when(repository.findByName("SW")).thenReturn(Optional.empty());
+    void 없는_부서는_입력한_이름으로_만든다() {
+        when(repository.findByName("SW팀")).thenReturn(Optional.empty());
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         ClubDepartment department = service.getOrCreate(" SW팀 ");
 
-        assertThat(department.getName()).isEqualTo("SW");
-        verify(repository).findByName("SW");
+        assertThat(department.getName()).isEqualTo("SW팀");
+        verify(repository).findByName("SW팀");
         verify(repository).save(department);
     }
 
     @Test
     void 이미_있는_부서는_같은_행을_사용한다() {
-        ClubDepartment existing = ClubDepartment.create("기획");
-        when(repository.findByName("기획")).thenReturn(Optional.of(existing));
+        ClubDepartment existing = ClubDepartment.create("기획팀");
+        when(repository.findByName("기획팀")).thenReturn(Optional.of(existing));
 
         assertThat(service.getOrCreate("기획팀")).isSameAs(existing);
-        verify(repository).findByName("기획");
+        verify(repository).findByName("기획팀");
         verifyNoMoreInteractions(repository);
     }
 }

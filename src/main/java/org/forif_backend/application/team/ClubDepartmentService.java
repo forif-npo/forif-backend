@@ -31,10 +31,6 @@ public class ClubDepartmentService {
 
     public static String normalizeName(String rawName) {
         if (rawName == null) return null;
-        String name = rawName.trim();
-        if (name.length() > 1 && name.endsWith("팀")) {
-            name = name.substring(0, name.length() - 1).trim();
-        }
-        return name;
+        return rawName.trim();
     }
 }

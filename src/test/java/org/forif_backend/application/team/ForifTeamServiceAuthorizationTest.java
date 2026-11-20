@@ -122,7 +122,7 @@ class ForifTeamServiceAuthorizationTest {
     @Test
     void presidentTeamCanUpdateAnyProfileField() {
         ForifTeam team = team(OWNER_ID);
-        ClubDepartment planning = ClubDepartment.create("기획");
+        ClubDepartment planning = ClubDepartment.create("기획팀");
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(team));
         when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
         when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(planning);
@@ -131,7 +131,7 @@ class ForifTeamServiceAuthorizationTest {
                 OTHER_OPERATOR_ID, TEAM_ID, "부회장", "기획팀", "소개", "자기소개", 2028);
 
         assertEquals("부회장", team.getUserTitle());
-        assertEquals("기획", team.getClubDepartment());
+        assertEquals("기획팀", team.getClubDepartment());
         assertEquals(planning, team.getClubDepartmentRef());
         assertEquals("소개", team.getIntroTag());
         assertEquals("자기소개", team.getSelfIntro());
