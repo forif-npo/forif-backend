@@ -86,6 +86,7 @@ public enum ErrorCode {
     DEPARTMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR147-404", "학과를 찾을 수 없습니다."),
     STAFF_RECRUITMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR148-404", "운영진 모집 회차를 찾을 수 없습니다."),
     STAFF_INTERVIEW_PLAN_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR167-404", "면접 일정이 설정되지 않았습니다."),
+    STAFF_INTERVIEW_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR170-404", "면접 질문을 찾을 수 없습니다."),
     STAFF_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR155-404", "운영진 지원서를 찾을 수 없습니다."),
     HALL_OF_FAME_ENTRY_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR161-404", "명예의 전당 항목을 찾을 수 없습니다."),
     NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "FOR024-404", "공지사항이 없습니다."),
