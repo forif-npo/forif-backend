@@ -7,6 +7,7 @@ import org.forif_backend.application.staffrecruitment.dto.MyStaffApplicationSumm
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -74,6 +75,13 @@ public final class StaffApplicationResponse {
     }
 
     /** 본인·회장단 상세 응답 */
+    /** 지원자가 고른 면접 가능 시간 한 칸. startMinute는 자정부터의 분이다. */
+    public record InterviewSlotResponse(
+            LocalDate date,
+            int startMinute
+    ) {
+    }
+
     public record DetailResponse(
             Integer applicationId,
             Integer recruitmentId,
@@ -86,6 +94,7 @@ public final class StaffApplicationResponse {
             StaffApplicationStatus status,
             OffsetDateTime submittedAt,
             List<AnswerResponse> answers,
+            List<InterviewSlotResponse> interviewSlots,
             boolean canModify
     ) {
         public static DetailResponse from(StaffApplicationDetail detail) {
@@ -112,6 +121,9 @@ public final class StaffApplicationResponse {
                                     answer.questionType() == StaffRecruitmentQuestionType.FILE
                                             ? StaffApplicationService.attachmentName(answer.answer())
                                             : answer.answer()))
+                            .toList(),
+                    detail.interviewSlots().stream()
+                            .map(slot -> new InterviewSlotResponse(slot.date(), slot.startMinute()))
                             .toList(),
                     canModify);
         }

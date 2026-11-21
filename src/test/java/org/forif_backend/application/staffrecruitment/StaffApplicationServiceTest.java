@@ -17,6 +17,8 @@ import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
@@ -30,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +62,9 @@ class StaffApplicationServiceTest {
 
     @Mock
     private StaffRecruitmentRepository staffRecruitmentRepository;
+
+    @Mock
+    private StaffInterviewPlanRepository staffInterviewPlanRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -106,7 +112,7 @@ class StaffApplicationServiceTest {
     }
 
     private SubmitStaffApplicationCommand command(List<ChoiceCommand> choices, List<AnswerCommand> answers) {
-        return new SubmitStaffApplicationCommand(choices, answers);
+        return new SubmitStaffApplicationCommand(choices, answers, List.of());
     }
 
     private List<ChoiceCommand> firstChoiceOnly() {
@@ -215,7 +221,8 @@ class StaffApplicationServiceTest {
                 7, RECRUITMENT_ID, APPLICANT_ID, "Applicant", "applicant@example.com", null, null,
                 List.of(), null, LocalDateTime.now(),
                 List.of(new StaffApplicationDetail.AnswerInfo(
-                        MOTIVE_QUESTION, "파일", StaffRecruitmentQuestionType.FILE, key)));
+                        MOTIVE_QUESTION, "파일", StaffRecruitmentQuestionType.FILE, key)),
+                List.of());
         when(filePort.downloadBytes(key)).thenThrow(new ForifException(ErrorCode.INVALID_FILE_ATTACHMENT));
 
         assertThatThrownBy(() -> staffApplicationService.downloadAttachment(detail, MOTIVE_QUESTION))
@@ -244,6 +251,96 @@ class StaffApplicationServiceTest {
         when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, APPLICANT_ID))
                 .thenReturn(false);
         when(userRepository.findById(APPLICANT_ID)).thenReturn(Optional.of(applicant));
+    }
+
+    private static final LocalDate DEC_1 = LocalDate.of(2026, 12, 1);
+    private static final LocalDate DEC_4 = LocalDate.of(2026, 12, 4);
+
+    private StaffInterviewPlan givenInterviewPlan(boolean required) {
+        StaffInterviewPlan plan = StaffInterviewPlan.create(openRecruitment(), 9, 22, 30, required,
+                "면접 가능 시간을 표시해주세요.", List.of(DEC_1, DEC_4));
+        when(staffInterviewPlanRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
+        return plan;
+    }
+
+    private SubmitStaffApplicationCommand commandWithSlots(List<SubmitStaffApplicationCommand.InterviewSlotCommand> slots) {
+        return new SubmitStaffApplicationCommand(firstChoiceOnly(), validAnswers(), slots);
+    }
+
+    @Test
+    void 면접_가능_시간을_고르면_지원서에_함께_저장한다() {
+        givenOpenRecruitment();
+        givenActiveMember();
+        givenApplicantLoaded();
+        givenInterviewPlan(true);
+        when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        StaffApplicationDetail detail = staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                commandWithSlots(List.of(
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_1, 9 * 60),
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_4, 21 * 60 + 30))));
+
+        assertThat(detail.interviewSlots()).hasSize(2);
+        assertThat(detail.interviewSlots().get(0).date()).isEqualTo(DEC_1);
+        assertThat(detail.interviewSlots().get(0).startMinute()).isEqualTo(9 * 60);
+    }
+
+    @Test
+    void 같은_칸을_두_번_보내면_한_번만_저장한다() {
+        givenOpenRecruitment();
+        givenActiveMember();
+        givenApplicantLoaded();
+        givenInterviewPlan(true);
+        when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        StaffApplicationDetail detail = staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                commandWithSlots(List.of(
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_1, 10 * 60),
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_1, 10 * 60))));
+
+        assertThat(detail.interviewSlots()).hasSize(1);
+    }
+
+    @Test
+    void 설정_범위_밖의_칸은_거절한다() {
+        givenOpenRecruitment();
+        givenActiveMember();
+        givenApplicantLoaded();
+        givenInterviewPlan(true);
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                commandWithSlots(List.of(
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_1, 22 * 60)))))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
+        verify(staffApplicationRepository, never()).save(any());
+    }
+
+    @Test
+    void 필수인데_한_칸도_고르지_않으면_거절한다() {
+        givenOpenRecruitment();
+        givenActiveMember();
+        givenApplicantLoaded();
+        givenInterviewPlan(true);
+
+        assertThatThrownBy(() -> staffApplicationService.submit(
+                RECRUITMENT_ID, APPLICANT_ID, commandWithSlots(List.of())))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
+    }
+
+    @Test
+    void 면접_일정이_없는_회차에_칸을_보내면_거절한다() {
+        givenOpenRecruitment();
+        givenActiveMember();
+        givenApplicantLoaded();
+        when(staffInterviewPlanRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                commandWithSlots(List.of(
+                        new SubmitStaffApplicationCommand.InterviewSlotCommand(DEC_1, 9 * 60)))))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
     }
 
     @Test

@@ -4,6 +4,7 @@ import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,6 +16,7 @@ class StaffApplicationRequestValidationTest {
             var request = new StaffApplicationRequests.UpdateRequest(
                     Arrays.asList(new StaffApplicationRequests.ChoiceRequest(31, 1), null),
                     Arrays.asList(new StaffApplicationRequests.AnswerRequest(41, "답변"), null),
+                    List.of(),
                     Arrays.asList(41, null));
 
             var paths = factory.getValidator().validate(request).stream()
