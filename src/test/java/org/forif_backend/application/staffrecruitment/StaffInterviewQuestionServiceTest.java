@@ -34,6 +34,9 @@ class StaffInterviewQuestionServiceTest {
     @Mock
     private StaffInterviewQuestionRepository staffInterviewQuestionRepository;
 
+    @Mock
+    private StaffInterviewRecordRepository staffInterviewRecordRepository;
+
     @InjectMocks
     private StaffInterviewQuestionService staffInterviewQuestionService;
 
@@ -111,5 +114,29 @@ class StaffInterviewQuestionServiceTest {
         assertThatThrownBy(() -> staffInterviewQuestionService.updateContent(RECRUITMENT_ID, 7, "고친 질문"))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_QUESTION_NOT_FOUND);
+    }
+
+    @Test
+    void 답변이_적힌_질문은_지울_수_없다() {
+        // 면접 기록이 조용히 사라지지 않게 한다. 내용은 고쳐 쓸 수 있다.
+        StaffInterviewQuestion question = StaffInterviewQuestion.create(recruitment(), null, "지원 동기", 1);
+        when(staffInterviewQuestionRepository.findById(7)).thenReturn(Optional.of(question));
+        when(staffInterviewRecordRepository.existsAnswerByQuestionId(7)).thenReturn(true);
+
+        assertThatThrownBy(() -> staffInterviewQuestionService.delete(RECRUITMENT_ID, 7))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_QUESTION_ANSWERED);
+        verify(staffInterviewQuestionRepository, never()).delete(any());
+    }
+
+    @Test
+    void 답변이_없는_질문은_지운다() {
+        StaffInterviewQuestion question = StaffInterviewQuestion.create(recruitment(), null, "지원 동기", 1);
+        when(staffInterviewQuestionRepository.findById(7)).thenReturn(Optional.of(question));
+        when(staffInterviewRecordRepository.existsAnswerByQuestionId(7)).thenReturn(false);
+
+        staffInterviewQuestionService.delete(RECRUITMENT_ID, 7);
+
+        verify(staffInterviewQuestionRepository).delete(question);
     }
 }
