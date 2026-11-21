@@ -9,6 +9,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,6 +61,10 @@ public class StaffInterviewPlan extends BaseTimeEntity {
 
     @Column(length = MAX_GUIDE_LENGTH)
     private String guide;
+
+    /** 회장단이 면접 일정을 확정한 시각. 확정 뒤에도 면접 시각은 옮길 수 있다. */
+    @Column(name = "schedule_confirmed_at")
+    private LocalDateTime scheduleConfirmedAt;
 
     @Version
     private Long version;
@@ -132,6 +137,15 @@ public class StaffInterviewPlan extends BaseTimeEntity {
                 existing.updateOrder(order);
             }
         }
+    }
+
+    /** 면접 일정을 확정한다. 다시 확정하면 확정 시각을 새로 기록한다. */
+    public void confirmSchedule(LocalDateTime now) {
+        this.scheduleConfirmedAt = now;
+    }
+
+    public boolean isScheduleConfirmed() {
+        return this.scheduleConfirmedAt != null;
     }
 
     /**
