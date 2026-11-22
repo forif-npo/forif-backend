@@ -35,6 +35,17 @@ public class StaffInterviewPlanService {
                 .map(StaffInterviewPlanDetail::from);
     }
 
+    /** 공개 조회에서는 초안을 숨기고, 일정 미설정 회차는 빈 값으로 돌려준다. */
+    @Transactional(readOnly = true)
+    public Optional<StaffInterviewPlanDetail> findPublicByRecruitmentId(Integer recruitmentId) {
+        StaffRecruitment recruitment = staffRecruitmentRepository.findById(recruitmentId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
+        if (!recruitment.isPubliclyVisible()) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND);
+        }
+        return findByRecruitmentId(recruitmentId);
+    }
+
     @Transactional(readOnly = true)
     public StaffInterviewPlanDetail getByRecruitmentId(Integer recruitmentId) {
         return findByRecruitmentId(recruitmentId)
@@ -50,18 +61,26 @@ public class StaffInterviewPlanService {
     @Transactional
     public StaffInterviewPlanDetail save(Integer recruitmentId, List<LocalDate> dates,
                                          int startHour, int endHour, int slotMinutes,
-                                         boolean required, String guide) {
+                                         boolean required, String guide, Long expectedVersion) {
         StaffRecruitment recruitment = staffRecruitmentRepository.findById(recruitmentId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
 
         StaffInterviewPlan plan = staffInterviewPlanRepository.findByRecruitmentId(recruitmentId)
                 .map(existing -> {
+                    if (expectedVersion == null || !expectedVersion.equals(existing.getVersion())) {
+                        throw new ForifException(ErrorCode.DATA_INTEGRITY_VIOLATION);
+                    }
+                    staffInterviewPlanRepository.incrementVersion(existing);
                     existing.update(startHour, endHour, slotMinutes, required, guide, dates);
                     return existing;
                 })
-                .orElseGet(() -> staffInterviewPlanRepository.save(
-                        StaffInterviewPlan.create(
-                                recruitment, startHour, endHour, slotMinutes, required, guide, dates)));
+                .orElseGet(() -> {
+                    if (expectedVersion != null) {
+                        throw new ForifException(ErrorCode.DATA_INTEGRITY_VIOLATION);
+                    }
+                    return staffInterviewPlanRepository.save(StaffInterviewPlan.create(
+                            recruitment, startHour, endHour, slotMinutes, required, guide, dates));
+                });
 
         // 화면은 이 응답의 version으로 다음 요청을 보낸다. flush 전에는 증가 전 값이 나가 바로 409가 된다.
         staffInterviewPlanRepository.flush();

@@ -11,6 +11,7 @@ import org.forif_backend.common.exception.ForifException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -164,7 +165,11 @@ public class StaffInterviewPlan extends BaseTimeEntity {
     }
 
     public List<LocalDate> candidateDates() {
-        return this.dates.stream().map(StaffInterviewPlanDate::getInterviewDate).toList();
+        return this.dates.stream()
+                .sorted(Comparator.comparingInt(StaffInterviewPlanDate::getDisplayOrder)
+                        .thenComparing(StaffInterviewPlanDate::getInterviewDate))
+                .map(StaffInterviewPlanDate::getInterviewDate)
+                .toList();
     }
 
     /** 하루에 생기는 칸 수. */

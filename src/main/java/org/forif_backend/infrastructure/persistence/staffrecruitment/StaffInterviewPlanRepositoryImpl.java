@@ -1,5 +1,7 @@
 package org.forif_backend.infrastructure.persistence.staffrecruitment;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
@@ -12,6 +14,7 @@ import java.util.Optional;
 public class StaffInterviewPlanRepositoryImpl implements StaffInterviewPlanRepository {
 
     private final StaffInterviewPlanJpaRepository staffInterviewPlanJpaRepository;
+    private final EntityManager entityManager;
 
     @Override
     public StaffInterviewPlan save(StaffInterviewPlan plan) {
@@ -21,6 +24,11 @@ public class StaffInterviewPlanRepositoryImpl implements StaffInterviewPlanRepos
     @Override
     public void flush() {
         staffInterviewPlanJpaRepository.flush();
+    }
+
+    @Override
+    public void incrementVersion(StaffInterviewPlan plan) {
+        entityManager.lock(plan, LockModeType.PESSIMISTIC_FORCE_INCREMENT);
     }
 
     @Override

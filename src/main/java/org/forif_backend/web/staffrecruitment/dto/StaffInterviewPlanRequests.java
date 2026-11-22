@@ -24,7 +24,9 @@ public final class StaffInterviewPlanRequests {
             /** 한 칸의 길이(분). 10·15·20·30·60만 받는다. 생략하면 30분이다. */
             Integer slotMinutes,
             Boolean required,
-            @Size(max = 200) String guide
+            @Size(max = 200) String guide,
+            /** 최초 설정에서는 생략하고, 기존 설정을 수정할 때는 조회한 값을 보낸다. */
+            @Min(0) Long version
     ) {
         public boolean requiredOrDefault() {
             return required == null || required;
