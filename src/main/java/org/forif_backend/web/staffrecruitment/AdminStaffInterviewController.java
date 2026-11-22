@@ -61,7 +61,8 @@ public class AdminStaffInterviewController {
     ) {
         staffAccountService.requirePresidentTeam(userId);
         return noStore(SheetResponse.from(
-                staffInterviewBoardService.changeStatus(recruitmentId, applicationId, request.status())));
+                staffInterviewBoardService.changeStatus(
+                        recruitmentId, applicationId, request.status(), request.departmentId())));
     }
 
     @Operation(summary = "질문 답변 저장", description = "빈 답변을 보내면 지웁니다.")

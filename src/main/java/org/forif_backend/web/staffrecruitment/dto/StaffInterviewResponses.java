@@ -28,8 +28,16 @@ public final class StaffInterviewResponses {
             SlotResponse assignedSlot,
             String firstDepartment,
             String secondDepartment,
-            StaffInterviewStatus status
+            StaffInterviewStatus status,
+            PassedDepartmentResponse passedDepartment
     ) {
+    }
+
+    /** 합격자에게 배정한 부서. 합격이 아니면 null이다. */
+    public record PassedDepartmentResponse(Integer departmentId, String departmentName) {
+        static PassedDepartmentResponse from(StaffInterviewSheetDetail.PassedDepartment value) {
+            return value == null ? null : new PassedDepartmentResponse(value.departmentId(), value.departmentName());
+        }
     }
 
     public record BoardResponse(Integer slotMinutes, List<CardResponse> cards) {
@@ -37,7 +45,8 @@ public final class StaffInterviewResponses {
             return new BoardResponse(detail.slotMinutes(), detail.cards().stream()
                     .map(card -> new CardResponse(card.applicationId(), card.applicantName(),
                             SlotResponse.from(card.assignedSlot()), card.firstDepartment(),
-                            card.secondDepartment(), card.status()))
+                            card.secondDepartment(), card.status(),
+                            PassedDepartmentResponse.from(card.passedDepartment())))
                     .toList());
         }
     }
@@ -61,7 +70,8 @@ public final class StaffInterviewResponses {
             List<QuestionAnswerResponse> commonQuestions,
             DepartmentQuestionsResponse firstDepartment,
             DepartmentQuestionsResponse secondDepartment,
-            List<ExtraQuestionResponse> extraQuestions
+            List<ExtraQuestionResponse> extraQuestions,
+            PassedDepartmentResponse passedDepartment
     ) {
         public static SheetResponse from(StaffInterviewSheetDetail detail) {
             return new SheetResponse(
@@ -75,7 +85,8 @@ public final class StaffInterviewResponses {
                     department(detail.secondDepartment()),
                     detail.extraQuestions().stream()
                             .map(extra -> new ExtraQuestionResponse(extra.extraQuestionId(), extra.content(), extra.answer()))
-                            .toList());
+                            .toList(),
+                    PassedDepartmentResponse.from(detail.passedDepartment()));
         }
 
         private static List<QuestionAnswerResponse> answers(List<StaffInterviewSheetDetail.QuestionAnswer> items) {
@@ -89,4 +100,5 @@ public final class StaffInterviewResponses {
                     value.departmentId(), value.departmentName(), answers(value.questions()));
         }
     }
+
 }
