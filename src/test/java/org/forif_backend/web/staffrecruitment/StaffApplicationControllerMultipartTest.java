@@ -41,7 +41,8 @@ class StaffApplicationControllerMultipartTest {
     private final StaffApplicationController controller = new StaffApplicationController(service);
     private final StaffApplicationRequests.SubmitRequest request = new StaffApplicationRequests.SubmitRequest(
             List.of(new StaffApplicationRequests.ChoiceRequest(31, 1)),
-            List.of(new StaffApplicationRequests.AnswerRequest(41, "")));
+            List.of(new StaffApplicationRequests.AnswerRequest(41, "")),
+            List.of());
 
     @AfterEach
     void clearSecurityContext() {
@@ -60,7 +61,7 @@ class StaffApplicationControllerMultipartTest {
                 .build();
         when(service.submit(eq(12), eq(1L), any(), any())).thenReturn(new StaffApplicationDetail(
                 7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
-                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of(), List.of()));
 
         mockMvc.perform(multipart("/api/v1/staff-recruitments/12/applications")
                         .file(new MockMultipartFile("request", "blob", "application/json",
@@ -79,7 +80,7 @@ class StaffApplicationControllerMultipartTest {
         multipart.addFile(file);
         when(service.submit(eq(12), eq(1L), any(), any())).thenReturn(new StaffApplicationDetail(
                 7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
-                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of(), List.of()));
 
         var response = controller.submitWithFiles(1L, 12, request, multipart);
 
@@ -110,7 +111,7 @@ class StaffApplicationControllerMultipartTest {
                 .build();
         when(service.update(eq(12), eq(1L), any(), any(), any())).thenReturn(new StaffApplicationDetail(
                 7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
-                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of(), List.of()));
 
         mockMvc.perform(patch("/api/v1/staff-recruitments/12/applications/me")
                         .contentType("application/json")
@@ -129,10 +130,10 @@ class StaffApplicationControllerMultipartTest {
         multipart.addFile(new MockMultipartFile("request", "blob", "application/json", "{}".getBytes()));
         MockMultipartFile replacement = new MockMultipartFile("file_41", "new.pdf", "application/pdf", new byte[]{1});
         multipart.addFile(replacement);
-        var update = new StaffApplicationRequests.UpdateRequest(request.departmentChoices(), request.answers(), List.of(42));
+        var update = new StaffApplicationRequests.UpdateRequest(request.departmentChoices(), request.answers(), List.of(), List.of(42));
         when(service.update(eq(12), eq(1L), any(), any(), any())).thenReturn(new StaffApplicationDetail(
                 7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
-                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of()));
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of(), List.of()));
 
         controller.updateMineWithFiles(1L, 12, update, multipart);
 
