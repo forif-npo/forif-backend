@@ -41,7 +41,7 @@ public class AdminStaffInterviewPlanController {
     }
 
     @Operation(summary = "면접 일정 설정",
-            description = "후보 날짜를 보낸 목록으로 맞춥니다. 이미 제출된 지원서의 선택은 지워지지 않습니다.")
+            description = "후보 날짜를 보낸 목록으로 맞춥니다. 최초 설정은 version을 생략하고, 수정할 때는 조회한 version을 보냅니다. 이미 제출된 지원서의 선택은 지워지지 않습니다.")
     @PutMapping
     public ResponseEntity<ApiResponse<StaffInterviewPlanResponse>> save(
             @AuthenticationPrincipal Long userId,
@@ -53,7 +53,7 @@ public class AdminStaffInterviewPlanController {
         StaffInterviewPlanResponse response = StaffInterviewPlanResponse.from(
                 staffInterviewPlanService.save(recruitmentId, request.dates(), request.startHour(),
                         request.endHour(), request.slotMinutesOrDefault(),
-                        request.requiredOrDefault(), request.guide()));
+                        request.requiredOrDefault(), request.guide(), request.version()));
 
         return noStore(ApiResponse.success(response));
     }

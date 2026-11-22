@@ -31,7 +31,7 @@ public class StaffInterviewPlanController {
     public ResponseEntity<ApiResponse<StaffInterviewPlanResponse>> get(
             @Parameter(description = "모집 회차 ID") @PathVariable Integer recruitmentId
     ) {
-        StaffInterviewPlanResponse response = staffInterviewPlanService.findByRecruitmentId(recruitmentId)
+        StaffInterviewPlanResponse response = staffInterviewPlanService.findPublicByRecruitmentId(recruitmentId)
                 .map(StaffInterviewPlanResponse::from)
                 .orElse(null);
 

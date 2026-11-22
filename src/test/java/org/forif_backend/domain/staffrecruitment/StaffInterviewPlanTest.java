@@ -122,6 +122,17 @@ class StaffInterviewPlanTest {
     }
 
     @Test
+    void 기존_날짜의_순서를_바꾸면_저장_직후에도_새_순서로_응답한다() {
+        StaffInterviewPlan plan = plan();
+        StaffInterviewPlanDate kept = plan.getDates().get(0);
+
+        plan.update(9, 22, 30, true, null, List.of(DEC_3, DEC_1, DEC_2));
+
+        assertThat(plan.getDates()).contains(kept);
+        assertThat(plan.candidateDates()).containsExactly(DEC_3, DEC_1, DEC_2);
+    }
+
+    @Test
     void 중복된_날짜를_보내면_한_번만_담는다() {
         StaffInterviewPlan plan = StaffInterviewPlan.create(
                 recruitment(), 9, 22, 30, true, null, List.of(DEC_1, DEC_1, DEC_2));
