@@ -6,10 +6,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.staffrecruitment.StaffInterviewBoardService;
+import org.forif_backend.application.staffrecruitment.StaffInterviewStaffRegistrationService;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffInterviewRequests.*;
 import org.forif_backend.web.staffrecruitment.dto.StaffInterviewResponses.BoardResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffInterviewResponses.SheetResponse;
+import org.forif_backend.web.staffrecruitment.dto.StaffInterviewResponses.StaffRegistrationResponse;
 import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminStaffInterviewController {
 
     private final StaffInterviewBoardService staffInterviewBoardService;
+    private final StaffInterviewStaffRegistrationService staffInterviewStaffRegistrationService;
     private final StaffAccountService staffAccountService;
 
     @Operation(summary = "면접 보드", description = "지원자 카드와 상태(면접 전·면접 완료·합격·불합격)입니다.")
@@ -117,6 +120,20 @@ public class AdminStaffInterviewController {
         staffAccountService.requirePresidentTeam(userId);
         return noStore(SheetResponse.from(staffInterviewBoardService.deleteExtraQuestion(
                 recruitmentId, applicationId, extraQuestionId)));
+    }
+
+    @Operation(summary = "합격자 운영진 등록",
+            description = "합격자를 모집 회차의 활동 학기 운영진 명단에 배정 부서로 올립니다. "
+                    + "이미 명단에 있는 사람은 건너뛰므로 여러 번 눌러도 됩니다. "
+                    + "운영진 추가와 같은 권한 규칙(SW팀은 현직 회장만 등)을 따릅니다.")
+    @PostMapping("/staff-registration")
+    public ResponseEntity<ApiResponse<StaffRegistrationResponse>> registerPassedApplicants(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId
+    ) {
+        staffAccountService.requirePresidentTeam(userId);
+        return noStore(StaffRegistrationResponse.from(
+                staffInterviewStaffRegistrationService.registerPassedApplicants(userId, recruitmentId)));
     }
 
     private <T> ResponseEntity<ApiResponse<T>> noStore(T body) {

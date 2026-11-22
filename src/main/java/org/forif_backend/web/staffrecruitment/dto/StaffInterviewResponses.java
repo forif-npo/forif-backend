@@ -3,6 +3,7 @@ package org.forif_backend.web.staffrecruitment.dto;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewBoardDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewScheduleDetail.Slot;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail;
+import org.forif_backend.application.staffrecruitment.dto.StaffRegistrationResult;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewStatus;
 
 import java.time.LocalDate;
@@ -101,4 +102,17 @@ public final class StaffInterviewResponses {
         }
     }
 
+    /** 합격자 운영진 등록 결과. 이름 목록은 지원서에 적힌 이름이다. */
+    public record StaffRegistrationResponse(
+            int actYear,
+            int actSemester,
+            List<String> registered,
+            List<String> alreadyMembers,
+            List<String> withdrawn
+    ) {
+        public static StaffRegistrationResponse from(StaffRegistrationResult result) {
+            return new StaffRegistrationResponse(result.actYear(), result.actSemester(),
+                    result.registered(), result.alreadyMembers(), result.withdrawn());
+        }
+    }
 }
