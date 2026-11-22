@@ -27,7 +27,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -95,7 +94,7 @@ class StaffInterviewStaffRegistrationServiceTest {
 
         StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
 
-        verify(forifTeamService).addMember(REQUESTER_ID, 10L, 2027, 1, "기획팀", null);
+        verify(forifTeamService).addMember(REQUESTER_ID, 10L, 2027, 1, "기획팀", "팀원");
         verify(forifTeamService, never()).addMember(any(), eq(11L), anyInt(), anyInt(), any(), any());
         verify(forifTeamService, never()).addMember(any(), eq(12L), anyInt(), anyInt(), any(), any());
         assertThat(result.actYear()).isEqualTo(2027);
@@ -123,7 +122,7 @@ class StaffInterviewStaffRegistrationServiceTest {
 
         StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
 
-        verify(forifTeamService, never()).addMember(any(), any(), any(), any(), any(), isNull());
+        verify(forifTeamService, never()).addMember(any(), any(), any(), any(), any(), any());
         assertThat(result.withdrawn()).containsExactly("탈퇴자");
     }
 
@@ -132,7 +131,7 @@ class StaffInterviewStaffRegistrationServiceTest {
         // SW팀은 현직 회장만 올릴 수 있다는 운영진 관리 규칙을 그대로 따른다.
         givenRecords(
                 record(user(10L, "가합격"), "가합격", StaffInterviewStatus.PASSED, sw));
-        when(forifTeamService.addMember(REQUESTER_ID, 10L, 2027, 1, "SW팀", null))
+        when(forifTeamService.addMember(REQUESTER_ID, 10L, 2027, 1, "SW팀", "팀원"))
                 .thenThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION));
 
         assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
