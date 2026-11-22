@@ -242,6 +242,61 @@ class StaffApplicationServiceTest {
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
     }
 
+    @Test
+    void 첨부파일_문항은_링크_또는_파일_하나를_제출할_수_있다() {
+        givenQuestionType(StaffRecruitmentQuestionType.ATTACHMENT);
+        givenActiveMember();
+        givenApplicantLoaded();
+        when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        StaffApplicationDetail linked = staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "https://example.com/portfolio"))));
+        assertThat(linked.answers().get(0).questionType()).isEqualTo(StaffRecruitmentQuestionType.LINK);
+        assertThat(linked.answers().get(0).answer()).isEqualTo("https://example.com/portfolio");
+
+        MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf", new byte[]{1});
+        String key = "staff-applications/12/portfolio.pdf";
+        when(filePort.uploadFile(eq(file), eq("staff-applications/12"))).thenReturn(key);
+        StaffApplicationDetail uploaded = staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),
+                Map.of(MOTIVE_QUESTION, file));
+        assertThat(uploaded.answers().get(0).questionType()).isEqualTo(StaffRecruitmentQuestionType.FILE);
+        assertThat(StaffApplicationResponse.DetailResponse.from(uploaded).answers().get(0).answer())
+                .isEqualTo("portfolio.pdf");
+    }
+
+    @Test
+    void 첨부파일_문항은_링크와_파일을_동시에_받지_않는다() {
+        givenQuestionType(StaffRecruitmentQuestionType.ATTACHMENT);
+        givenActiveMember();
+        givenApplicantLoaded();
+        MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf", new byte[]{1});
+
+        assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "https://example.com"))),
+                Map.of(MOTIVE_QUESTION, file)))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
+        verify(filePort, never()).uploadFile(any(), any());
+    }
+
+    @Test
+    void 첨부파일_문항의_기존_파일을_링크로_바꾸면_파일을_정리한다() {
+        StaffRecruitment recruitment = openRecruitment();
+        ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", StaffRecruitmentQuestionType.ATTACHMENT);
+        String oldKey = "staff-applications/12/old.pdf";
+        StaffApplication application = existingApplication(recruitment, oldKey);
+        ReflectionTestUtils.setField(application.getAnswers().get(0), "questionType", StaffRecruitmentQuestionType.FILE);
+        givenActiveMember();
+
+        StaffApplicationDetail updated = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
+                command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "https://example.com/new"))),
+                Map.of(), Set.of(MOTIVE_QUESTION));
+
+        assertThat(updated.answers().get(0).questionType()).isEqualTo(StaffRecruitmentQuestionType.LINK);
+        assertThat(updated.answers().get(0).answer()).isEqualTo("https://example.com/new");
+        verify(filePort).deleteFile(oldKey);
+    }
+
     private void givenActiveMember() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(studyUserRepository.existsByUserIdAndStudyYearSemester(APPLICANT_ID, 2026, 2)).thenReturn(true);
