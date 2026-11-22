@@ -4,6 +4,9 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewScheduleRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewAssignment;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewHostSlot;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.junit.jupiter.api.Test;
@@ -22,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -38,6 +42,9 @@ class StaffInterviewPlanServiceTest {
 
     @Mock
     private StaffRecruitmentRepository recruitmentRepository;
+
+    @Mock
+    private StaffInterviewScheduleRepository scheduleRepository;
 
     @InjectMocks
     private StaffInterviewPlanService service;
@@ -81,7 +88,7 @@ class StaffInterviewPlanServiceTest {
     void 오래된_버전이나_버전_누락은_기존_설정을_덮어쓰지_못한다() {
         StaffRecruitment recruitment = recruitment(true);
         StaffInterviewPlan plan = existingPlan(recruitment);
-        when(recruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
         when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
 
         for (Long expectedVersion : new Long[]{1L, null}) {
@@ -99,7 +106,7 @@ class StaffInterviewPlanServiceTest {
     void 현재_버전으로_수정하면_새_순서로_응답한다() {
         StaffRecruitment recruitment = recruitment(true);
         StaffInterviewPlan plan = existingPlan(recruitment);
-        when(recruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
         when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
 
         var detail = service.save(RECRUITMENT_ID, List.of(SECOND_DATE, FIRST_DATE),
@@ -112,7 +119,7 @@ class StaffInterviewPlanServiceTest {
 
     @Test
     void 삭제된_설정의_오래된_버전으로_새_설정을_만들지_못한다() {
-        when(recruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment(true)));
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment(true)));
         when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.save(RECRUITMENT_ID, List.of(FIRST_DATE),
@@ -120,5 +127,57 @@ class StaffInterviewPlanServiceTest {
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DATA_INTEGRITY_VIOLATION);
         verify(planRepository, never()).save(any());
+    }
+
+    @Test
+    void 배정된_지원자가_있으면_면접_일정을_수정하거나_삭제할_수_없다() {
+        StaffRecruitment recruitment = recruitment(true);
+        StaffInterviewPlan plan = existingPlan(recruitment);
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
+        when(scheduleRepository.findAssignments(RECRUITMENT_ID))
+                .thenReturn(List.of(mock(StaffInterviewAssignment.class)));
+
+        assertThatThrownBy(() -> service.save(RECRUITMENT_ID, List.of(SECOND_DATE),
+                9, 22, 30, true, null, 2L))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_PLAN_HAS_ASSIGNMENTS);
+        assertThatThrownBy(() -> service.delete(RECRUITMENT_ID))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_PLAN_HAS_ASSIGNMENTS);
+        verify(planRepository, never()).delete(plan);
+        verify(planRepository, never()).incrementVersion(plan);
+    }
+
+    @Test
+    void 계획을_바꾸면_새_범위_밖의_회장단_가능_시간을_지운다() {
+        StaffRecruitment recruitment = recruitment(true);
+        StaffInterviewPlan plan = existingPlan(recruitment);
+        plan.confirmSchedule(LocalDateTime.now());
+        StaffInterviewHostSlot invalid = StaffInterviewHostSlot.create(recruitment, FIRST_DATE, 9 * 60);
+        StaffInterviewHostSlot valid = StaffInterviewHostSlot.create(recruitment, SECOND_DATE, 9 * 60);
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
+        when(scheduleRepository.findHostSlots(RECRUITMENT_ID)).thenReturn(List.of(invalid, valid));
+
+        service.save(RECRUITMENT_ID, List.of(SECOND_DATE), 9, 22, 30, true, null, 2L);
+
+        verify(scheduleRepository).deleteHostSlots(List.of(invalid));
+        assertThat(plan.isScheduleConfirmed()).isFalse();
+    }
+
+    @Test
+    void 계획을_삭제하면_회장단_가능_시간도_지운다() {
+        StaffRecruitment recruitment = recruitment(true);
+        StaffInterviewPlan plan = existingPlan(recruitment);
+        StaffInterviewHostSlot slot = StaffInterviewHostSlot.create(recruitment, FIRST_DATE, 9 * 60);
+        when(recruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(planRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
+        when(scheduleRepository.findHostSlots(RECRUITMENT_ID)).thenReturn(List.of(slot));
+
+        service.delete(RECRUITMENT_ID);
+
+        verify(scheduleRepository).deleteHostSlots(List.of(slot));
+        verify(planRepository).delete(plan);
     }
 }

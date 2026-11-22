@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.staffrecruitment;
 
 import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationInterviewSlot;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -59,6 +60,16 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
     @Override
     public boolean existsByRecruitmentId(Integer recruitmentId) {
         return staffApplicationJpaRepository.existsByRecruitmentId(recruitmentId);
+    }
+
+    @Override
+    public List<StaffApplication> findAllWithChoicesByRecruitmentId(Integer recruitmentId) {
+        return staffApplicationJpaRepository.findAllWithChoicesByRecruitmentId(recruitmentId);
+    }
+
+    @Override
+    public List<StaffApplicationInterviewSlot> findInterviewSlotsByRecruitmentId(Integer recruitmentId) {
+        return staffApplicationJpaRepository.findInterviewSlotsByRecruitmentId(recruitmentId);
     }
 
     @Override
