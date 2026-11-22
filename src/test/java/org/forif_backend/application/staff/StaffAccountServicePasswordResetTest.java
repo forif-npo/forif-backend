@@ -2,6 +2,7 @@ package org.forif_backend.application.staff;
 
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
@@ -10,6 +11,7 @@ import org.forif_backend.domain.study.StudyRepository;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -47,6 +49,11 @@ class StaffAccountServicePasswordResetTest {
     @Mock private StudyRepository studyRepository;
     @Mock private ForifTeamRepository forifTeamRepository;
     @InjectMocks private StaffAccountService staffAccountService;
+
+    @BeforeEach
+    void activeSemester() {
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+    }
 
     private StaffAccount president() {
         StaffAccount account = mock(StaffAccount.class);

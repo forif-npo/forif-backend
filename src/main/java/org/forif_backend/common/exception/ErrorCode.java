@@ -154,6 +154,9 @@ public enum ErrorCode {
     SEMESTER_INVALID(HttpStatus.BAD_REQUEST, "FOR120-400", "유효하지 않은 학기입니다."),
     FORIF_TEAM_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR121-409", "이미 해당 학기 운영진 명단에 있습니다."),
     SEMESTER_NEXT_PRESIDENT_REQUIRED(HttpStatus.BAD_REQUEST, "FOR122-400", "차기 회장은 운영진 계정을 가진 사람 중에서 지정해야 합니다."),
+    FORIF_TEAM_LEADERSHIP_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR170-409", "해당 학기의 회장 또는 부회장이 이미 지정되어 있습니다."),
+    SEMESTER_NEXT_PRESIDENT_MISMATCH(HttpStatus.CONFLICT, "FOR171-409", "학기 전환 대상과 다음 학기에 지정된 회장이 다릅니다."),
+    SEMESTER_NEXT_TEAM_CONFLICT(HttpStatus.CONFLICT, "FOR172-409", "다음 학기 부회장을 회장 인계 대상으로 지정할 수 없습니다."),
 
     // Semester schedule (모집 단계 기간)
     SEMESTER_PHASE_NOT_STARTED(HttpStatus.BAD_REQUEST, "FOR123-400", "아직 시작되지 않은 기간입니다."),
