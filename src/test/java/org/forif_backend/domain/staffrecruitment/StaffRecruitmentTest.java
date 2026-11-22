@@ -170,6 +170,18 @@ class StaffRecruitmentTest {
     }
 
     @Test
+    void 파일과_첨부파일_문항은_합쳐서_하나만_허용한다() {
+        StaffRecruitment recruitment = draft();
+
+        assertThatThrownBy(() -> recruitment.mergeQuestions(List.of(
+                new StaffRecruitmentQuestionSpec(null, "기존 파일", null,
+                        StaffRecruitmentQuestionType.FILE, false, 5000, 1),
+                new StaffRecruitmentQuestionSpec(null, "첨부파일", null,
+                        StaffRecruitmentQuestionType.ATTACHMENT, false, 5000, 2)), false))
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
     void 같은_이름을_유지한_수정은_식별자로_같은_부서를_고친다() {
         StaffRecruitment recruitment = withDepartments("기획팀", "개발팀");
         Integer planningId = recruitment.getDepartments().get(0).getId();

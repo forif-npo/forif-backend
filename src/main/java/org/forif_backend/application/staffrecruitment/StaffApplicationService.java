@@ -374,9 +374,9 @@ public class StaffApplicationService {
                 .collect(Collectors.toMap(StaffRecruitmentQuestion::getId, Function.identity()));
 
         if (files == null || files.keySet().stream().anyMatch(id -> !questions.containsKey(id)
-                || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE)
+                || !acceptsFile(questions.get(id)))
                 || removedFileQuestionIds == null || removedFileQuestionIds.stream().anyMatch(id ->
-                !questions.containsKey(id) || questions.get(id).getType() != StaffRecruitmentQuestionType.FILE
+                !questions.containsKey(id) || !acceptsFile(questions.get(id))
                         || files.containsKey(id))) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
         }
@@ -390,9 +390,11 @@ public class StaffApplicationService {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
             String value = answer.answer();
-            if (question.getType() == StaffRecruitmentQuestionType.FILE) {
+            StaffRecruitmentQuestionType answerType = question.getType();
+            if (acceptsFile(question)) {
                 MultipartFile file = files.get(question.getId());
-                if (value != null && !value.isBlank()) {
+                if (value != null && !value.isBlank()
+                        && (file != null || question.getType() == StaffRecruitmentQuestionType.FILE)) {
                     throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
                 }
                 if (file != null && file.isEmpty()) {
@@ -402,24 +404,31 @@ public class StaffApplicationService {
                     validateAttachment(file);
                     value = filePort.uploadFile(file, PRIVATE_FILE_DIRECTORY + "/" + recruitment.getId());
                     TransactionalFileCleanup.deleteOnRollback(filePort, value, "운영진 지원서");
+                    answerType = StaffRecruitmentQuestionType.FILE;
+                } else if (question.getType() == StaffRecruitmentQuestionType.ATTACHMENT
+                        && value != null && !value.isBlank()) {
+                    answerType = StaffRecruitmentQuestionType.LINK;
                 } else if (!removedFileQuestionIds.contains(question.getId())) {
                     value = existingFiles.get(question.getId());
+                    if (value != null && !value.isBlank()) answerType = StaffRecruitmentQuestionType.FILE;
                 }
             } else if (files.containsKey(question.getId())) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
-            if (question.getType() != StaffRecruitmentQuestionType.FILE
+            if (answerType != StaffRecruitmentQuestionType.FILE
                     && value != null && value.length() > question.getMaxLength()) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
-            if (question.getType() == StaffRecruitmentQuestionType.LINK && value != null && !value.isBlank()) {
+            if (answerType == StaffRecruitmentQuestionType.LINK && value != null && !value.isBlank()) {
                 value = value.trim();
                 validateLink(value);
             }
             if (question.isRequired() && (value == null || value.isBlank())) {
                 throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
             }
-            created.add(StaffApplicationAnswer.create(question, value));
+            created.add(question.getType() == StaffRecruitmentQuestionType.ATTACHMENT
+                    ? StaffApplicationAnswer.createAttachment(question, value, answerType)
+                    : StaffApplicationAnswer.create(question, value));
         }
 
         boolean missingRequired = questions.values().stream()
@@ -432,6 +441,11 @@ public class StaffApplicationService {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_INVALID_ANSWER);
         }
         return created;
+    }
+
+    private boolean acceptsFile(StaffRecruitmentQuestion question) {
+        return question.getType() == StaffRecruitmentQuestionType.FILE
+                || question.getType() == StaffRecruitmentQuestionType.ATTACHMENT;
     }
 
     private void validateAttachment(MultipartFile file) {
