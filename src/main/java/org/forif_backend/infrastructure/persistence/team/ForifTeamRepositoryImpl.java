@@ -43,4 +43,9 @@ public class ForifTeamRepositoryImpl implements ForifTeamRepository {
     public boolean existsByActYearAndActSemesterAndUserId(int actYear, int actSemester, Long userId) {
         return jpaRepository.existsByActYearAndActSemesterAndUser_Id(actYear, actSemester, userId);
     }
+
+    @Override
+    public Optional<ForifTeam> findByActYearAndActSemesterAndUserId(int actYear, int actSemester, Long userId) {
+        return jpaRepository.findByActYearAndActSemesterAndUser_Id(actYear, actSemester, userId);
+    }
 }

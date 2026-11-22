@@ -152,7 +152,7 @@ web  ──▶  application  ──▶  domain  ◀──  infrastructure
 
 멘토 권한은 계정 종류가 아니라 **"이 스터디의 멘토인가"라는 관계**이기 때문입니다. `StudyMentorAccess` 가 서비스 계층에서 `study.isMentor(userId)` 를 검사합니다. 조회는 지난 학기도 허용하고, 변경은 활동 학기로 제한합니다.
 
-회장단 전용 작업은 `StaffAccountService.requirePresidentTeam(userId)` 를 서비스 계층에서 호출해 검사합니다. 회장단 판정은 `StaffAccount.affiliation` 이 `"회장"` 또는 `"부회장"` 인지를 봅니다.
+회장단 전용 작업은 `StaffAccountService.requirePresidentTeam(userId)` 를 서비스 계층에서 호출해 검사합니다. `ADMIN` 계정의 현재 `StaffAccount.affiliation`과 다음 활동 학기 운영진 명단의 직책을 함께 판정합니다. 다음 학기 직책의 변경은 현 회장만 할 수 있습니다.
 
 ### 무인증 공개 경로
 

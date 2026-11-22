@@ -10,9 +10,13 @@ public record SemesterChangePreviewResponse(
         boolean targetHackathonExists,
         long currentMemberCount,
         long currentCertificateIssuedCount,
-        boolean hasPendingCertificates
+        boolean hasPendingCertificates,
+        Long designatedNextPresidentUserId,
+        Long designatedNextVicePresidentUserId
 ) {
-    public static SemesterChangePreviewResponse from(SemesterChangePreview preview) {
+    public static SemesterChangePreviewResponse from(SemesterChangePreview preview,
+                                                      Long designatedNextPresidentUserId,
+                                                      Long designatedNextVicePresidentUserId) {
         return new SemesterChangePreviewResponse(
                 SemesterResponse.from(preview.current()),
                 SemesterResponse.from(preview.target()),
@@ -21,7 +25,9 @@ public record SemesterChangePreviewResponse(
                 preview.targetHackathonExists(),
                 preview.currentMemberCount(),
                 preview.currentCertificateIssuedCount(),
-                preview.hasPendingCertificates()
+                preview.hasPendingCertificates(),
+                designatedNextPresidentUserId,
+                designatedNextVicePresidentUserId
         );
     }
 }

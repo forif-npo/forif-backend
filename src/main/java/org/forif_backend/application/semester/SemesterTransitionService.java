@@ -8,6 +8,8 @@ import org.forif_backend.common.exception.ForifException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 /**
  * 학기 전환 오케스트레이션.
  *
@@ -30,12 +32,24 @@ public class SemesterTransitionService {
     @Transactional
     public SemesterInfo transition(int actYear, int actSemester,
                                    Long nextPresidentUserId, Long requesterId) {
+        staffAccountService.requireIncumbentPresident(requesterId);
+        if (semesterService.getActive().matches(actYear, actSemester)) {
+            throw new ForifException(ErrorCode.SEMESTER_INVALID);
+        }
         if (nextPresidentUserId == null || !staffAccountService.isAdminAccount(nextPresidentUserId)) {
             throw new ForifException(ErrorCode.SEMESTER_NEXT_PRESIDENT_REQUIRED);
         }
 
-        SemesterInfo changed = semesterService.changeActive(actYear, actSemester, requesterId);
+        Long designatedPresident = staffAccountService.getDesignatedNextPresidentUserId(actYear, actSemester);
+        if (designatedPresident != null && !Objects.equals(designatedPresident, nextPresidentUserId)) {
+            throw new ForifException(ErrorCode.SEMESTER_NEXT_PRESIDENT_MISMATCH);
+        }
+        Long designatedVicePresident = staffAccountService.getDesignatedNextVicePresidentUserId(actYear, actSemester);
+        if (Objects.equals(designatedVicePresident, nextPresidentUserId)) {
+            throw new ForifException(ErrorCode.SEMESTER_NEXT_TEAM_CONFLICT);
+        }
         staffAccountService.handOverPresidency(requesterId, nextPresidentUserId);
-        return changed;
+        staffAccountService.handOverVicePresidency(designatedVicePresident);
+        return semesterService.changeActive(actYear, actSemester, requesterId);
     }
 }

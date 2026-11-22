@@ -30,8 +30,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.file.TransactionalFileCleanup;
 
@@ -179,13 +182,112 @@ public class StaffAccountService {
         StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        String affiliation = staffAccount.getAffiliation();
+        String affiliation = authorityAffiliation(staffAccount);
         return "회장".equals(affiliation) || "부회장".equals(affiliation);
+    }
+
+    /** 실제 소속은 유지하고, 현재 학기 SW팀과 다음 학기 회장단 직책을 권한에만 반영한다. */
+    @Transactional(readOnly = true)
+    public String getAuthorityAffiliation(Long userId) {
+        StaffAccount account = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+        return authorityAffiliation(account);
+    }
+
+    public record AdminAuthority(String affiliation, boolean swTeam, String upcomingAffiliation) {}
+
+    /** 계정 목록의 실효 권한과 SW팀 여부를 학기별 명단 조회로 계산한다. */
+    @Transactional(readOnly = true)
+    public Map<Long, AdminAuthority> getAdminAuthorities(List<StaffAccount> accounts) {
+        if (accounts.isEmpty()) return Map.of();
+        SemesterInfo active = semesterService.getActive();
+        SemesterInfo next = active.next();
+        Set<Long> swTeamIds = forifTeamRepository.findByYearAndSemester(active.actYear(), active.actSemester())
+                .stream().filter(member -> isSwTeam(member.getClubDepartment()))
+                .map(member -> member.getUser().getId()).collect(Collectors.toSet());
+        List<ForifTeam> nextTeam = forifTeamRepository.findByYearAndSemester(next.actYear(), next.actSemester());
+        Map<String, Long> titleCounts = nextTeam.stream()
+                .filter(member -> isLeadershipTitle(member.getUserTitle()))
+                .collect(Collectors.groupingBy(ForifTeam::getUserTitle, Collectors.counting()));
+        Map<Long, String> upcomingTitles = new HashMap<>();
+        nextTeam.forEach(member -> upcomingTitles.put(member.getUser().getId(), member.getUserTitle()));
+        Map<Long, AdminAuthority> authorities = new HashMap<>();
+        for (StaffAccount account : accounts) {
+            boolean swTeam = swTeamIds.contains(account.getUserId());
+            String upcoming = upcomingTitles.get(account.getUserId());
+            if (!isLeadershipTitle(upcoming) || titleCounts.getOrDefault(upcoming, 0L) != 1) {
+                upcoming = null;
+            }
+            authorities.put(account.getUserId(), new AdminAuthority(
+                    resolveAuthorityAffiliation(account.getAffiliation(), upcoming, titleCounts, swTeam),
+                    swTeam, upcoming));
+        }
+        return authorities;
+    }
+
+    private String authorityAffiliation(StaffAccount account) {
+        String current = account.getAffiliation();
+        if ("회장".equals(current)) return current;
+
+        SemesterInfo active = semesterService.getActive();
+        boolean swTeam = forifTeamRepository.findByActYearAndActSemesterAndUserId(
+                        active.actYear(), active.actSemester(), account.getUserId())
+                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
+        if (swTeam) return "회장";
+
+        SemesterInfo next = active.next();
+        String upcoming = forifTeamRepository.findByActYearAndActSemesterAndUserId(
+                        next.actYear(), next.actSemester(), account.getUserId())
+                .map(ForifTeam::getUserTitle).orElse(null);
+        if (!isLeadershipTitle(upcoming)) return current;
+        long appointments = forifTeamRepository.findByYearAndSemester(next.actYear(), next.actSemester()).stream()
+                .filter(member -> upcoming.equals(member.getUserTitle()))
+                .count();
+        return resolveAuthorityAffiliation(current, upcoming, Map.of(upcoming, appointments), false);
+    }
+
+    private String resolveAuthorityAffiliation(String current, String upcoming,
+                                               Map<String, Long> titleCounts, boolean swTeam) {
+        if ("회장".equals(current)) return current;
+        if (isLeadershipTitle(upcoming) && titleCounts.getOrDefault(upcoming, 0L) != 1) upcoming = null;
+        if ("회장".equals(upcoming)) return upcoming;
+        if (swTeam) return "회장";
+        if ("부회장".equals(current)) return current;
+        return "부회장".equals(upcoming) ? upcoming : current;
+    }
+
+    private boolean isSwTeam(String department) {
+        return "SW팀".equals(ClubDepartmentService.normalizeName(department));
+    }
+
+    private boolean isLeadershipTitle(String title) {
+        return "회장".equals(title) || "부회장".equals(title);
+    }
+
+    /** 다음 활동 학기에 지정된 회장. 지정이 없으면 기존 수동 인계를 허용한다. */
+    @Transactional(readOnly = true)
+    public Long getDesignatedNextPresidentUserId(int year, int semester) {
+        return getDesignatedNextTeamUserId(year, semester, "회장");
+    }
+
+    @Transactional(readOnly = true)
+    public Long getDesignatedNextVicePresidentUserId(int year, int semester) {
+        return getDesignatedNextTeamUserId(year, semester, "부회장");
+    }
+
+    private Long getDesignatedNextTeamUserId(int year, int semester, String title) {
+        SemesterInfo next = semesterService.getActive().next();
+        if (!next.matches(year, semester)) return null;
+        List<Long> designated = forifTeamRepository.findByYearAndSemester(year, semester).stream()
+                .filter(member -> title.equals(member.getUserTitle()))
+                .map(member -> member.getUser().getId())
+                .toList();
+        return designated.size() == 1 && isAdminAccount(designated.get(0)) ? designated.get(0) : null;
     }
 
     /**
      * 회장 권한 검증 — 다른 도메인에서도 사용한다.
-     * 회장직 인수인계가 걸린 작업(학기 전환 등)은 부회장이 할 수 없다.
+     * 일반 회장 전용 작업에 사용한다. 실제 직책 인계에는 현 회장 여부를 별도로 검사한다.
      */
     public void requirePresident(Long userId) {
         validatePresident(userId);
@@ -198,7 +300,7 @@ public class StaffAccountService {
         StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        String affiliation = staffAccount.getAffiliation();
+        String affiliation = authorityAffiliation(staffAccount);
         if (!"회장".equals(affiliation) && !"부회장".equals(affiliation)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
@@ -213,11 +315,20 @@ public class StaffAccountService {
         StaffAccount staffAccount = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        if (!"회장".equals(staffAccount.getAffiliation())) {
+        if (!"회장".equals(authorityAffiliation(staffAccount))) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
         return staffAccount;
+    }
+
+    /** 차기 회장단 지정은 현재 회장만 변경할 수 있다. */
+    public void requireIncumbentPresident(Long userId) {
+        StaffAccount account = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+        if (!"회장".equals(account.getAffiliation())) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
     }
 
     /**
@@ -248,6 +359,14 @@ public class StaffAccountService {
         }
         PasswordUtils.validate(command.password());
 
+        SemesterInfo active = semesterService.getActive();
+        boolean existingSwTeamMember = forifTeamRepository.findByActYearAndActSemesterAndUserId(
+                        active.actYear(), active.actSemester(), command.userId())
+                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
+        if (isSwTeam(command.affiliation()) || existingSwTeamMember) {
+            requireIncumbentPresident(requesterId);
+        }
+
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -264,7 +383,6 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
-        SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
@@ -296,7 +414,10 @@ public class StaffAccountService {
         StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        if ("부회장".equals(target.getAffiliation()) && !"회장".equals(requester.getAffiliation())) {
+        String requesterAuthority = authorityAffiliation(requester);
+        String targetAuthority = authorityAffiliation(target);
+        if (("회장".equals(targetAuthority) || "부회장".equals(targetAuthority))
+                && !"회장".equals(requesterAuthority)) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -311,6 +432,11 @@ public class StaffAccountService {
         StaffAccount requester = validatePresidentTeam(requesterId);
         StaffAccount staffAccount = findAndValidateTargetAdmin(requester, targetUserId);
 
+        if (password != null && "회장".equals(authorityAffiliation(requester))
+                && !"회장".equals(requester.getAffiliation())) {
+            throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
         if (name != null) {
             staffAccount.updateName(name);
         }
@@ -322,8 +448,9 @@ public class StaffAccountService {
             refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
         }
         if (affiliation != null) {
+            String targetAuthority = authorityAffiliation(staffAccount);
             if ("회장".equals(affiliation) || "부회장".equals(affiliation)
-                    || "회장".equals(staffAccount.getAffiliation()) || "부회장".equals(staffAccount.getAffiliation())) {
+                    || "회장".equals(targetAuthority) || "부회장".equals(targetAuthority)) {
                 throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
             }
             staffAccount.updateAffiliation(affiliation);
@@ -341,7 +468,7 @@ public class StaffAccountService {
         StaffAccount requester = validatePresidentTeam(requesterId);
         StaffAccount target = findAndValidateTargetAdmin(requester, targetUserId);
 
-        if ("회장".equals(target.getAffiliation())) {
+        if ("회장".equals(authorityAffiliation(target))) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
 
@@ -358,7 +485,10 @@ public class StaffAccountService {
      */
     @Transactional
     public void handOverPresidency(Long currentPresidentUserId, Long nextPresidentUserId) {
-        StaffAccount president = validatePresident(currentPresidentUserId);
+        validatePresident(currentPresidentUserId);
+        StaffAccount president = staffAccountRepository.findByAffiliation("회장").stream()
+                .filter(account -> account.getRole() == StaffRole.ADMIN)
+                .findFirst().orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if (president.getUserId().equals(nextPresidentUserId)) {
             return; // 연임
@@ -369,6 +499,20 @@ public class StaffAccountService {
 
         next.updateAffiliation("회장");
         president.updateAffiliation("운영진");
+    }
+
+    /** 학기 전환 시 기존 부회장 직책을 종료하고, 지정된 차기 부회장이 있으면 인계한다. */
+    @Transactional
+    public void handOverVicePresidency(Long nextVicePresidentUserId) {
+        StaffAccount next = nextVicePresidentUserId == null ? null
+                : staffAccountRepository.findByUserIdAndRole(nextVicePresidentUserId, StaffRole.ADMIN)
+                        .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
+        for (StaffAccount vicePresident : staffAccountRepository.findByAffiliation("부회장")) {
+            if (!vicePresident.getUserId().equals(nextVicePresidentUserId)) {
+                vicePresident.updateAffiliation("운영진");
+            }
+        }
+        if (next != null) next.updateAffiliation("부회장");
     }
 
     /** 회장 후보 = ADMIN 계정을 가진 운영진 */
@@ -382,10 +526,13 @@ public class StaffAccountService {
      */
     @Transactional
     public void delegate(Long requesterId, Long targetUserId, String targetAffiliation) {
-        StaffAccount president = validatePresident(requesterId);
+        requireIncumbentPresident(requesterId);
+        StaffAccount president = staffAccountRepository.findByAffiliation("회장").stream()
+                .filter(account -> account.getRole() == StaffRole.ADMIN)
+                .findFirst().orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         // 회장 연임(자기 자신 지정)은 허용한다. 부회장 자리에 본인을 넣는 것은 막는다.
-        if (president.getUserId().equals(targetUserId) && !"회장".equals(targetAffiliation)) {
+        if (requesterId.equals(targetUserId) && !"회장".equals(targetAffiliation)) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
@@ -393,6 +540,7 @@ public class StaffAccountService {
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
         if ("회장".equals(targetAffiliation)) {
+            if (president.getUserId().equals(targetUserId)) return;
             target.updateAffiliation("회장");
             president.updateAffiliation("운영진");
         } else if ("부회장".equals(targetAffiliation)) {
