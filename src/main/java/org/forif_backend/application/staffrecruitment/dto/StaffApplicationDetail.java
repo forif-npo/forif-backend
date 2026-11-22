@@ -4,6 +4,7 @@ import org.forif_backend.domain.staffrecruitment.StaffApplication;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,13 +23,21 @@ public record StaffApplicationDetail(
         List<AppliedDepartment> appliedDepartments,
         StaffApplicationStatus status,
         LocalDateTime submittedAt,
-        List<AnswerInfo> answers
+        List<AnswerInfo> answers,
+        List<InterviewSlotInfo> interviewSlots
 ) {
 
     public record AppliedDepartment(
             Integer departmentId,
             String name,
             int priority
+    ) {
+    }
+
+    /** 지원자가 고른 면접 가능 시간 한 칸. startMinute는 자정부터의 분이다. */
+    public record InterviewSlotInfo(
+            LocalDate date,
+            int startMinute
     ) {
     }
 
@@ -63,6 +72,9 @@ public record StaffApplicationDetail(
                                 answer.getQuestionLabel(),
                                 answer.getQuestionType(),
                                 answer.getAnswer()))
+                        .toList(),
+                application.getInterviewSlots().stream()
+                        .map(slot -> new InterviewSlotInfo(slot.getSlotDate(), slot.getStartMinute()))
                         .toList()
         );
     }

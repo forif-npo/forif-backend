@@ -19,6 +19,9 @@ import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestion;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationInterviewSlot;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
@@ -33,6 +36,7 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,6 +55,7 @@ public class StaffApplicationService {
 
     private final StaffApplicationRepository staffApplicationRepository;
     private final StaffRecruitmentRepository staffRecruitmentRepository;
+    private final StaffInterviewPlanRepository staffInterviewPlanRepository;
     private final UserRepository userRepository;
     private final StudyUserRepository studyUserRepository;
     private final SemesterService semesterService;
@@ -94,6 +99,7 @@ public class StaffApplicationService {
         createChoices(recruitment, command.departmentChoices()).forEach(application::addChoice);
         createAnswers(recruitment, command.answers(), files, Map.of(), Set.of())
                 .forEach(application::addAnswer);
+        createInterviewSlots(recruitmentId, command.interviewSlots()).forEach(application::addInterviewSlot);
 
         StaffApplication saved = staffApplicationRepository.save(application);
         try {
@@ -139,10 +145,15 @@ public class StaffApplicationService {
                 .filter(value -> value != null && !value.isBlank() && !retainedFiles.contains(value))
                 .toList();
 
+        List<StaffApplicationInterviewSlot> interviewSlots =
+                createInterviewSlots(recruitmentId, command.interviewSlots());
+
         application.clearSubmission();
+        // 지망·답변·면접 시간 모두 유니크 제약이 있어, 지우고 다시 넣기 전에 삭제를 먼저 반영한다.
         staffApplicationRepository.flush();
         choices.forEach(application::addChoice);
         answers.forEach(application::addAnswer);
+        interviewSlots.forEach(application::addInterviewSlot);
         TransactionalFileCleanup.deleteAfterCommit(filePort, replacedFiles, "운영진 지원서 수정");
         return StaffApplicationDetail.from(application);
     }
@@ -283,6 +294,40 @@ public class StaffApplicationService {
             return applicant.getDepartmentEntity().getDepartmentName();
         }
         return applicant.getDepartment();
+    }
+
+    /**
+     * 면접 가능 시간을 검증해 만든다.
+     *
+     * 면접 일정이 설정된 회차에서만 받는다. 설정되지 않았는데 값을 보내면 거절하고,
+     * 설정된 범위 밖의 칸도 거절한다. 같은 칸을 두 번 보내면 한 번만 저장한다.
+     */
+    private List<StaffApplicationInterviewSlot> createInterviewSlots(
+            Integer recruitmentId, List<SubmitStaffApplicationCommand.InterviewSlotCommand> commands) {
+        List<SubmitStaffApplicationCommand.InterviewSlotCommand> requested =
+                commands == null ? List.of() : commands;
+        StaffInterviewPlan plan = staffInterviewPlanRepository.findByRecruitmentId(recruitmentId).orElse(null);
+
+        if (plan == null) {
+            if (!requested.isEmpty()) {
+                throw new ForifException(ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
+            }
+            return List.of();
+        }
+
+        Set<SubmitStaffApplicationCommand.InterviewSlotCommand> unique = new LinkedHashSet<>(requested);
+        unique.forEach(slot -> {
+            if (slot.date() == null || !plan.covers(slot.date(), slot.startMinute())) {
+                throw new ForifException(ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
+            }
+        });
+        if (plan.isRequired() && unique.isEmpty()) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_SLOT_INVALID);
+        }
+
+        return unique.stream()
+                .map(slot -> StaffApplicationInterviewSlot.create(slot.date(), slot.startMinute()))
+                .toList();
     }
 
     private List<StaffApplicationChoice> createChoices(StaffRecruitment recruitment,

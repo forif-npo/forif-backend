@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -31,9 +32,17 @@ public final class StaffApplicationRequests {
     ) {
     }
 
+    /** 면접 가능 시간 한 칸. startMinute는 자정부터의 분이다. 09:30이면 570이다. */
+    public record InterviewSlotRequest(
+            @NotNull LocalDate date,
+            @Min(0) @Max(1439) int startMinute
+    ) {
+    }
+
     public record SubmitRequest(
             @NotEmpty List<@NotNull @Valid ChoiceRequest> departmentChoices,
-            List<@NotNull @Valid AnswerRequest> answers
+            List<@NotNull @Valid AnswerRequest> answers,
+            List<@NotNull @Valid InterviewSlotRequest> interviewSlots
     ) {
         public SubmitStaffApplicationCommand toCommand() {
             return new SubmitStaffApplicationCommand(
@@ -44,6 +53,10 @@ public final class StaffApplicationRequests {
                     answers == null ? List.of() : answers.stream()
                             .map(answer -> new SubmitStaffApplicationCommand.AnswerCommand(
                                     answer.questionId(), answer.answer()))
+                            .toList(),
+                    interviewSlots == null ? List.of() : interviewSlots.stream()
+                            .map(slot -> new SubmitStaffApplicationCommand.InterviewSlotCommand(
+                                    slot.date(), slot.startMinute()))
                             .toList());
         }
     }
@@ -51,6 +64,7 @@ public final class StaffApplicationRequests {
     public record UpdateRequest(
             @NotEmpty List<@NotNull @Valid ChoiceRequest> departmentChoices,
             List<@NotNull @Valid AnswerRequest> answers,
+            List<@NotNull @Valid InterviewSlotRequest> interviewSlots,
             List<@NotNull Integer> removedFileQuestionIds
     ) {
         public SubmitStaffApplicationCommand toCommand() {
@@ -62,6 +76,10 @@ public final class StaffApplicationRequests {
                     answers == null ? List.of() : answers.stream()
                             .map(answer -> new SubmitStaffApplicationCommand.AnswerCommand(
                                     answer.questionId(), answer.answer()))
+                            .toList(),
+                    interviewSlots == null ? List.of() : interviewSlots.stream()
+                            .map(slot -> new SubmitStaffApplicationCommand.InterviewSlotCommand(
+                                    slot.date(), slot.startMinute()))
                             .toList());
         }
     }

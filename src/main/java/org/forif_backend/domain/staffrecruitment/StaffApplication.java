@@ -65,6 +65,10 @@ public class StaffApplication extends BaseTimeEntity {
     @OrderBy("id ASC")
     private List<StaffApplicationAnswer> answers = new ArrayList<>();
 
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("slotDate ASC, startMinute ASC")
+    private List<StaffApplicationInterviewSlot> interviewSlots = new ArrayList<>();
+
     private StaffApplication(StaffRecruitment recruitment, User applicant, String applicantName,
                              String applicantEmail, String applicantPhoneNum, String applicantDepartment,
                              LocalDateTime submittedAt) {
@@ -98,9 +102,15 @@ public class StaffApplication extends BaseTimeEntity {
         this.answers.add(answer);
     }
 
+    public void addInterviewSlot(StaffApplicationInterviewSlot slot) {
+        slot.assignTo(this);
+        this.interviewSlots.add(slot);
+    }
+
     public void clearSubmission() {
         this.choices.clear();
         this.answers.clear();
+        this.interviewSlots.clear();
     }
 
     /** 본인 지원서인지. ID 추측으로 타인 지원서를 열람하지 못하게 한다. */
