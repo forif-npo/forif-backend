@@ -19,7 +19,7 @@ public final class StaffInterviewScheduleRequests {
 
     public record SlotRequest(
             @NotNull LocalDate date,
-            @Min(0) @Max(1439) int startMinute
+            @NotNull @Min(0) @Max(1439) Integer startMinute
     ) {
         StaffInterviewScheduleDetail.Slot toSlot() {
             return new StaffInterviewScheduleDetail.Slot(date, startMinute);
