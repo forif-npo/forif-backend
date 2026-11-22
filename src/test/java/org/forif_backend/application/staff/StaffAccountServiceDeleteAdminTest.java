@@ -2,6 +2,7 @@ package org.forif_backend.application.staff;
 
 import org.forif_backend.application.auth.RefreshTokenService;
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.domain.staff.StaffAccount;
 import org.forif_backend.domain.staff.StaffAccountRepository;
@@ -10,6 +11,7 @@ import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.user.User;
 import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -49,6 +51,11 @@ class StaffAccountServiceDeleteAdminTest {
     @InjectMocks
     private StaffAccountService staffAccountService;
 
+    @BeforeEach
+    void activeSemester() {
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+    }
+
     @Test
     void deletesAdminAccountAndInvalidatesItsAdminRefreshToken() {
         StaffAccount requester = adminAccount(REQUESTER_ID, "회장");
@@ -79,6 +86,22 @@ class StaffAccountServiceDeleteAdminTest {
 
         assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, exception.getErrorCode());
         verify(staffAccountRepository, never()).delete(target);
+    }
+
+    @Test
+    void vicePresidentCannotResetPresidentPassword() {
+        StaffAccount requester = adminAccount(REQUESTER_ID, "부회장");
+        StaffAccount target = adminAccount(TARGET_ID, "회장");
+        when(staffAccountRepository.findByUserIdAndRole(REQUESTER_ID, StaffRole.ADMIN))
+                .thenReturn(Optional.of(requester));
+        when(staffAccountRepository.findByUserIdAndRole(TARGET_ID, StaffRole.ADMIN))
+                .thenReturn(Optional.of(target));
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> staffAccountService.updateAdmin(REQUESTER_ID, TARGET_ID, null, "NewPass1!", null));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        verify(passwordEncoder, never()).encode("NewPass1!");
     }
 
     private StaffAccount adminAccount(Long userId, String affiliation) {

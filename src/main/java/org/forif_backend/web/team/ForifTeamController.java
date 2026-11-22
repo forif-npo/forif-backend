@@ -65,6 +65,7 @@ public class ForifTeamController {
     ) {
         staffAccountService.requirePresidentTeam(requesterId);
         ForifTeamResponse response = forifTeamService.addMember(
+                requesterId,
                 request.getUserId(),
                 request.getActYear(),
                 request.getActSemester(),
@@ -132,7 +133,7 @@ public class ForifTeamController {
             @Parameter(description = "운영진 이력 ID") @PathVariable Long id
     ) {
         staffAccountService.requirePresidentTeam(requesterId);
-        forifTeamService.deleteMember(id);
+        forifTeamService.deleteMember(requesterId, id);
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

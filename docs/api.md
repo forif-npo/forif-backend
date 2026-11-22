@@ -83,6 +83,7 @@ Google OAuth 기반 회원가입·로그인·토큰 재발급·로그아웃과 �
 `StaffAccountController` 는 세 갈래를 한 클래스에서 다룹니다 — 운영진 로그인·내 정보·비밀번호 변경(`/staff`), 계정 CRUD 와 회장 위임(`/president`), 멘토·부원 목록 조회와 부원 수정·삭제(`/admin`).
 
 `/president` 계열은 `@PreAuthorize` 로는 `hasRole('ADMIN')` 만 걸고, 회장단 여부는 서비스에서 `requirePresidentTeam` 으로 검사합니다.
+`GET /api/v1/staff/me`의 `affiliation`은 현재 직책, `authority_affiliation`은 다음 학기 회장단 지정을 반영한 관리 권한입니다. `GET /api/v1/president/admins`도 두 필드를 반환해 현재 직책과 차기 권한을 구분해 표시합니다. 회장단 직책은 다음 학기 운영진 명단의 `user_title`을 통해 지정하며, 현 회장만 변경할 수 있습니다. `POST /api/v1/president/delegate`는 현 회장만 호출할 수 있고, 차기 회장은 다른 운영진 계정의 비밀번호를 재설정할 수 없습니다.
 
 운영진 모집은 초안에서만 수정할 수 있습니다. 지원서는 접수 중에 제출·수정·취소할 수 있으며, 첨부파일 다운로드는 본인 또는 권한이 있는 운영진에게만 허용됩니다.
 운영진 이력과 새 모집 부서는 공통 부서 ID를 참조합니다. 입력한 부서명이 없으면 생성해 연결합니다. 기존 모집 회차의 부서명은 그대로 보존하고 공통 부서 ID는 비워 둡니다.
@@ -97,7 +98,7 @@ Google OAuth 기반 회원가입·로그인·토큰 재발급·로그아웃과 �
 
 현재 학기와 일정 조회는 공개입니다. 일정 저장(`PUT /api/v1/admin/semester-schedules/{year}/{semester}`)은 **전체 교체**입니다 — 요청에 없는 단계는 삭제됩니다. 회장단만 호출할 수 있습니다.
 
-학기 전환(`/admin/semesters`)은 회장 전용입니다.
+학기 전환(`/admin/semesters`)의 미리보기는 현재 또는 차기 회장이 조회할 수 있지만, 실제 전환은 현 회장만 실행할 수 있습니다. 현재 활동 학기를 전환 대상으로 다시 보내면 400 오류로 거절하며 회장단 직책을 변경하지 않습니다. 미리보기의 `designated_next_president_user_id`와 `designated_next_vice_president_user_id`는 다음 학기 명단에 지정된 회장단입니다. 차기 회장이 지정된 경우 전환 요청의 `next_president_user_id`와 일치해야 합니다. 차기 부회장이 없으면 전환 시 기존 부회장 직책이 종료됩니다.
 
 ### 회비
 
