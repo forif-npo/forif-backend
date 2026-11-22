@@ -1,6 +1,7 @@
 package org.forif_backend.web.staff;
 
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
+import org.forif_backend.application.staff.StaffAccountService.AdminAuthority;
 import org.forif_backend.application.staff.dto.StaffSignInCommand;
 import org.forif_backend.application.staff.dto.StaffSignInResult;
 import org.forif_backend.domain.staff.StaffAccount;
@@ -60,7 +61,7 @@ public class StaffDtoMapper {
                 .build();
     }
 
-    public static AdminResponse toAdminResponse(StaffAccount staffAccount, String authorityAffiliation) {
+    public static AdminResponse toAdminResponse(StaffAccount staffAccount, AdminAuthority authority) {
         User user = staffAccount.getUser();
         return AdminResponse.builder()
                 .userId(staffAccount.getUserId())
@@ -68,7 +69,9 @@ public class StaffDtoMapper {
                 .department(user.getDepartment())
                 .phoneNum(user.getPhoneNum())
                 .affiliation(staffAccount.getAffiliation())
-                .authorityAffiliation(authorityAffiliation)
+                .authorityAffiliation(authority.affiliation())
+                .swTeam(authority.swTeam())
+                .upcomingAffiliation(authority.upcomingAffiliation())
                 .build();
     }
 }

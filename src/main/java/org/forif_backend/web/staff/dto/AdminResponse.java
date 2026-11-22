@@ -10,5 +10,7 @@ public record AdminResponse(
         String department,
         @JsonProperty("phone_num") String phoneNum,
         String affiliation,
-        @JsonProperty("authority_affiliation") String authorityAffiliation
+        @JsonProperty("authority_affiliation") String authorityAffiliation,
+        @JsonProperty("sw_team") boolean swTeam,
+        @JsonProperty("upcoming_affiliation") String upcomingAffiliation
 ) {}

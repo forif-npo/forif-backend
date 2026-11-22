@@ -33,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.file.TransactionalFileCleanup;
@@ -185,7 +186,7 @@ public class StaffAccountService {
         return "회장".equals(affiliation) || "부회장".equals(affiliation);
     }
 
-    /** 실제 소속은 유지하고, 바로 다음 학기의 회장단 직책을 권한에만 반영한다. */
+    /** 실제 소속은 유지하고, 현재 학기 SW팀과 다음 학기 회장단 직책을 권한에만 반영한다. */
     @Transactional(readOnly = true)
     public String getAuthorityAffiliation(Long userId) {
         StaffAccount account = staffAccountRepository.findByUserIdAndRole(userId, StaffRole.ADMIN)
@@ -193,21 +194,33 @@ public class StaffAccountService {
         return authorityAffiliation(account);
     }
 
-    /** 계정 목록에 표시할 실효 권한을 다음 학기 명단 한 번의 조회로 계산한다. */
+    public record AdminAuthority(String affiliation, boolean swTeam, String upcomingAffiliation) {}
+
+    /** 계정 목록의 실효 권한과 SW팀 여부를 학기별 명단 조회로 계산한다. */
     @Transactional(readOnly = true)
-    public Map<Long, String> getAuthorityAffiliations(List<StaffAccount> accounts) {
+    public Map<Long, AdminAuthority> getAdminAuthorities(List<StaffAccount> accounts) {
         if (accounts.isEmpty()) return Map.of();
-        SemesterInfo next = semesterService.getActive().next();
+        SemesterInfo active = semesterService.getActive();
+        SemesterInfo next = active.next();
+        Set<Long> swTeamIds = forifTeamRepository.findByYearAndSemester(active.actYear(), active.actSemester())
+                .stream().filter(member -> isSwTeam(member.getClubDepartment()))
+                .map(member -> member.getUser().getId()).collect(Collectors.toSet());
         List<ForifTeam> nextTeam = forifTeamRepository.findByYearAndSemester(next.actYear(), next.actSemester());
         Map<String, Long> titleCounts = nextTeam.stream()
                 .filter(member -> isLeadershipTitle(member.getUserTitle()))
                 .collect(Collectors.groupingBy(ForifTeam::getUserTitle, Collectors.counting()));
         Map<Long, String> upcomingTitles = new HashMap<>();
         nextTeam.forEach(member -> upcomingTitles.put(member.getUser().getId(), member.getUserTitle()));
-        Map<Long, String> authorities = new HashMap<>();
+        Map<Long, AdminAuthority> authorities = new HashMap<>();
         for (StaffAccount account : accounts) {
-            authorities.put(account.getUserId(), resolveAuthorityAffiliation(account.getAffiliation(),
-                    upcomingTitles.get(account.getUserId()), titleCounts));
+            boolean swTeam = swTeamIds.contains(account.getUserId());
+            String upcoming = upcomingTitles.get(account.getUserId());
+            if (!isLeadershipTitle(upcoming) || titleCounts.getOrDefault(upcoming, 0L) != 1) {
+                upcoming = null;
+            }
+            authorities.put(account.getUserId(), new AdminAuthority(
+                    resolveAuthorityAffiliation(account.getAffiliation(), upcoming, titleCounts, swTeam),
+                    swTeam, upcoming));
         }
         return authorities;
     }
@@ -216,7 +229,13 @@ public class StaffAccountService {
         String current = account.getAffiliation();
         if ("회장".equals(current)) return current;
 
-        SemesterInfo next = semesterService.getActive().next();
+        SemesterInfo active = semesterService.getActive();
+        boolean swTeam = forifTeamRepository.findByActYearAndActSemesterAndUserId(
+                        active.actYear(), active.actSemester(), account.getUserId())
+                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
+        if (swTeam) return "회장";
+
+        SemesterInfo next = active.next();
         String upcoming = forifTeamRepository.findByActYearAndActSemesterAndUserId(
                         next.actYear(), next.actSemester(), account.getUserId())
                 .map(ForifTeam::getUserTitle).orElse(null);
@@ -224,16 +243,21 @@ public class StaffAccountService {
         long appointments = forifTeamRepository.findByYearAndSemester(next.actYear(), next.actSemester()).stream()
                 .filter(member -> upcoming.equals(member.getUserTitle()))
                 .count();
-        return resolveAuthorityAffiliation(current, upcoming, Map.of(upcoming, appointments));
+        return resolveAuthorityAffiliation(current, upcoming, Map.of(upcoming, appointments), false);
     }
 
     private String resolveAuthorityAffiliation(String current, String upcoming,
-                                               Map<String, Long> titleCounts) {
+                                               Map<String, Long> titleCounts, boolean swTeam) {
         if ("회장".equals(current)) return current;
         if (isLeadershipTitle(upcoming) && titleCounts.getOrDefault(upcoming, 0L) != 1) upcoming = null;
         if ("회장".equals(upcoming)) return upcoming;
+        if (swTeam) return "회장";
         if ("부회장".equals(current)) return current;
         return "부회장".equals(upcoming) ? upcoming : current;
+    }
+
+    private boolean isSwTeam(String department) {
+        return "SW팀".equals(ClubDepartmentService.normalizeName(department));
     }
 
     private boolean isLeadershipTitle(String title) {
@@ -335,6 +359,14 @@ public class StaffAccountService {
         }
         PasswordUtils.validate(command.password());
 
+        SemesterInfo active = semesterService.getActive();
+        boolean existingSwTeamMember = forifTeamRepository.findByActYearAndActSemesterAndUserId(
+                        active.actYear(), active.actSemester(), command.userId())
+                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
+        if (isSwTeam(command.affiliation()) || existingSwTeamMember) {
+            requireIncumbentPresident(requesterId);
+        }
+
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -351,7 +383,6 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
-        SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {

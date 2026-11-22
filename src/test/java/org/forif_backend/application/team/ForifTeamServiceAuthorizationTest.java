@@ -182,6 +182,38 @@ class ForifTeamServiceAuthorizationTest {
     }
 
     @Test
+    void nonIncumbentCannotAssignSwTeamMembership() {
+        ForifTeam member = team(OWNER_ID);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+        org.mockito.Mockito.doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
+                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID,
+                        null, "SW팀", null, null, null));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals("개발팀", member.getClubDepartment());
+    }
+
+    @Test
+    void nonIncumbentCannotRemoveSwTeamMembership() {
+        ForifTeam member = ForifTeam.create(
+                User.createUser(OWNER_ID, "운영진", "owner@example.com", "010-0000-0000", "컴퓨터학부"),
+                2026, 1, "SW팀");
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        org.mockito.Mockito.doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
+                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.deleteMember(OTHER_OPERATOR_ID, TEAM_ID));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        verify(forifTeamRepository, never()).deleteById(TEAM_ID);
+    }
+
+    @Test
     void incumbentCanAppointNextSemesterPresidentWithAdminAccount() {
         ForifTeam member = team(OWNER_ID);
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));

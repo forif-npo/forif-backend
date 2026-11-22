@@ -59,6 +59,7 @@ public class ForifTeamService {
         int semester = actSemester != null ? actSemester : active.actSemester();
 
         validateLeadershipChange(requesterId, year, semester, userId, null, userTitle);
+        if (isSwTeam(clubDepartment)) staffAccountService.requireIncumbentPresident(requesterId);
 
         if (forifTeamRepository.existsByActYearAndActSemesterAndUserId(year, semester, userId)) {
             throw new ForifException(ErrorCode.FORIF_TEAM_MEMBER_ALREADY_EXISTS);
@@ -83,6 +84,11 @@ public class ForifTeamService {
         if (staffAccountService.isPresidentTeam(requesterId)) {
             validateLeadershipChange(requesterId, forifTeam.getActYear(), forifTeam.getActSemester(),
                     forifTeam.getUser().getId(), forifTeam.getUserTitle(), userTitle);
+            if (clubDepartment != null
+                    && !Objects.equals(ClubDepartmentService.normalizeName(clubDepartment), forifTeam.getClubDepartment())
+                    && (isSwTeam(clubDepartment) || isSwTeam(forifTeam.getClubDepartment()))) {
+                staffAccountService.requireIncumbentPresident(requesterId);
+            }
             forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
             if (clubDepartment != null) {
                 forifTeam.assignClubDepartment(clubDepartment.isBlank()
@@ -114,7 +120,7 @@ public class ForifTeamService {
     public void deleteMember(Long requesterId, Long id) {
         ForifTeam member = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
-        if (isLeadershipTitle(member.getUserTitle())) {
+        if (isLeadershipTitle(member.getUserTitle()) || isSwTeam(member.getClubDepartment())) {
             staffAccountService.requireIncumbentPresident(requesterId);
         }
         forifTeamRepository.deleteById(id);
@@ -139,6 +145,10 @@ public class ForifTeamService {
 
     private boolean isLeadershipTitle(String title) {
         return "회장".equals(title) || "부회장".equals(title);
+    }
+
+    private boolean isSwTeam(String department) {
+        return "SW팀".equals(ClubDepartmentService.normalizeName(department));
     }
 
     private void validateOwner(Long requesterId, ForifTeam forifTeam) {

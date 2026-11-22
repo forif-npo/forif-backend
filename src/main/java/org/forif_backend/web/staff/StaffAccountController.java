@@ -100,7 +100,7 @@ public class StaffAccountController {
     ) {
         CursorPageResponse<StaffAccount> result = staffAccountService.getAdmins(userId, cursor, page, size, search);
 
-        var authorities = staffAccountService.getAuthorityAffiliations(result.content());
+        var authorities = staffAccountService.getAdminAuthorities(result.content());
         List<AdminResponse> content = result.content().stream()
                 .map(account -> StaffDtoMapper.toAdminResponse(account, authorities.get(account.getUserId())))
                 .toList();
@@ -121,7 +121,7 @@ public class StaffAccountController {
         CreateAdminCommand command = StaffDtoMapper.toCommand(request);
         StaffAccount staffAccount = staffAccountService.createAdmin(userId, command);
         AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount,
-                staffAccountService.getAuthorityAffiliation(staffAccount.getUserId()));
+                staffAccountService.getAdminAuthorities(List.of(staffAccount)).get(staffAccount.getUserId()));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -140,7 +140,7 @@ public class StaffAccountController {
                 userId, targetUserId, request.name(), request.password(), request.affiliation()
         );
         AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount,
-                staffAccountService.getAuthorityAffiliation(staffAccount.getUserId()));
+                staffAccountService.getAdminAuthorities(List.of(staffAccount)).get(staffAccount.getUserId()));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
