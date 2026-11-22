@@ -13,7 +13,9 @@ import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewQuestionRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
@@ -27,6 +29,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 운영진 모집 회차 관리·조회.
@@ -40,6 +44,7 @@ public class StaffRecruitmentService {
 
     private final StaffRecruitmentRepository staffRecruitmentRepository;
     private final StaffApplicationRepository staffApplicationRepository;
+    private final StaffInterviewQuestionRepository staffInterviewQuestionRepository;
     private final SemesterService semesterService;
     private final ClubDepartmentService clubDepartmentService;
 
@@ -70,9 +75,12 @@ public class StaffRecruitmentService {
 
         recruitment.updateDetails(command.title(), command.summary(), command.description(),
                 command.startsAt(), command.endsAt());
-        // 초안만 수정할 수 있으며 기존 지원서가 참조하는 항목은 삭제하지 않는다.
+        // 초안만 수정할 수 있으며 지원서나 면접 질문이 참조하는 부서는 삭제하지 않는다.
         boolean hasApplications = staffApplicationRepository.existsByRecruitmentId(recruitmentId);
         if (command.departments() != null) {
+            if (!hasApplications) {
+                requireNoInterviewQuestionsInRemovedDepartments(recruitment, command.departments());
+            }
             recruitment.mergeDepartments(toDepartmentSpecs(command.departments()), hasApplications);
             linkDepartments(recruitment);
         }
@@ -200,6 +208,24 @@ public class StaffRecruitmentService {
             staffRecruitmentRepository.flush();
         } catch (DataIntegrityViolationException e) {
             throw new ForifException(ErrorCode.DATA_INTEGRITY_VIOLATION);
+        }
+    }
+
+    private void requireNoInterviewQuestionsInRemovedDepartments(
+            StaffRecruitment recruitment, List<StaffRecruitmentDepartmentCommand> departments) {
+        Set<Integer> keptIds = departments.stream()
+                .map(StaffRecruitmentDepartmentCommand::id)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        Set<Integer> removedIds = recruitment.getDepartments().stream()
+                .map(StaffRecruitmentDepartment::getId)
+                .filter(Objects::nonNull)
+                .filter(id -> !keptIds.contains(id))
+                .collect(Collectors.toSet());
+        if (!removedIds.isEmpty() && staffInterviewQuestionRepository.findAllByRecruitmentId(recruitment.getId())
+                .stream().anyMatch(question -> !question.isCommon()
+                        && removedIds.contains(question.getDepartment().getId()))) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_DEPARTMENT_HAS_INTERVIEW_QUESTIONS);
         }
     }
 
