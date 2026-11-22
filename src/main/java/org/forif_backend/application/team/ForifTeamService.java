@@ -49,7 +49,7 @@ public class ForifTeamService {
      * 학기를 지정하지 않으면 현재 활동 학기에 추가한다.
      */
     @Transactional
-    public ForifTeamResponse addMember(Long userId, Integer actYear, Integer actSemester,
+    public ForifTeamResponse addMember(Long requesterId, Long userId, Integer actYear, Integer actSemester,
                                        String clubDepartment, String userTitle) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
@@ -57,6 +57,8 @@ public class ForifTeamService {
         SemesterInfo active = semesterService.getActive();
         int year = actYear != null ? actYear : active.actYear();
         int semester = actSemester != null ? actSemester : active.actSemester();
+
+        validateLeadershipChange(requesterId, year, semester, userId, null, userTitle);
 
         if (forifTeamRepository.existsByActYearAndActSemesterAndUserId(year, semester, userId)) {
             throw new ForifException(ErrorCode.FORIF_TEAM_MEMBER_ALREADY_EXISTS);
@@ -79,6 +81,8 @@ public class ForifTeamService {
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
 
         if (staffAccountService.isPresidentTeam(requesterId)) {
+            validateLeadershipChange(requesterId, forifTeam.getActYear(), forifTeam.getActSemester(),
+                    forifTeam.getUser().getId(), forifTeam.getUserTitle(), userTitle);
             forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
             if (clubDepartment != null) {
                 forifTeam.assignClubDepartment(clubDepartment.isBlank()
@@ -107,10 +111,34 @@ public class ForifTeamService {
     }
 
     @Transactional
-    public void deleteMember(Long id) {
-        forifTeamRepository.findById(id)
+    public void deleteMember(Long requesterId, Long id) {
+        ForifTeam member = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
+        if (isLeadershipTitle(member.getUserTitle())) {
+            staffAccountService.requireIncumbentPresident(requesterId);
+        }
         forifTeamRepository.deleteById(id);
+    }
+
+    private void validateLeadershipChange(Long requesterId, int year, int semester, Long userId,
+                                          String previousTitle, String requestedTitle) {
+        if (requestedTitle == null || Objects.equals(previousTitle, requestedTitle)) return;
+        if (!isLeadershipTitle(previousTitle) && !isLeadershipTitle(requestedTitle)) return;
+
+        staffAccountService.requireIncumbentPresident(requesterId);
+        if (isLeadershipTitle(requestedTitle)) {
+            if (!staffAccountService.isAdminAccount(userId)) {
+                throw new ForifException(ErrorCode.STAFF_NOT_FOUND);
+            }
+            boolean duplicate = forifTeamRepository.findByYearAndSemester(year, semester).stream()
+                    .anyMatch(member -> requestedTitle.equals(member.getUserTitle())
+                            && !userId.equals(member.getUser().getId()));
+            if (duplicate) throw new ForifException(ErrorCode.FORIF_TEAM_LEADERSHIP_ALREADY_EXISTS);
+        }
+    }
+
+    private boolean isLeadershipTitle(String title) {
+        return "회장".equals(title) || "부회장".equals(title);
     }
 
     private void validateOwner(Long requesterId, ForifTeam forifTeam) {

@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -128,9 +129,9 @@ class ForifTeamServiceAuthorizationTest {
         when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(planning);
 
         forifTeamService.updateMember(
-                OTHER_OPERATOR_ID, TEAM_ID, "부회장", "기획팀", "소개", "자기소개", 2028);
+                OTHER_OPERATOR_ID, TEAM_ID, "팀장", "기획팀", "소개", "자기소개", 2028);
 
-        assertEquals("부회장", team.getUserTitle());
+        assertEquals("팀장", team.getUserTitle());
         assertEquals("기획팀", team.getClubDepartment());
         assertEquals(planning, team.getClubDepartmentRef());
         assertEquals("소개", team.getIntroTag());
@@ -163,6 +164,65 @@ class ForifTeamServiceAuthorizationTest {
 
         assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, exception.getErrorCode());
         verify(userService, never()).updateUserProfileImage(OWNER_ID, image);
+    }
+
+    @Test
+    void vicePresidentCannotAppointNextSemesterPresident() {
+        ForifTeam member = team(OWNER_ID);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+        org.mockito.Mockito.doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
+                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID, "회장", null, null, null, null));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals("운영진", member.getUserTitle());
+    }
+
+    @Test
+    void incumbentCanAppointNextSemesterPresidentWithAdminAccount() {
+        ForifTeam member = team(OWNER_ID);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+        when(staffAccountService.isAdminAccount(OWNER_ID)).thenReturn(true);
+        when(forifTeamRepository.findByYearAndSemester(2026, 1)).thenReturn(List.of(member));
+
+        forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID, "회장", null, null, null, null);
+
+        assertEquals("회장", member.getUserTitle());
+        verify(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
+
+    @Test
+    void leadershipTitleCannotBeAssignedWithoutAdminAccount() {
+        ForifTeam member = team(OWNER_ID);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID, "회장", null, null, null, null));
+
+        assertEquals(ErrorCode.STAFF_NOT_FOUND, denied.getErrorCode());
+        assertEquals("운영진", member.getUserTitle());
+    }
+
+    @Test
+    void secondPresidentCannotBeAssignedInOneSemester() {
+        ForifTeam member = team(OWNER_ID);
+        ForifTeam assigned = team(20260003L);
+        assigned.update("회장", null, null, null, null);
+        when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
+        when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
+        when(staffAccountService.isAdminAccount(OWNER_ID)).thenReturn(true);
+        when(forifTeamRepository.findByYearAndSemester(2026, 1)).thenReturn(List.of(member, assigned));
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID, "회장", null, null, null, null));
+
+        assertEquals(ErrorCode.FORIF_TEAM_LEADERSHIP_ALREADY_EXISTS, denied.getErrorCode());
+        assertEquals("운영진", member.getUserTitle());
     }
 
     private ForifTeam team(Long userId) {

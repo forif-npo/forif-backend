@@ -9,5 +9,6 @@ public record AdminResponse(
         String name,
         String department,
         @JsonProperty("phone_num") String phoneNum,
-        String affiliation
+        String affiliation,
+        @JsonProperty("authority_affiliation") String authorityAffiliation
 ) {}

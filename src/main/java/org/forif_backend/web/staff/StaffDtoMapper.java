@@ -45,7 +45,7 @@ public class StaffDtoMapper {
             .build();
     }
 
-    public static StaffInfoResponse toResponse(StaffAccount staffAccount) {
+    public static StaffInfoResponse toResponse(StaffAccount staffAccount, String authorityAffiliation) {
         User user = staffAccount.getUser();
         return StaffInfoResponse.builder()
                 .userId(staffAccount.getUserId())
@@ -56,10 +56,11 @@ public class StaffDtoMapper {
                 .imgUrl(user.getImgUrl())
                 .role(staffAccount.getRole().getValue())
                 .affiliation(staffAccount.getAffiliation())
+                .authorityAffiliation(authorityAffiliation)
                 .build();
     }
 
-    public static AdminResponse toAdminResponse(StaffAccount staffAccount) {
+    public static AdminResponse toAdminResponse(StaffAccount staffAccount, String authorityAffiliation) {
         User user = staffAccount.getUser();
         return AdminResponse.builder()
                 .userId(staffAccount.getUserId())
@@ -67,6 +68,7 @@ public class StaffDtoMapper {
                 .department(user.getDepartment())
                 .phoneNum(user.getPhoneNum())
                 .affiliation(staffAccount.getAffiliation())
+                .authorityAffiliation(authorityAffiliation)
                 .build();
     }
 }

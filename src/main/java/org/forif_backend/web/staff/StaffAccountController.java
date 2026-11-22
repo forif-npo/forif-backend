@@ -62,7 +62,8 @@ public class StaffAccountController {
             @AuthenticationPrincipal Long userId
     ) {
         StaffAccount staffAccount = staffAccountService.getStaffInfo(userId);
-        StaffInfoResponse response = StaffDtoMapper.toResponse(staffAccount);
+        StaffInfoResponse response = StaffDtoMapper.toResponse(
+                staffAccount, staffAccountService.getAuthorityAffiliation(userId));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -99,8 +100,9 @@ public class StaffAccountController {
     ) {
         CursorPageResponse<StaffAccount> result = staffAccountService.getAdmins(userId, cursor, page, size, search);
 
+        var authorities = staffAccountService.getAuthorityAffiliations(result.content());
         List<AdminResponse> content = result.content().stream()
-                .map(StaffDtoMapper::toAdminResponse)
+                .map(account -> StaffDtoMapper.toAdminResponse(account, authorities.get(account.getUserId())))
                 .toList();
 
         return ResponseEntity.ok(ApiResponse.success(result.withContent(content)));
@@ -118,7 +120,8 @@ public class StaffAccountController {
     ) {
         CreateAdminCommand command = StaffDtoMapper.toCommand(request);
         StaffAccount staffAccount = staffAccountService.createAdmin(userId, command);
-        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount);
+        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount,
+                staffAccountService.getAuthorityAffiliation(staffAccount.getUserId()));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -136,7 +139,8 @@ public class StaffAccountController {
         StaffAccount staffAccount = staffAccountService.updateAdmin(
                 userId, targetUserId, request.name(), request.password(), request.affiliation()
         );
-        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount);
+        AdminResponse response = StaffDtoMapper.toAdminResponse(staffAccount,
+                staffAccountService.getAuthorityAffiliation(staffAccount.getUserId()));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -157,7 +161,7 @@ public class StaffAccountController {
     /**
      * [회장 전용] 회장/부회장 위임
      */
-    @Operation(summary = "회장/부회장 위임 (회장 전용)", description = "회장 또는 부회장 권한을 다른 운영진에게 위임합니다.")
+    @Operation(summary = "회장/부회장 위임 (현 회장 전용)", description = "현 회장이 회장 또는 부회장 직책을 다른 운영진에게 즉시 위임합니다. 차기 회장은 사용할 수 없습니다.")
     @PostMapping("/api/v1/president/delegate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delegate(
