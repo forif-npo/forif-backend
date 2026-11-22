@@ -79,7 +79,10 @@ class StaffInterviewScheduleServiceTest {
     }
 
     private void given(StaffRecruitment recruitment, StaffInterviewPlan plan) {
-        when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        lenient().when(staffRecruitmentRepository.findById(RECRUITMENT_ID))
+                .thenReturn(Optional.of(recruitment));
+        lenient().when(staffRecruitmentRepository.findByIdForUpdate(RECRUITMENT_ID))
+                .thenReturn(Optional.of(recruitment));
         when(staffInterviewPlanRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
         lenient().when(staffApplicationRepository.findInterviewSlotsByRecruitmentId(RECRUITMENT_ID))
                 .thenReturn(List.of());
@@ -158,7 +161,7 @@ class StaffInterviewScheduleServiceTest {
     void 마감_전에는_시각을_정할_수_없다() {
         // 접수 중에는 지원자가 계속 바뀐다.
         StaffRecruitment recruitment = recruitment(false);
-        when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(staffRecruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
 
         assertThatThrownBy(() -> staffInterviewScheduleService.assign(
                 RECRUITMENT_ID, FIRST_APPLICATION, DEC_1, NINE))

@@ -180,7 +180,8 @@ public class StaffInterviewScheduleService {
 
     /** 접수 중에는 지원자가 계속 바뀌므로 시각을 정하는 작업은 마감 뒤에만 한다. */
     private StaffRecruitment requireClosed(Integer recruitmentId) {
-        StaffRecruitment recruitment = requireRecruitment(recruitmentId);
+        StaffRecruitment recruitment = staffRecruitmentRepository.findByIdForUpdate(recruitmentId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
         if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
             throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
         }

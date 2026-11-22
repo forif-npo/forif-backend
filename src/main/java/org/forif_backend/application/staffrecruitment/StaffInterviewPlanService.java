@@ -6,6 +6,7 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewScheduleRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.Optional;
 public class StaffInterviewPlanService {
 
     private final StaffInterviewPlanRepository staffInterviewPlanRepository;
+    private final StaffInterviewScheduleRepository staffInterviewScheduleRepository;
     private final StaffRecruitmentRepository staffRecruitmentRepository;
 
     /** 공개 지원 화면용. 설정이 없으면 비어 있다. */
@@ -62,7 +64,7 @@ public class StaffInterviewPlanService {
     public StaffInterviewPlanDetail save(Integer recruitmentId, List<LocalDate> dates,
                                          int startHour, int endHour, int slotMinutes,
                                          boolean required, String guide, Long expectedVersion) {
-        StaffRecruitment recruitment = staffRecruitmentRepository.findById(recruitmentId)
+        StaffRecruitment recruitment = staffRecruitmentRepository.findByIdForUpdate(recruitmentId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
 
         StaffInterviewPlan plan = staffInterviewPlanRepository.findByRecruitmentId(recruitmentId)
@@ -70,6 +72,7 @@ public class StaffInterviewPlanService {
                     if (expectedVersion == null || !expectedVersion.equals(existing.getVersion())) {
                         throw new ForifException(ErrorCode.DATA_INTEGRITY_VIOLATION);
                     }
+                    requireNoAssignments(recruitmentId);
                     staffInterviewPlanRepository.incrementVersion(existing);
                     existing.update(startHour, endHour, slotMinutes, required, guide, dates);
                     return existing;
@@ -82,6 +85,11 @@ public class StaffInterviewPlanService {
                             recruitment, startHour, endHour, slotMinutes, required, guide, dates));
                 });
 
+        var invalidHostSlots = staffInterviewScheduleRepository.findHostSlots(recruitmentId).stream()
+                .filter(slot -> !plan.covers(slot.getSlotDate(), slot.getStartMinute()))
+                .toList();
+        staffInterviewScheduleRepository.deleteHostSlots(invalidHostSlots);
+
         // 화면은 이 응답의 version으로 다음 요청을 보낸다. flush 전에는 증가 전 값이 나가 바로 409가 된다.
         staffInterviewPlanRepository.flush();
         return StaffInterviewPlanDetail.from(plan);
@@ -90,7 +98,18 @@ public class StaffInterviewPlanService {
     /** 면접을 받지 않기로 한 회차의 설정을 지운다. 이미 제출된 선택은 남는다. */
     @Transactional
     public void delete(Integer recruitmentId) {
+        staffRecruitmentRepository.findByIdForUpdate(recruitmentId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
+        requireNoAssignments(recruitmentId);
+        staffInterviewScheduleRepository.deleteHostSlots(
+                staffInterviewScheduleRepository.findHostSlots(recruitmentId));
         staffInterviewPlanRepository.findByRecruitmentId(recruitmentId)
                 .ifPresent(staffInterviewPlanRepository::delete);
+    }
+
+    private void requireNoAssignments(Integer recruitmentId) {
+        if (!staffInterviewScheduleRepository.findAssignments(recruitmentId).isEmpty()) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_PLAN_HAS_ASSIGNMENTS);
+        }
     }
 }

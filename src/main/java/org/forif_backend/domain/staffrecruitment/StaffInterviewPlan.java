@@ -101,12 +101,18 @@ public class StaffInterviewPlan extends BaseTimeEntity {
         validateHours(startHour, endHour);
         validateSlotMinutes(slotMinutes);
         validateGuide(guide);
+        boolean timeRangeChanged = this.startHour != startHour || this.endHour != endHour
+                || this.slotMinutes != slotMinutes;
+        Set<LocalDate> previousDates = new LinkedHashSet<>(candidateDates());
         this.startHour = startHour;
         this.endHour = endHour;
         this.slotMinutes = slotMinutes;
         this.required = required;
         this.guide = guide;
         replaceDates(dates);
+        if (timeRangeChanged || !previousDates.equals(new LinkedHashSet<>(candidateDates()))) {
+            this.scheduleConfirmedAt = null;
+        }
     }
 
     /**

@@ -130,6 +130,7 @@ public enum ErrorCode {
     DATA_INTEGRITY_VIOLATION(HttpStatus.CONFLICT, "FOR145-409", "요청이 다른 데이터와 충돌합니다. 새로고침 후 다시 시도해주세요."),
     STAFF_RECRUITMENT_ACTIVE_CONFLICT(HttpStatus.CONFLICT, "FOR151-409", "이미 게시 중인 운영진 모집 회차가 있습니다."),
     STAFF_INTERVIEW_SLOT_TAKEN(HttpStatus.CONFLICT, "FOR168-409", "이미 다른 지원자가 배정된 면접 시간입니다."),
+    STAFF_INTERVIEW_PLAN_HAS_ASSIGNMENTS(HttpStatus.CONFLICT, "FOR169-409", "배정된 지원자가 있어 면접 일정을 변경하거나 삭제할 수 없습니다."),
     STAFF_RECRUITMENT_STRUCTURE_LOCKED(HttpStatus.CONFLICT, "FOR164-409",
             "제출된 지원서가 있어 부서·문항을 지울 수 없습니다. 더 뽑지 않는 부서는 숨김으로 바꿔 주세요."),
     STAFF_APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR154-409", "이미 이 모집 회차에 지원했습니다."),
