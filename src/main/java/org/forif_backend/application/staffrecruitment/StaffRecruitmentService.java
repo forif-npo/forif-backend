@@ -227,6 +227,7 @@ public class StaffRecruitmentService {
                 .map(command -> new StaffRecruitmentQuestionSpec(
                         command.id(), command.label(), command.description(), command.type(),
                         command.required(), command.type() == StaffRecruitmentQuestionType.FILE
+                                || command.type() == StaffRecruitmentQuestionType.ATTACHMENT
                                 ? 5000 : command.maxLength(), command.displayOrder()))
                 .toList();
     }
