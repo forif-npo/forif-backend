@@ -28,6 +28,12 @@ public interface StaffApplicationRepository {
     /** 제출이 생긴 뒤에는 부서·문항을 물리 삭제하지 않는다. 그 판단에 쓴다. */
     boolean existsByRecruitmentId(Integer recruitmentId);
 
+    /** 면접 일정 조율 화면용. 회차의 지원서 전체를 지망 부서와 함께 읽는다. */
+    List<StaffApplication> findAllWithChoicesByRecruitmentId(Integer recruitmentId);
+
+    /** 회차 지원자 전체의 면접 가능 시간. 지원서마다 따로 읽지 않도록 한 번에 가져온다. */
+    List<StaffApplicationInterviewSlot> findInterviewSlotsByRecruitmentId(Integer recruitmentId);
+
     /** 회장단 목록 — 부서 필터는 1·2지망 모두, 검색은 제출 당시 이름만 대상으로 한다. */
     long countForAdmin(Integer recruitmentId, Integer departmentId, String search);
 

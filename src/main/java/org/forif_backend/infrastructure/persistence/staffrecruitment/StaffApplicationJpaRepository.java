@@ -2,6 +2,7 @@ package org.forif_backend.infrastructure.persistence.staffrecruitment;
 
 import jakarta.persistence.LockModeType;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationInterviewSlot;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -52,6 +53,24 @@ public interface StaffApplicationJpaRepository extends JpaRepository<StaffApplic
     boolean existsByRecruitmentIdAndApplicantId(Integer recruitmentId, Long applicantId);
 
     boolean existsByRecruitmentId(Integer recruitmentId);
+
+    @Query("""
+            SELECT DISTINCT a FROM StaffApplication a
+            LEFT JOIN FETCH a.choices c
+            LEFT JOIN FETCH c.department
+            WHERE a.recruitment.id = :recruitmentId
+            ORDER BY a.submittedAt ASC, a.id ASC
+            """)
+    List<StaffApplication> findAllWithChoicesByRecruitmentId(@Param("recruitmentId") Integer recruitmentId);
+
+    @Query("""
+            SELECT s FROM StaffApplicationInterviewSlot s
+            JOIN FETCH s.application a
+            WHERE a.recruitment.id = :recruitmentId
+            ORDER BY s.slotDate ASC, s.startMinute ASC
+            """)
+    List<StaffApplicationInterviewSlot> findInterviewSlotsByRecruitmentId(
+            @Param("recruitmentId") Integer recruitmentId);
 
     @Query("""
             SELECT COUNT(DISTINCT a) FROM StaffApplication a
