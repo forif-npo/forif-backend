@@ -11,6 +11,7 @@ public record StaffInfoResponse(
         String department,
         String imgUrl,
         String role,
-        String affiliation
+        String affiliation,
+        String authorityAffiliation
 ) {
 }

@@ -38,6 +38,21 @@ class ForifTeamRepositorySemesterTest {
                 .containsExactly("현재 운영진");
     }
 
+    @Test
+    void findsNextSemesterTitleForOneAdminUser() {
+        User nextPresident = persistUser(920003L, "차기 회장");
+        ForifTeam appointment = ForifTeam.create(nextPresident, 2027, 1, "회장단");
+        appointment.update("회장", null, null, null, null);
+        entityManager.persist(appointment);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(forifTeamRepository.findByActYearAndActSemesterAndUserId(2027, 1, 920003L))
+                .get().extracting(ForifTeam::getUserTitle).isEqualTo("회장");
+        assertThat(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, 920003L))
+                .isEmpty();
+    }
+
     private User persistUser(Long id, String name) {
         User user = User.createUser(id, name, id + "@forif.org", "010-0000-0000", "컴퓨터공학과");
         entityManager.persist(user);
