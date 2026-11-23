@@ -2,11 +2,14 @@ package org.forif_backend.web.staffrecruitment;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import org.forif_backend.application.staffrecruitment.StaffApplicationService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
+import org.forif_backend.application.staffrecruitment.dto.StaffApplicationInterviewSummary;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewStatus;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationRequests;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterEach;
@@ -19,6 +22,7 @@ import org.springframework.security.web.method.annotation.AuthenticationPrincipa
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +36,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -152,5 +157,32 @@ class StaffApplicationControllerMultipartTest {
         mockMvc.perform(delete("/api/v1/staff-recruitments/12/applications/me"))
                 .andExpect(status().isOk());
         verify(service).cancel(12, 1L);
+    }
+
+    @Test
+    void 본인_지원서에_면접_배정시각과_결과를_반환한다() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
+        var mapper = new ObjectMapper().findAndRegisterModules()
+                .setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        var mockMvc = MockMvcBuilders.standaloneSetup(controller)
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(mapper))
+                .build();
+        var application = new StaffApplicationDetail(
+                7, 12, 1L, "Applicant", "applicant@example.com", null, null, List.of(),
+                StaffApplicationStatus.SUBMITTED, LocalDateTime.now(), List.of(), List.of());
+        when(service.getMine(12, 1L)).thenReturn(application);
+        when(service.getInterviewSummary(application)).thenReturn(new StaffApplicationInterviewSummary(
+                LocalDate.of(2026, 11, 26), 960, 30, StaffInterviewStatus.PASSED));
+
+        mockMvc.perform(get("/api/v1/staff-recruitments/12/applications/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.interview.assigned_slot.date").value("2026-11-26"))
+                .andExpect(jsonPath("$.data.interview.assigned_slot.start_minute").value(960))
+                .andExpect(jsonPath("$.data.interview.slot_minutes").value(30))
+                .andExpect(jsonPath("$.data.interview.status").value("PASSED"));
+        verify(service).getMine(12, 1L);
     }
 }
