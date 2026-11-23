@@ -441,12 +441,13 @@ public class StaffAccountService {
             refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
         }
         if (affiliation != null) {
+            String normalizedAffiliation = ClubDepartmentService.normalizeName(affiliation);
             String targetAuthority = authorityAffiliation(staffAccount);
-            if ("회장".equals(affiliation) || "부회장".equals(affiliation)
+            if ("회장".equals(normalizedAffiliation) || "부회장".equals(normalizedAffiliation)
                     || "회장".equals(targetAuthority) || "부회장".equals(targetAuthority)) {
                 throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
             }
-            staffAccount.updateAffiliation(ClubDepartmentService.normalizeName(affiliation));
+            staffAccount.updateAffiliation(normalizedAffiliation);
         }
 
         return staffAccount;

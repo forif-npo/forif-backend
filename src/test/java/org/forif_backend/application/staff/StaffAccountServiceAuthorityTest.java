@@ -276,6 +276,37 @@ class StaffAccountServiceAuthorityTest {
     }
 
     @Test
+    void officialTeamNamesKeepTheirExistingStorageFormat() {
+        account("회장");
+        Long targetId = 20260002L;
+        StaffAccount target = ordinaryTarget(targetId);
+
+        for (var entry : Map.of(
+                "회장단", "회장단",
+                "SW팀", "SW",
+                "법무회계팀", "법무회계",
+                "마케팅팀", "마케팅",
+                "전략기획팀", "전략기획").entrySet()) {
+            service.updateAdmin(USER_ID, targetId, null, null, entry.getKey());
+            assertEquals(entry.getValue(), target.getAffiliation());
+        }
+    }
+
+    @Test
+    void normalizedLeadershipNamesCannotBeSetThroughAffiliationUpdate() {
+        account("회장");
+        Long targetId = 20260002L;
+        StaffAccount target = ordinaryTarget(targetId);
+
+        for (String affiliation : List.of("회장팀", "부회장팀", "회장 팀")) {
+            ForifException denied = assertThrows(ForifException.class,
+                    () -> service.updateAdmin(USER_ID, targetId, null, null, affiliation));
+            assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+            assertEquals("기획", target.getAffiliation());
+        }
+    }
+
+    @Test
     void unappointedVicePresidentLosesRoleAtSemesterTransition() {
         StaffAccount incumbent = StaffAccount.createStaffAccount(
                 User.createUser(20260002L, "현 부회장", "vice@example.com", "010-0000-0000", "컴퓨터학부"),
@@ -351,6 +382,19 @@ class StaffAccountServiceAuthorityTest {
         User user = user();
         StaffAccount account = StaffAccount.createStaffAccount(user, "encoded", "운영진", StaffRole.ADMIN, affiliation);
         when(staffAccountRepository.findByUserIdAndRole(USER_ID, StaffRole.ADMIN)).thenReturn(Optional.of(account));
+    }
+
+    private StaffAccount ordinaryTarget(Long targetId) {
+        User targetUser = User.createUser(targetId, "예시 운영진", "staff@example.com", "010-0000-0000", "컴퓨터학부");
+        StaffAccount target = StaffAccount.createStaffAccount(
+                targetUser, "encoded", "예시 운영진", StaffRole.ADMIN, "기획");
+        when(staffAccountRepository.findByUserIdAndRole(targetId, StaffRole.ADMIN)).thenReturn(Optional.of(target));
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
+                .thenReturn(Optional.empty());
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2027, 1, targetId))
+                .thenReturn(Optional.empty());
+        return target;
     }
 
     private void upcoming(String title) {
