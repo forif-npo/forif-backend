@@ -159,9 +159,9 @@ public class StaffAccountController {
     }
 
     /**
-     * [회장 전용] 회장/부회장 위임
+     * [현 회장 전용] 다음 학기 회장단 지정
      */
-    @Operation(summary = "회장/부회장 위임 (현 회장 전용)", description = "현 회장이 회장 또는 부회장 직책을 다른 운영진에게 즉시 위임합니다. 차기 회장은 사용할 수 없습니다.")
+    @Operation(summary = "다음 학기 회장단 지정 (현 회장 전용)", description = "다음 학기 회장 또는 부회장을 지정합니다. 지정된 운영진은 차기 회장단 권한을 즉시 얻고, 현 회장단의 직책은 학기 전환까지 유지됩니다. 다른 차기 지정이 있다면 교체됩니다.")
     @PostMapping("/api/v1/president/delegate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> delegate(
