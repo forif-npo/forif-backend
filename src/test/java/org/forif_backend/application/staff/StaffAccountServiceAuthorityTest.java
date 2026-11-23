@@ -178,7 +178,7 @@ class StaffAccountServiceAuthorityTest {
     @Test
     void currentSwTeamAdminGetsPresidentAuthorityAndLosesItWhenMembershipEnds() {
         account("운영진");
-        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW팀");
+        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW");
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, USER_ID))
                 .thenReturn(Optional.of(team), Optional.of(team), Optional.empty());
@@ -193,7 +193,7 @@ class StaffAccountServiceAuthorityTest {
     @Test
     void currentSwTeamAdminAppearsAsSwTeamAuthorityInAdminList() {
         StaffAccount account = StaffAccount.createStaffAccount(user(), "encoded", "운영진", StaffRole.ADMIN, "운영진");
-        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW팀");
+        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW");
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(forifTeamRepository.findByYearAndSemester(2026, 2)).thenReturn(List.of(team));
         when(forifTeamRepository.findByYearAndSemester(2027, 1)).thenReturn(List.of());
@@ -208,7 +208,7 @@ class StaffAccountServiceAuthorityTest {
     @Test
     void upcomingPresidentDesignationRemainsVisibleForCurrentSwTeamMember() {
         StaffAccount account = StaffAccount.createStaffAccount(user(), "encoded", "운영진", StaffRole.ADMIN, "운영진");
-        ForifTeam current = ForifTeam.create(user(), 2026, 2, "SW팀");
+        ForifTeam current = ForifTeam.create(user(), 2026, 2, "SW");
         ForifTeam next = ForifTeam.create(user(), 2027, 1, "회장단");
         next.update("회장", null, null, null, null);
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
@@ -225,7 +225,7 @@ class StaffAccountServiceAuthorityTest {
     @Test
     void swTeamAdminCannotDelegateCurrentPresident() {
         account("운영진");
-        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW팀");
+        ForifTeam team = ForifTeam.create(user(), 2026, 2, "SW");
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
         when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, USER_ID))
                 .thenReturn(Optional.of(team));
@@ -246,7 +246,7 @@ class StaffAccountServiceAuthorityTest {
                 .thenReturn(Optional.empty());
 
         ForifException denied = assertThrows(ForifException.class,
-                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW팀")));
+                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW")));
 
         assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
     }
@@ -258,7 +258,7 @@ class StaffAccountServiceAuthorityTest {
         Long targetId = 20260002L;
         ForifTeam swMember = ForifTeam.create(
                 User.createUser(targetId, "SW팀", "sw@example.com", "010-0000-0000", "컴퓨터학부"),
-                2026, 2, "SW팀");
+                2026, 2, "SW");
         when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
                 .thenReturn(Optional.of(swMember));
 
