@@ -114,7 +114,7 @@ class StaffInterviewBoardServiceTest {
 
     @Test
     void 처음_상태를_바꾸면_기록을_만든다() {
-        staffInterviewBoardService.changeStatus(RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.DONE);
+        staffInterviewBoardService.changeStatus(RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.DONE, null);
 
         ArgumentCaptor<StaffInterviewRecord> saved = ArgumentCaptor.forClass(StaffInterviewRecord.class);
         verify(staffInterviewRecordRepository).saveRecord(saved.capture());
@@ -124,13 +124,64 @@ class StaffInterviewBoardServiceTest {
     @Test
     void 보드에서는_어느_상태로든_옮길_수_있다() {
         // 합격으로 잘못 옮긴 카드를 면접 전으로 되돌리는 것도 끌어서 한다.
-        StaffInterviewRecord record = StaffInterviewRecord.create(application, StaffInterviewStatus.PASSED);
+        StaffInterviewRecord record = StaffInterviewRecord.create(
+                application, StaffInterviewStatus.PASSED, recruitment.getDepartments().get(0));
         when(staffInterviewRecordRepository.findRecordByApplicationId(APPLICATION_ID)).thenReturn(Optional.of(record));
 
-        staffInterviewBoardService.changeStatus(RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.BEFORE);
+        staffInterviewBoardService.changeStatus(RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.BEFORE, null);
 
         assertThat(record.getStatus()).isEqualTo(StaffInterviewStatus.BEFORE);
+        // 합격이 아니게 되면 배정 부서도 비운다.
+        assertThat(record.getPassedDepartment()).isNull();
         verify(staffInterviewRecordRepository, never()).saveRecord(any());
+    }
+
+    @Test
+    void 합격은_지원자가_고른_부서_중_하나로_배정한다() {
+        StaffInterviewSheetDetail sheet = staffInterviewBoardService.changeStatus(
+                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.PASSED, PLANNING);
+
+        ArgumentCaptor<StaffInterviewRecord> saved = ArgumentCaptor.forClass(StaffInterviewRecord.class);
+        verify(staffInterviewRecordRepository).saveRecord(saved.capture());
+        assertThat(saved.getValue().getStatus()).isEqualTo(StaffInterviewStatus.PASSED);
+        assertThat(saved.getValue().getPassedDepartment().getId()).isEqualTo(PLANNING);
+        assertThat(sheet).isNotNull();
+    }
+
+    @Test
+    void 지망이_둘이면_합격_부서를_꼭_골라야_한다() {
+        assertThatThrownBy(() -> staffInterviewBoardService.changeStatus(
+                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.PASSED, null))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+        verify(staffInterviewRecordRepository, never()).saveRecord(any());
+    }
+
+    @Test
+    void 지원하지_않은_부서로는_합격시킬_수_없다() {
+        assertThatThrownBy(() -> staffInterviewBoardService.changeStatus(
+                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.PASSED, DESIGN))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    void 지망이_하나면_부서를_비워도_그_부서로_합격시킨다() {
+        StaffApplication single = StaffApplication.submit(recruitmentOpenCopy(), null, "한지망", "s@example.com",
+                null, null, LocalDateTime.now());
+        ReflectionTestUtils.setField(single, "id", 202);
+        ReflectionTestUtils.setField(single, "recruitment", recruitment);
+        single.addChoice(StaffApplicationChoice.create(recruitment.getDepartments().get(2), 1));
+        when(staffApplicationRepository.findDetailById(202)).thenReturn(Optional.of(single));
+        when(staffInterviewRecordRepository.findRecordByApplicationId(202)).thenReturn(Optional.empty());
+        when(staffInterviewRecordRepository.findAnswersByApplicationId(202)).thenReturn(List.of());
+        when(staffInterviewRecordRepository.findExtraQuestionsByApplicationId(202)).thenReturn(List.of());
+
+        staffInterviewBoardService.changeStatus(RECRUITMENT_ID, 202, StaffInterviewStatus.PASSED, null);
+
+        ArgumentCaptor<StaffInterviewRecord> saved = ArgumentCaptor.forClass(StaffInterviewRecord.class);
+        verify(staffInterviewRecordRepository).saveRecord(saved.capture());
+        assertThat(saved.getValue().getPassedDepartment().getId()).isEqualTo(DESIGN);
     }
 
     @Test
@@ -189,7 +240,7 @@ class StaffInterviewBoardServiceTest {
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(open));
 
         assertThatThrownBy(() -> staffInterviewBoardService.changeStatus(
-                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.DONE))
+                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.DONE, null))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
     }
