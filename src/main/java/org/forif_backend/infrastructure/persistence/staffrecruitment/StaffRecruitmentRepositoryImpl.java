@@ -8,6 +8,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,6 +46,11 @@ public class StaffRecruitmentRepositoryImpl implements StaffRecruitmentRepositor
     @Override
     public Optional<StaffRecruitment> findPublished() {
         return staffRecruitmentJpaRepository.findByStatus(StaffRecruitmentStatus.PUBLISHED);
+    }
+
+    @Override
+    public Optional<StaffRecruitment> findExpiredPublishedForUpdate(LocalDateTime now) {
+        return staffRecruitmentJpaRepository.findExpiredPublishedForUpdate(now);
     }
 
     @Override
