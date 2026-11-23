@@ -9,7 +9,6 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
-import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentReviewer;
@@ -51,9 +50,6 @@ class StaffReviewerServiceTest {
 
     @Mock
     private StaffRecruitmentRepository staffRecruitmentRepository;
-
-    @Mock
-    private StaffApplicationRepository staffApplicationRepository;
 
     @Mock
     private StaffAccountRepository staffAccountRepository;
@@ -102,8 +98,6 @@ class StaffReviewerServiceTest {
         givenActiveSemester();
         when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
         when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(true);
-        when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
-                .thenReturn(false);
     }
 
     @Test
@@ -145,21 +139,6 @@ class StaffReviewerServiceTest {
         givenActiveSemester();
         when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
         when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(false);
-
-        assertThatThrownBy(() -> staffReviewerService.grant(
-                RECRUITMENT_ID, PRESIDENT_ID, REVIEWER_ID, LocalDateTime.now().plusDays(7)))
-                .isInstanceOf(ForifException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_REVIEWER_CONFLICT);
-    }
-
-    @Test
-    void 같은_회차_지원자에게는_부여할_수_없다() {
-        givenRecruitment();
-        givenActiveSemester();
-        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, REVIEWER_ID)).thenReturn(true);
-        when(staffAccountRepository.existsByUserIdAndRole(REVIEWER_ID, StaffRole.ADMIN)).thenReturn(true);
-        when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
-                .thenReturn(true);
 
         assertThatThrownBy(() -> staffReviewerService.grant(
                 RECRUITMENT_ID, PRESIDENT_ID, REVIEWER_ID, LocalDateTime.now().plusDays(7)))
@@ -245,8 +224,6 @@ class StaffReviewerServiceTest {
         when(staffAccountService.isPresidentTeam(REVIEWER_ID)).thenReturn(false);
         when(staffRecruitmentReviewerRepository.findByRecruitmentIdAndUserId(RECRUITMENT_ID, REVIEWER_ID))
                 .thenReturn(Optional.of(grantedReviewer(LocalDateTime.now().plusDays(3))));
-        when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
-                .thenReturn(false);
 
         assertThatCode(() -> staffReviewerService.requireApplicationAccess(REVIEWER_ID, RECRUITMENT_ID))
                 .doesNotThrowAnyException();
@@ -283,19 +260,6 @@ class StaffReviewerServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> staffReviewerService.requireApplicationAccess(OUTSIDER_ID, RECRUITMENT_ID))
-                .isInstanceOf(ForifException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_REVIEWER_NOT_ALLOWED);
-    }
-
-    @Test
-    void 같은_회차에_지원했다면_권한이_있어도_열람할_수_없다() {
-        when(staffAccountService.isPresidentTeam(REVIEWER_ID)).thenReturn(false);
-        when(staffRecruitmentReviewerRepository.findByRecruitmentIdAndUserId(RECRUITMENT_ID, REVIEWER_ID))
-                .thenReturn(Optional.of(grantedReviewer(LocalDateTime.now().plusDays(3))));
-        when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, REVIEWER_ID))
-                .thenReturn(true);
-
-        assertThatThrownBy(() -> staffReviewerService.requireApplicationAccess(REVIEWER_ID, RECRUITMENT_ID))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_REVIEWER_NOT_ALLOWED);
     }
