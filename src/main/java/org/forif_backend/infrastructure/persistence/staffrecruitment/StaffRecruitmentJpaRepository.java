@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +30,14 @@ public interface StaffRecruitmentJpaRepository extends JpaRepository<StaffRecrui
     Optional<StaffRecruitment> findDetailById(@Param("id") Integer id);
 
     Optional<StaffRecruitment> findByStatus(StaffRecruitmentStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT r FROM StaffRecruitment r
+            WHERE r.status = org.forif_backend.domain.staffrecruitment.StaffRecruitmentStatus.PUBLISHED
+              AND r.endsAt <= :now
+            """)
+    Optional<StaffRecruitment> findExpiredPublishedForUpdate(@Param("now") LocalDateTime now);
 
     List<StaffRecruitment> findAllByOrderByIdDesc(Pageable pageable);
 

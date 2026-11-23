@@ -521,36 +521,34 @@ public class StaffAccountService {
         return staffAccountRepository.existsByUserIdAndRole(userId, StaffRole.ADMIN);
     }
 
-    /**
-     * 회장/부회장 위임
-     */
+    /** 다음 학기 회장단을 지정한다. 현 회장단의 실제 직책은 학기 전환까지 유지한다. */
     @Transactional
     public void delegate(Long requesterId, Long targetUserId, String targetAffiliation) {
         requireIncumbentPresident(requesterId);
-        StaffAccount president = staffAccountRepository.findByAffiliation("회장").stream()
-                .filter(account -> account.getRole() == StaffRole.ADMIN)
-                .findFirst().orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
-
-        // 회장 연임(자기 자신 지정)은 허용한다. 부회장 자리에 본인을 넣는 것은 막는다.
-        if (requesterId.equals(targetUserId) && !"회장".equals(targetAffiliation)) {
+        if (!isLeadershipTitle(targetAffiliation)
+                || (requesterId.equals(targetUserId) && "부회장".equals(targetAffiliation))) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
         StaffAccount target = staffAccountRepository.findByUserIdAndRole(targetUserId, StaffRole.ADMIN)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_NOT_FOUND));
 
-        if ("회장".equals(targetAffiliation)) {
-            if (president.getUserId().equals(targetUserId)) return;
-            target.updateAffiliation("회장");
-            president.updateAffiliation("운영진");
-        } else if ("부회장".equals(targetAffiliation)) {
-            List<StaffAccount> currentVPs = staffAccountRepository.findByAffiliation("부회장");
-            for (StaffAccount vp : currentVPs) {
-                vp.updateAffiliation("운영진");
-            }
-            target.updateAffiliation("부회장");
-        } else {
-            throw new ForifException(ErrorCode.INVALID_INPUT);
+        SemesterInfo next = semesterService.getActive().next();
+        List<ForifTeam> nextTeam = forifTeamRepository.findByYearAndSemester(next.actYear(), next.actSemester());
+        ForifTeam targetMember = nextTeam.stream()
+                .filter(member -> targetUserId.equals(member.getUser().getId()))
+                .findFirst()
+                .orElse(null);
+        if (targetMember == null) {
+            ForifTeam newMember = ForifTeam.create(target.getUser(), next.actYear(), next.actSemester(), "회장단");
+            newMember.assignClubDepartment(clubDepartmentService.getOrCreate("회장단"));
+            targetMember = forifTeamRepository.save(newMember);
         }
+        for (ForifTeam member : nextTeam) {
+            if (targetAffiliation.equals(member.getUserTitle()) && member != targetMember) {
+                member.update("", null, null, null, null);
+            }
+        }
+        targetMember.update(targetAffiliation, null, null, null, null);
     }
 }

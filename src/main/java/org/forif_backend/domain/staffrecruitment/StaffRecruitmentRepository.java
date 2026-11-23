@@ -1,5 +1,6 @@
 package org.forif_backend.domain.staffrecruitment;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +21,9 @@ public interface StaffRecruitmentRepository {
 
     /** 현재 게시 중인 회차. 계약상 최대 한 건이다. */
     Optional<StaffRecruitment> findPublished();
+
+    /** 종료 시각이 지난 게시 회차를 잠근 채 조회한다. */
+    Optional<StaffRecruitment> findExpiredPublishedForUpdate(LocalDateTime now);
 
     /** 어드민 목록 — 상태 필터는 null이면 전체, 정렬은 recruitment_id DESC 고정 */
     List<StaffRecruitment> findAllForAdmin(StaffRecruitmentStatus status, int offset, int limit);

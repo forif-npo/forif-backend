@@ -20,6 +20,7 @@ public class StaffInterviewQuestionService {
 
     private final StaffRecruitmentRepository staffRecruitmentRepository;
     private final StaffInterviewQuestionRepository staffInterviewQuestionRepository;
+    private final StaffInterviewRecordRepository staffInterviewRecordRepository;
 
     @Transactional(readOnly = true)
     public List<StaffInterviewQuestionDetail> getQuestions(Integer recruitmentId) {
@@ -61,9 +62,14 @@ public class StaffInterviewQuestionService {
         return StaffInterviewQuestionDetail.from(question);
     }
 
+    /** 면접 기록이 조용히 사라지지 않도록 답변이 적힌 질문은 지우지 않는다. */
     @Transactional
     public void delete(Integer recruitmentId, Integer questionId) {
-        staffInterviewQuestionRepository.delete(requireQuestion(recruitmentId, questionId));
+        StaffInterviewQuestion question = requireQuestion(recruitmentId, questionId);
+        if (staffInterviewRecordRepository.existsAnswerByQuestionId(questionId)) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_QUESTION_ANSWERED);
+        }
+        staffInterviewQuestionRepository.delete(question);
     }
 
     private void requireRecruitment(Integer recruitmentId) {
