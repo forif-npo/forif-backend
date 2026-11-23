@@ -7,7 +7,6 @@ import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSchedule
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.DepartmentQuestions;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.ExtraQuestion;
-import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.PassedDepartment;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.QuestionAnswer;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -42,22 +41,18 @@ public class StaffInterviewBoardService {
         requireRecruitment(recruitmentId);
 
         Map<Integer, Slot> assigned = assignedSlots(recruitmentId);
-        Map<Integer, StaffInterviewRecord> records = staffInterviewRecordRepository
+        Map<Integer, StaffInterviewStatus> statuses = staffInterviewRecordRepository
                 .findRecordsByRecruitmentId(recruitmentId).stream()
-                .collect(Collectors.toMap(record -> record.getApplication().getId(), record -> record));
+                .collect(Collectors.toMap(record -> record.getApplication().getId(), StaffInterviewRecord::getStatus));
 
         List<Card> cards = staffApplicationRepository.findAllWithChoicesByRecruitmentId(recruitmentId).stream()
-                .map(application -> {
-                    Optional<StaffInterviewRecord> record = Optional.ofNullable(records.get(application.getId()));
-                    return new Card(
-                            application.getId(),
-                            application.getApplicantName(),
-                            assigned.get(application.getId()),
-                            departmentName(application, StaffApplicationChoice.FIRST_PRIORITY),
-                            departmentName(application, StaffApplicationChoice.SECOND_PRIORITY),
-                            record.map(StaffInterviewRecord::getStatus).orElse(StaffInterviewStatus.BEFORE),
-                            passedDepartment(record));
-                })
+                .map(application -> new Card(
+                        application.getId(),
+                        application.getApplicantName(),
+                        assigned.get(application.getId()),
+                        departmentName(application, StaffApplicationChoice.FIRST_PRIORITY),
+                        departmentName(application, StaffApplicationChoice.SECOND_PRIORITY),
+                        statuses.getOrDefault(application.getId(), StaffInterviewStatus.BEFORE)))
                 // 같은 칸 안에서는 면접 시각이 빠른 순, 시각이 없으면 맨 뒤
                 .sorted(Comparator.comparing(Card::assignedSlot,
                         Comparator.nullsLast(Comparator.comparing(Slot::date).thenComparingInt(Slot::startMinute))))
@@ -73,26 +68,19 @@ public class StaffInterviewBoardService {
         return sheet(recruitmentId, application);
     }
 
-    /**
-     * 면접 상태를 바꾼다. 합격이면 지원자의 1지망·2지망 중 배정할 부서를 함께 받는다.
-     * 지망이 하나뿐이면 부서를 생략해도 그 부서로 배정한다.
-     */
     @Transactional
     public StaffInterviewSheetDetail changeStatus(Integer recruitmentId, Integer applicationId,
-                                                  StaffInterviewStatus status, Integer passedDepartmentId) {
+                                                  StaffInterviewStatus status) {
         requireClosed(recruitmentId);
         StaffApplication application = requireApplication(recruitmentId, applicationId);
         if (status == null) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
-        StaffRecruitmentDepartment passedDepartment = status == StaffInterviewStatus.PASSED
-                ? chosenDepartment(application, passedDepartmentId)
-                : null;
         staffInterviewRecordRepository.findRecordByApplicationId(applicationId)
                 .ifPresentOrElse(
-                        record -> record.changeStatus(status, passedDepartment),
+                        record -> record.changeStatus(status),
                         () -> staffInterviewRecordRepository.saveRecord(
-                                StaffInterviewRecord.create(application, status, passedDepartment)));
+                                StaffInterviewRecord.create(application, status)));
         staffInterviewRecordRepository.flush();
         return sheet(recruitmentId, application);
     }
@@ -179,8 +167,9 @@ public class StaffInterviewBoardService {
                 .map(question -> new QuestionAnswer(question.getId(), question.getContent(), answers.get(question.getId())))
                 .toList();
 
-        Optional<StaffInterviewRecord> record = staffInterviewRecordRepository.findRecordByApplicationId(applicationId);
-        StaffInterviewStatus status = record.map(StaffInterviewRecord::getStatus).orElse(StaffInterviewStatus.BEFORE);
+        StaffInterviewStatus status = staffInterviewRecordRepository.findRecordByApplicationId(applicationId)
+                .map(StaffInterviewRecord::getStatus)
+                .orElse(StaffInterviewStatus.BEFORE);
         List<ExtraQuestion> extras = staffInterviewRecordRepository.findExtraQuestionsByApplicationId(applicationId)
                 .stream()
                 .map(extra -> new ExtraQuestion(extra.getId(), extra.getContent(), extra.getAnswer()))
@@ -195,31 +184,7 @@ public class StaffInterviewBoardService {
                 common,
                 departmentQuestions(application, StaffApplicationChoice.FIRST_PRIORITY, questions, answers),
                 departmentQuestions(application, StaffApplicationChoice.SECOND_PRIORITY, questions, answers),
-                extras,
-                passedDepartment(record));
-    }
-
-    private PassedDepartment passedDepartment(Optional<StaffInterviewRecord> record) {
-        return record.map(StaffInterviewRecord::getPassedDepartment)
-                .map(department -> new PassedDepartment(department.getId(), department.getName()))
-                .orElse(null);
-    }
-
-    /** 지원자가 고른 부서 중 하나여야 한다. 부서를 비웠으면 지망이 하나일 때만 그 부서로 정한다. */
-    private StaffRecruitmentDepartment chosenDepartment(StaffApplication application, Integer departmentId) {
-        List<StaffRecruitmentDepartment> chosen = application.getChoices().stream()
-                .map(StaffApplicationChoice::getDepartment)
-                .toList();
-        if (departmentId == null) {
-            if (chosen.size() == 1) {
-                return chosen.get(0);
-            }
-            throw new ForifException(ErrorCode.INVALID_INPUT);
-        }
-        return chosen.stream()
-                .filter(department -> department.getId().equals(departmentId))
-                .findFirst()
-                .orElseThrow(() -> new ForifException(ErrorCode.INVALID_INPUT));
+                extras);
     }
 
     private DepartmentQuestions departmentQuestions(StaffApplication application, int priority,
