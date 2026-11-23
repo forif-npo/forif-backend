@@ -20,9 +20,7 @@ public record StaffInterviewBoardDetail(
             Slot assignedSlot,
             String firstDepartment,
             String secondDepartment,
-            StaffInterviewStatus status,
-            /** 합격자에게 배정한 부서. 합격이 아니면 null이다. */
-            StaffInterviewSheetDetail.PassedDepartment passedDepartment
+            StaffInterviewStatus status
     ) {
     }
 }
