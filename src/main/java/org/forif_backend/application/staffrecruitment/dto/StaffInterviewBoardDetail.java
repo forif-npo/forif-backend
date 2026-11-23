@@ -11,7 +11,8 @@ import java.util.List;
  */
 public record StaffInterviewBoardDetail(
         Integer slotMinutes,
-        List<Card> cards
+        List<Card> cards,
+        boolean resultsFinalized
 ) {
 
     public record Card(

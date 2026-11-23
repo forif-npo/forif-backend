@@ -56,7 +56,7 @@ class StaffInterviewStaffRegistrationServiceTest {
         recruitment = StaffRecruitment.create(2027, 1, "2027-1 운영진 모집", null, null,
                 now.minusDays(1), now.plusDays(1));
         recruitment.mergeDepartments(List.of(
-                new StaffRecruitmentDepartmentSpec(null, "SW팀", null, 1, true),
+                new StaffRecruitmentDepartmentSpec(null, "SW", null, 1, true),
                 new StaffRecruitmentDepartmentSpec(null, "기획팀", null, 2, true)), false);
         ReflectionTestUtils.setField(recruitment, "id", RECRUITMENT_ID);
         sw = recruitment.getDepartments().get(0);
@@ -71,6 +71,7 @@ class StaffInterviewStaffRegistrationServiceTest {
 
     private void givenRecords(StaffInterviewRecord... records) {
         recruitment.close("면접", LocalDateTime.now());
+        recruitment.finalizeInterviewResults(LocalDateTime.now());
         when(staffInterviewRecordRepository.findRecordsByRecruitmentId(RECRUITMENT_ID)).thenReturn(List.of(records));
     }
 
@@ -128,10 +129,10 @@ class StaffInterviewStaffRegistrationServiceTest {
 
     @Test
     void 운영진_추가_권한_규칙에_걸리면_등록하지_않는다() {
-        // SW팀은 현직 회장만 올릴 수 있다는 운영진 관리 규칙을 그대로 따른다.
+        // SW는 현직 회장만 올릴 수 있다는 운영진 관리 규칙을 그대로 따른다.
         givenRecords(
                 record(user(10L, "가합격"), "가합격", StaffInterviewStatus.PASSED, sw));
-        when(forifTeamService.addMember(REQUESTER_ID, 10L, 2027, 1, "SW팀", "팀원"))
+        when(forifTeamService.addMember(REQUESTER_ID, 10L, 2027, 1, "SW", "팀원"))
                 .thenThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION));
 
         assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
@@ -149,5 +150,15 @@ class StaffInterviewStaffRegistrationServiceTest {
         assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+    }
+
+    @Test
+    void 면접_결과_확정_전에는_명단에_등록할_수_없다() {
+        recruitment.close("면접", LocalDateTime.now());
+
+        assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_RESULTS_NOT_FINALIZED);
+        verify(forifTeamService, never()).addMember(any(), any(), any(), any(), any(), any());
     }
 }

@@ -15,6 +15,7 @@ import org.forif_backend.domain.staffrecruitment.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,7 +40,7 @@ public class StaffInterviewBoardService {
 
     @Transactional(readOnly = true)
     public StaffInterviewBoardDetail getBoard(Integer recruitmentId) {
-        requireRecruitment(recruitmentId);
+        StaffRecruitment recruitment = requireRecruitment(recruitmentId);
 
         Map<Integer, Slot> assigned = assignedSlots(recruitmentId);
         Map<Integer, StaffInterviewRecord> records = staffInterviewRecordRepository
@@ -63,7 +64,27 @@ public class StaffInterviewBoardService {
                         Comparator.nullsLast(Comparator.comparing(Slot::date).thenComparingInt(Slot::startMinute))))
                 .toList();
 
-        return new StaffInterviewBoardDetail(slotMinutes(recruitmentId), cards);
+        return new StaffInterviewBoardDetail(slotMinutes(recruitmentId), cards,
+                recruitment.getInterviewResultsFinalizedAt() != null);
+    }
+
+    /** 모든 지원자의 합격·불합격이 정해진 뒤 면접 결과를 확정한다. */
+    @Transactional
+    public StaffInterviewBoardDetail finalizeResults(Integer recruitmentId) {
+        StaffRecruitment recruitment = requireRecruitmentForUpdate(recruitmentId);
+        if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        }
+        StaffInterviewBoardDetail board = getBoard(recruitmentId);
+        if (recruitment.getInterviewResultsFinalizedAt() == null) {
+            if (board.cards().isEmpty() || board.cards().stream()
+                    .anyMatch(card -> card.status() != StaffInterviewStatus.PASSED
+                            && card.status() != StaffInterviewStatus.FAILED)) {
+                throw new ForifException(ErrorCode.STAFF_INTERVIEW_RESULTS_INCOMPLETE);
+            }
+            recruitment.finalizeInterviewResults(LocalDateTime.now());
+        }
+        return new StaffInterviewBoardDetail(board.slotMinutes(), board.cards(), true);
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +101,13 @@ public class StaffInterviewBoardService {
     @Transactional
     public StaffInterviewSheetDetail changeStatus(Integer recruitmentId, Integer applicationId,
                                                   StaffInterviewStatus status, Integer passedDepartmentId) {
-        requireClosed(recruitmentId);
+        StaffRecruitment recruitment = requireRecruitmentForUpdate(recruitmentId);
+        if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        }
+        if (recruitment.getInterviewResultsFinalizedAt() != null) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_RESULTS_FINALIZED);
+        }
         StaffApplication application = requireApplication(recruitmentId, applicationId);
         if (status == null) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
@@ -196,7 +223,8 @@ public class StaffInterviewBoardService {
                 departmentQuestions(application, StaffApplicationChoice.FIRST_PRIORITY, questions, answers),
                 departmentQuestions(application, StaffApplicationChoice.SECOND_PRIORITY, questions, answers),
                 extras,
-                passedDepartment(record));
+                passedDepartment(record),
+                requireRecruitment(recruitmentId).getInterviewResultsFinalizedAt() != null);
     }
 
     private PassedDepartment passedDepartment(Optional<StaffInterviewRecord> record) {
@@ -269,6 +297,11 @@ public class StaffInterviewBoardService {
 
     private StaffRecruitment requireRecruitment(Integer recruitmentId) {
         return staffRecruitmentRepository.findById(recruitmentId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
+    }
+
+    private StaffRecruitment requireRecruitmentForUpdate(Integer recruitmentId) {
+        return staffRecruitmentRepository.findByIdForUpdate(recruitmentId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
     }
 

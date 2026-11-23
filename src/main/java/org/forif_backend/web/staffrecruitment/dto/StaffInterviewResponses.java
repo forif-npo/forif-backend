@@ -41,14 +41,14 @@ public final class StaffInterviewResponses {
         }
     }
 
-    public record BoardResponse(Integer slotMinutes, List<CardResponse> cards) {
+    public record BoardResponse(Integer slotMinutes, List<CardResponse> cards, boolean resultsFinalized) {
         public static BoardResponse from(StaffInterviewBoardDetail detail) {
             return new BoardResponse(detail.slotMinutes(), detail.cards().stream()
                     .map(card -> new CardResponse(card.applicationId(), card.applicantName(),
                             SlotResponse.from(card.assignedSlot()), card.firstDepartment(),
                             card.secondDepartment(), card.status(),
                             PassedDepartmentResponse.from(card.passedDepartment())))
-                    .toList());
+                    .toList(), detail.resultsFinalized());
         }
     }
 
@@ -72,7 +72,8 @@ public final class StaffInterviewResponses {
             DepartmentQuestionsResponse firstDepartment,
             DepartmentQuestionsResponse secondDepartment,
             List<ExtraQuestionResponse> extraQuestions,
-            PassedDepartmentResponse passedDepartment
+            PassedDepartmentResponse passedDepartment,
+            boolean resultsFinalized
     ) {
         public static SheetResponse from(StaffInterviewSheetDetail detail) {
             return new SheetResponse(
@@ -87,7 +88,8 @@ public final class StaffInterviewResponses {
                     detail.extraQuestions().stream()
                             .map(extra -> new ExtraQuestionResponse(extra.extraQuestionId(), extra.content(), extra.answer()))
                             .toList(),
-                    PassedDepartmentResponse.from(detail.passedDepartment()));
+                    PassedDepartmentResponse.from(detail.passedDepartment()),
+                    detail.resultsFinalized());
         }
 
         private static List<QuestionAnswerResponse> answers(List<StaffInterviewSheetDetail.QuestionAnswer> items) {

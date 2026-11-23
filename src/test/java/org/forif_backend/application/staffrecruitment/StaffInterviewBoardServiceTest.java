@@ -81,6 +81,7 @@ class StaffInterviewBoardServiceTest {
         designQuestion = question(3, recruitment.getDepartments().get(2), "포트폴리오 설명");
 
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
+        when(staffRecruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(recruitment));
         when(staffApplicationRepository.findDetailById(APPLICATION_ID)).thenReturn(Optional.of(application));
         when(staffInterviewQuestionRepository.findAllByRecruitmentId(RECRUITMENT_ID))
                 .thenReturn(List.of(common, swQuestion, designQuestion));
@@ -95,6 +96,38 @@ class StaffInterviewBoardServiceTest {
         StaffInterviewQuestion question = StaffInterviewQuestion.create(recruitment, department, content, id);
         ReflectionTestUtils.setField(question, "id", id);
         return question;
+    }
+
+    @Test
+    void 미결정_지원자가_있으면_면접_결과를_확정할_수_없다() {
+        when(staffApplicationRepository.findAllWithChoicesByRecruitmentId(RECRUITMENT_ID))
+                .thenReturn(List.of(application));
+
+        assertThatThrownBy(() -> staffInterviewBoardService.finalizeResults(RECRUITMENT_ID))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_RESULTS_INCOMPLETE);
+        assertThat(recruitment.getInterviewResultsFinalizedAt()).isNull();
+    }
+
+    @Test
+    void 모든_결과를_정하면_최종_확정하고_상태_변경을_막는다() {
+        when(staffApplicationRepository.findAllWithChoicesByRecruitmentId(RECRUITMENT_ID))
+                .thenReturn(List.of(application));
+        StaffInterviewRecord record = StaffInterviewRecord.create(application, StaffInterviewStatus.PASSED,
+                recruitment.getDepartments().get(0));
+        when(staffInterviewRecordRepository.findRecordsByRecruitmentId(RECRUITMENT_ID))
+                .thenReturn(List.of(record));
+        when(staffInterviewRecordRepository.findRecordByApplicationId(APPLICATION_ID))
+                .thenReturn(Optional.of(record));
+
+        StaffInterviewBoardDetail board = staffInterviewBoardService.finalizeResults(RECRUITMENT_ID);
+
+        assertThat(board.resultsFinalized()).isTrue();
+        assertThat(recruitment.getInterviewResultsFinalizedAt()).isNotNull();
+        assertThatThrownBy(() -> staffInterviewBoardService.changeStatus(
+                RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.FAILED, null))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_RESULTS_FINALIZED);
     }
 
     @Test
@@ -238,6 +271,7 @@ class StaffInterviewBoardServiceTest {
         StaffRecruitment open = StaffRecruitment.create(2026, 2, "모집", null, null, now.minusDays(1), now.plusDays(1));
         open.publish();
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(open));
+        when(staffRecruitmentRepository.findByIdForUpdate(RECRUITMENT_ID)).thenReturn(Optional.of(open));
 
         assertThatThrownBy(() -> staffInterviewBoardService.changeStatus(
                 RECRUITMENT_ID, APPLICATION_ID, StaffInterviewStatus.DONE, null))

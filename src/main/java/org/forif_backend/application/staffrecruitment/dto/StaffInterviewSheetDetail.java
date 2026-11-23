@@ -20,7 +20,8 @@ public record StaffInterviewSheetDetail(
         DepartmentQuestions secondDepartment,
         List<ExtraQuestion> extraQuestions,
         /** 합격자에게 배정한 부서. 합격이 아니면 null이다. */
-        PassedDepartment passedDepartment
+        PassedDepartment passedDepartment,
+        boolean resultsFinalized
 ) {
 
     public record QuestionAnswer(Integer questionId, String content, String answer) {

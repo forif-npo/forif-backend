@@ -43,6 +43,17 @@ public class AdminStaffInterviewController {
         return noStore(BoardResponse.from(staffInterviewBoardService.getBoard(recruitmentId)));
     }
 
+    @Operation(summary = "면접 결과 최종 확정",
+            description = "모든 지원자가 합격 또는 불합격일 때 확정합니다. 확정 후 결과는 변경할 수 없습니다.")
+    @PostMapping("/finalize-results")
+    public ResponseEntity<ApiResponse<BoardResponse>> finalizeResults(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Integer recruitmentId
+    ) {
+        staffAccountService.requirePresidentTeam(userId);
+        return noStore(BoardResponse.from(staffInterviewBoardService.finalizeResults(recruitmentId)));
+    }
+
     @Operation(summary = "면접 기록지", description = "공통·1지망·2지망 부서 질문과 답변, 기타 질문입니다.")
     @GetMapping("/{applicationId}")
     public ResponseEntity<ApiResponse<SheetResponse>> sheet(
@@ -123,7 +134,7 @@ public class AdminStaffInterviewController {
     }
 
     @Operation(summary = "합격자 운영진 등록",
-            description = "합격자를 모집 회차의 활동 학기 운영진 명단에 배정 부서로 올립니다. "
+            description = "면접 결과 최종 확정 후 합격자를 모집 회차의 활동 학기 운영진 명단에 배정 부서로 올립니다. "
                     + "이미 명단에 있는 사람은 건너뛰므로 여러 번 눌러도 됩니다. "
                     + "운영진 추가와 같은 권한 규칙(SW팀은 현직 회장만 등)을 따릅니다.")
     @PostMapping("/staff-registration")

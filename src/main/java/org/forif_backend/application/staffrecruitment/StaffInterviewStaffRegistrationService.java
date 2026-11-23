@@ -47,6 +47,9 @@ public class StaffInterviewStaffRegistrationService {
         if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
             throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
         }
+        if (recruitment.getInterviewResultsFinalizedAt() == null) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_RESULTS_NOT_FINALIZED);
+        }
 
         List<StaffInterviewRecord> passed = staffInterviewRecordRepository.findRecordsByRecruitmentId(recruitmentId)
                 .stream()
