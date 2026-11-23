@@ -7,6 +7,7 @@ import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSchedule
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.DepartmentQuestions;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.ExtraQuestion;
+import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.PassedDepartment;
 import org.forif_backend.application.staffrecruitment.dto.StaffInterviewSheetDetail.QuestionAnswer;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -14,6 +15,7 @@ import org.forif_backend.domain.staffrecruitment.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,27 +40,51 @@ public class StaffInterviewBoardService {
 
     @Transactional(readOnly = true)
     public StaffInterviewBoardDetail getBoard(Integer recruitmentId) {
-        requireRecruitment(recruitmentId);
+        StaffRecruitment recruitment = requireRecruitment(recruitmentId);
 
         Map<Integer, Slot> assigned = assignedSlots(recruitmentId);
-        Map<Integer, StaffInterviewStatus> statuses = staffInterviewRecordRepository
+        Map<Integer, StaffInterviewRecord> records = staffInterviewRecordRepository
                 .findRecordsByRecruitmentId(recruitmentId).stream()
-                .collect(Collectors.toMap(record -> record.getApplication().getId(), StaffInterviewRecord::getStatus));
+                .collect(Collectors.toMap(record -> record.getApplication().getId(), record -> record));
 
         List<Card> cards = staffApplicationRepository.findAllWithChoicesByRecruitmentId(recruitmentId).stream()
-                .map(application -> new Card(
-                        application.getId(),
-                        application.getApplicantName(),
-                        assigned.get(application.getId()),
-                        departmentName(application, StaffApplicationChoice.FIRST_PRIORITY),
-                        departmentName(application, StaffApplicationChoice.SECOND_PRIORITY),
-                        statuses.getOrDefault(application.getId(), StaffInterviewStatus.BEFORE)))
+                .map(application -> {
+                    Optional<StaffInterviewRecord> record = Optional.ofNullable(records.get(application.getId()));
+                    return new Card(
+                            application.getId(),
+                            application.getApplicantName(),
+                            assigned.get(application.getId()),
+                            departmentName(application, StaffApplicationChoice.FIRST_PRIORITY),
+                            departmentName(application, StaffApplicationChoice.SECOND_PRIORITY),
+                            record.map(StaffInterviewRecord::getStatus).orElse(StaffInterviewStatus.BEFORE),
+                            passedDepartment(record));
+                })
                 // 같은 칸 안에서는 면접 시각이 빠른 순, 시각이 없으면 맨 뒤
                 .sorted(Comparator.comparing(Card::assignedSlot,
                         Comparator.nullsLast(Comparator.comparing(Slot::date).thenComparingInt(Slot::startMinute))))
                 .toList();
 
-        return new StaffInterviewBoardDetail(slotMinutes(recruitmentId), cards);
+        return new StaffInterviewBoardDetail(slotMinutes(recruitmentId), cards,
+                recruitment.getInterviewResultsFinalizedAt() != null);
+    }
+
+    /** 모든 지원자의 합격·불합격이 정해진 뒤 면접 결과를 확정한다. */
+    @Transactional
+    public StaffInterviewBoardDetail finalizeResults(Integer recruitmentId) {
+        StaffRecruitment recruitment = requireRecruitmentForUpdate(recruitmentId);
+        if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        }
+        StaffInterviewBoardDetail board = getBoard(recruitmentId);
+        if (recruitment.getInterviewResultsFinalizedAt() == null) {
+            if (board.cards().isEmpty() || board.cards().stream()
+                    .anyMatch(card -> card.status() != StaffInterviewStatus.PASSED
+                            && card.status() != StaffInterviewStatus.FAILED)) {
+                throw new ForifException(ErrorCode.STAFF_INTERVIEW_RESULTS_INCOMPLETE);
+            }
+            recruitment.finalizeInterviewResults(LocalDateTime.now());
+        }
+        return new StaffInterviewBoardDetail(board.slotMinutes(), board.cards(), true);
     }
 
     @Transactional(readOnly = true)
@@ -68,19 +94,32 @@ public class StaffInterviewBoardService {
         return sheet(recruitmentId, application);
     }
 
+    /**
+     * 면접 상태를 바꾼다. 합격이면 지원자의 1지망·2지망 중 배정할 부서를 함께 받는다.
+     * 지망이 하나뿐이면 부서를 생략해도 그 부서로 배정한다.
+     */
     @Transactional
     public StaffInterviewSheetDetail changeStatus(Integer recruitmentId, Integer applicationId,
-                                                  StaffInterviewStatus status) {
-        requireClosed(recruitmentId);
+                                                  StaffInterviewStatus status, Integer passedDepartmentId) {
+        StaffRecruitment recruitment = requireRecruitmentForUpdate(recruitmentId);
+        if (recruitment.getStatus() != StaffRecruitmentStatus.CLOSED) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        }
+        if (recruitment.getInterviewResultsFinalizedAt() != null) {
+            throw new ForifException(ErrorCode.STAFF_INTERVIEW_RESULTS_FINALIZED);
+        }
         StaffApplication application = requireApplication(recruitmentId, applicationId);
         if (status == null) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
+        StaffRecruitmentDepartment passedDepartment = status == StaffInterviewStatus.PASSED
+                ? chosenDepartment(application, passedDepartmentId)
+                : null;
         staffInterviewRecordRepository.findRecordByApplicationId(applicationId)
                 .ifPresentOrElse(
-                        record -> record.changeStatus(status),
+                        record -> record.changeStatus(status, passedDepartment),
                         () -> staffInterviewRecordRepository.saveRecord(
-                                StaffInterviewRecord.create(application, status)));
+                                StaffInterviewRecord.create(application, status, passedDepartment)));
         staffInterviewRecordRepository.flush();
         return sheet(recruitmentId, application);
     }
@@ -167,9 +206,8 @@ public class StaffInterviewBoardService {
                 .map(question -> new QuestionAnswer(question.getId(), question.getContent(), answers.get(question.getId())))
                 .toList();
 
-        StaffInterviewStatus status = staffInterviewRecordRepository.findRecordByApplicationId(applicationId)
-                .map(StaffInterviewRecord::getStatus)
-                .orElse(StaffInterviewStatus.BEFORE);
+        Optional<StaffInterviewRecord> record = staffInterviewRecordRepository.findRecordByApplicationId(applicationId);
+        StaffInterviewStatus status = record.map(StaffInterviewRecord::getStatus).orElse(StaffInterviewStatus.BEFORE);
         List<ExtraQuestion> extras = staffInterviewRecordRepository.findExtraQuestionsByApplicationId(applicationId)
                 .stream()
                 .map(extra -> new ExtraQuestion(extra.getId(), extra.getContent(), extra.getAnswer()))
@@ -184,7 +222,32 @@ public class StaffInterviewBoardService {
                 common,
                 departmentQuestions(application, StaffApplicationChoice.FIRST_PRIORITY, questions, answers),
                 departmentQuestions(application, StaffApplicationChoice.SECOND_PRIORITY, questions, answers),
-                extras);
+                extras,
+                passedDepartment(record),
+                requireRecruitment(recruitmentId).getInterviewResultsFinalizedAt() != null);
+    }
+
+    private PassedDepartment passedDepartment(Optional<StaffInterviewRecord> record) {
+        return record.map(StaffInterviewRecord::getPassedDepartment)
+                .map(department -> new PassedDepartment(department.getId(), department.getName()))
+                .orElse(null);
+    }
+
+    /** 지원자가 고른 부서 중 하나여야 한다. 부서를 비웠으면 지망이 하나일 때만 그 부서로 정한다. */
+    private StaffRecruitmentDepartment chosenDepartment(StaffApplication application, Integer departmentId) {
+        List<StaffRecruitmentDepartment> chosen = application.getChoices().stream()
+                .map(StaffApplicationChoice::getDepartment)
+                .toList();
+        if (departmentId == null) {
+            if (chosen.size() == 1) {
+                return chosen.get(0);
+            }
+            throw new ForifException(ErrorCode.INVALID_INPUT);
+        }
+        return chosen.stream()
+                .filter(department -> department.getId().equals(departmentId))
+                .findFirst()
+                .orElseThrow(() -> new ForifException(ErrorCode.INVALID_INPUT));
     }
 
     private DepartmentQuestions departmentQuestions(StaffApplication application, int priority,
@@ -234,6 +297,11 @@ public class StaffInterviewBoardService {
 
     private StaffRecruitment requireRecruitment(Integer recruitmentId) {
         return staffRecruitmentRepository.findById(recruitmentId)
+                .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
+    }
+
+    private StaffRecruitment requireRecruitmentForUpdate(Integer recruitmentId) {
+        return staffRecruitmentRepository.findByIdForUpdate(recruitmentId)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND));
     }
 

@@ -6,6 +6,7 @@ import org.forif_backend.application.file.TransactionalFileCleanup;
 import org.forif_backend.application.file.port.out.FilePort;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
+import org.forif_backend.application.staffrecruitment.dto.StaffApplicationInterviewSummary;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
 import org.forif_backend.application.staffrecruitment.dto.MyStaffApplicationSummary;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand;
@@ -22,6 +23,8 @@ import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestion;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationInterviewSlot;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewScheduleRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewRecordRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
@@ -56,6 +59,8 @@ public class StaffApplicationService {
     private final StaffApplicationRepository staffApplicationRepository;
     private final StaffRecruitmentRepository staffRecruitmentRepository;
     private final StaffInterviewPlanRepository staffInterviewPlanRepository;
+    private final StaffInterviewScheduleRepository staffInterviewScheduleRepository;
+    private final StaffInterviewRecordRepository staffInterviewRecordRepository;
     private final UserRepository userRepository;
     private final StudyUserRepository studyUserRepository;
     private final SemesterService semesterService;
@@ -187,6 +192,24 @@ public class StaffApplicationService {
         return staffApplicationRepository.findDetailByRecruitmentIdAndApplicantId(recruitmentId, userId)
                 .map(StaffApplicationDetail::from)
                 .orElseThrow(() -> new ForifException(ErrorCode.STAFF_APPLICATION_NOT_FOUND));
+    }
+
+    /** getMine으로 본인 소유를 확인한 지원서의 면접 공개 정보만 조회한다. */
+    @Transactional(readOnly = true)
+    public StaffApplicationInterviewSummary getInterviewSummary(StaffApplicationDetail application) {
+        var assignment = staffInterviewScheduleRepository.findAssignmentByApplicationId(application.applicationId());
+        Integer slotMinutes = assignment.flatMap(ignored ->
+                staffInterviewPlanRepository.findByRecruitmentId(application.recruitmentId()))
+                .map(StaffInterviewPlan::getSlotMinutes)
+                .orElse(null);
+        var status = staffInterviewRecordRepository.findRecordByApplicationId(application.applicationId())
+                .map(record -> record.getStatus())
+                .orElse(null);
+        return new StaffApplicationInterviewSummary(
+                assignment.map(a -> a.getSlotDate()).orElse(null),
+                assignment.map(a -> a.getStartMinute()).orElse(null),
+                slotMinutes,
+                status);
     }
 
     @Transactional(readOnly = true)

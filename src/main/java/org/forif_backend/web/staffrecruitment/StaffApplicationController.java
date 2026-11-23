@@ -159,9 +159,10 @@ public class StaffApplicationController {
             @AuthenticationPrincipal Long userId,
             @PathVariable Integer recruitmentId
     ) {
-        DetailResponse response = DetailResponse.from(
-                staffApplicationService.getMine(recruitmentId, userId),
-                staffApplicationService.canModifyMine(recruitmentId, userId));
+        var application = staffApplicationService.getMine(recruitmentId, userId);
+        DetailResponse response = DetailResponse.from(application,
+                staffApplicationService.canModifyMine(recruitmentId, userId),
+                staffApplicationService.getInterviewSummary(application));
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noStore().cachePrivate())

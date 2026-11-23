@@ -19,6 +19,11 @@ import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlan;
 import org.forif_backend.domain.staffrecruitment.StaffInterviewPlanRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewScheduleRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewRecordRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewAssignment;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewRecord;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.study.StudyUserRepository;
 import org.forif_backend.domain.user.User;
@@ -44,6 +49,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -67,6 +73,12 @@ class StaffApplicationServiceTest {
     private StaffInterviewPlanRepository staffInterviewPlanRepository;
 
     @Mock
+    private StaffInterviewScheduleRepository staffInterviewScheduleRepository;
+
+    @Mock
+    private StaffInterviewRecordRepository staffInterviewRecordRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -80,6 +92,46 @@ class StaffApplicationServiceTest {
 
     @InjectMocks
     private StaffApplicationService staffApplicationService;
+
+    @Test
+    void 본인_면접_요약은_배정과_결과가_없으면_비어_있다() {
+        var detail = new StaffApplicationDetail(7, RECRUITMENT_ID, 1L, "Applicant",
+                "applicant@example.com", null, null, List.of(),
+                org.forif_backend.domain.staffrecruitment.StaffApplicationStatus.SUBMITTED,
+                LocalDateTime.now(), List.of(), List.of());
+
+        var summary = staffApplicationService.getInterviewSummary(detail);
+
+        assertThat(summary.date()).isNull();
+        assertThat(summary.startMinute()).isNull();
+        assertThat(summary.slotMinutes()).isNull();
+        assertThat(summary.status()).isNull();
+    }
+
+    @Test
+    void 본인_면접_요약은_배정시각과_결과만_담는다() {
+        var detail = new StaffApplicationDetail(7, RECRUITMENT_ID, 1L, "Applicant",
+                "applicant@example.com", null, null, List.of(),
+                org.forif_backend.domain.staffrecruitment.StaffApplicationStatus.SUBMITTED,
+                LocalDateTime.now(), List.of(), List.of());
+        var assignment = mock(StaffInterviewAssignment.class);
+        var plan = mock(StaffInterviewPlan.class);
+        var record = mock(StaffInterviewRecord.class);
+        when(staffInterviewScheduleRepository.findAssignmentByApplicationId(7)).thenReturn(Optional.of(assignment));
+        when(staffInterviewPlanRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.of(plan));
+        when(staffInterviewRecordRepository.findRecordByApplicationId(7)).thenReturn(Optional.of(record));
+        when(assignment.getSlotDate()).thenReturn(LocalDate.of(2026, 11, 26));
+        when(assignment.getStartMinute()).thenReturn(960);
+        when(plan.getSlotMinutes()).thenReturn(30);
+        when(record.getStatus()).thenReturn(StaffInterviewStatus.PASSED);
+
+        var summary = staffApplicationService.getInterviewSummary(detail);
+
+        assertThat(summary.date()).isEqualTo(LocalDate.of(2026, 11, 26));
+        assertThat(summary.startMinute()).isEqualTo(960);
+        assertThat(summary.slotMinutes()).isEqualTo(30);
+        assertThat(summary.status()).isEqualTo(StaffInterviewStatus.PASSED);
+    }
 
     private final User applicant =
             User.createUser(APPLICANT_ID, "홍길동", "hong@hanyang.ac.kr", "01000000000", "컴퓨터소프트웨어학부");

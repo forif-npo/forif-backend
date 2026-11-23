@@ -36,7 +36,7 @@ public class StaffAccount extends BaseTimeEntity {
     private StaffRole role;
 
     @Column(length = 100, nullable = false)
-    private String affiliation; // 운영진 팀명 (예: 기획팀)
+    private String affiliation; // 운영진 팀명 (예: 기획). 표시할 때만 "팀"을 붙인다.
 
     @Column(length = 300)
     private String signatureObjectKey; // 수료증 합성용 서명 이미지 (파일 저장소 object key)

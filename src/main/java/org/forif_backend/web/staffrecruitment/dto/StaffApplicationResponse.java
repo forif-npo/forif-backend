@@ -1,11 +1,13 @@
 package org.forif_backend.web.staffrecruitment.dto;
 
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
+import org.forif_backend.application.staffrecruitment.dto.StaffApplicationInterviewSummary;
 import org.forif_backend.application.staffrecruitment.StaffApplicationService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
 import org.forif_backend.application.staffrecruitment.dto.MyStaffApplicationSummary;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationStatus;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewStatus;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -82,6 +84,20 @@ public final class StaffApplicationResponse {
     ) {
     }
 
+    public record InterviewSummaryResponse(
+            InterviewSlotResponse assignedSlot,
+            Integer slotMinutes,
+            StaffInterviewStatus status
+    ) {
+        static InterviewSummaryResponse from(StaffApplicationInterviewSummary summary) {
+            return new InterviewSummaryResponse(
+                    summary.date() == null || summary.startMinute() == null
+                            ? null : new InterviewSlotResponse(summary.date(), summary.startMinute()),
+                    summary.slotMinutes(),
+                    summary.status());
+        }
+    }
+
     public record DetailResponse(
             Integer applicationId,
             Integer recruitmentId,
@@ -95,13 +111,19 @@ public final class StaffApplicationResponse {
             OffsetDateTime submittedAt,
             List<AnswerResponse> answers,
             List<InterviewSlotResponse> interviewSlots,
-            boolean canModify
+            boolean canModify,
+            InterviewSummaryResponse interview
     ) {
         public static DetailResponse from(StaffApplicationDetail detail) {
             return from(detail, false);
         }
 
         public static DetailResponse from(StaffApplicationDetail detail, boolean canModify) {
+            return from(detail, canModify, null);
+        }
+
+        public static DetailResponse from(StaffApplicationDetail detail, boolean canModify,
+                                          StaffApplicationInterviewSummary interview) {
             return new DetailResponse(
                     detail.applicationId(),
                     detail.recruitmentId(),
@@ -125,7 +147,8 @@ public final class StaffApplicationResponse {
                     detail.interviewSlots().stream()
                             .map(slot -> new InterviewSlotResponse(slot.date(), slot.startMinute()))
                             .toList(),
-                    canModify);
+                    canModify,
+                    interview == null ? null : InterviewSummaryResponse.from(interview));
         }
     }
 

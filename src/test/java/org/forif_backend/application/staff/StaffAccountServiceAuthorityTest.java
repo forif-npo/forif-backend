@@ -14,11 +14,13 @@ import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.team.ClubDepartment;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.List;
@@ -37,6 +39,8 @@ class StaffAccountServiceAuthorityTest {
 
     @Mock private SemesterService semesterService;
     @Mock private StaffAccountRepository staffAccountRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private UserRepository userRepository;
     @Mock private ForifTeamRepository forifTeamRepository;
     @Mock private ClubDepartmentService clubDepartmentService;
     @Mock private JwtProvider jwtProvider;
@@ -238,34 +242,68 @@ class StaffAccountServiceAuthorityTest {
     }
 
     @Test
-    void nonIncumbentCannotCreateSwTeamAdminAccount() {
+    void presidentTeamCanCreateSwTeamAdminAccount() {
         account("운영진");
         upcoming("회장");
         Long targetId = 20260002L;
-        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
-                .thenReturn(Optional.empty());
+        User target = User.createUser(targetId, "새 운영진", "new@example.com", "010-0000-0000", "컴퓨터학부");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
+        when(passwordEncoder.encode("ValidPass1!")).thenReturn("encoded");
+        when(staffAccountRepository.save(any(StaffAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW")));
+        StaffAccount created = service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW"));
 
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals(targetId, created.getUserId());
+        verify(forifTeamRepository).save(any(ForifTeam.class));
     }
 
     @Test
-    void nonIncumbentCannotCreateAdminForExistingSwTeamMember() {
+    void presidentTeamCanCreateAdminForExistingSwTeamMember() {
         account("운영진");
         upcoming("회장");
         Long targetId = 20260002L;
-        ForifTeam swMember = ForifTeam.create(
-                User.createUser(targetId, "SW팀", "sw@example.com", "010-0000-0000", "컴퓨터학부"),
-                2026, 2, "SW");
-        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
-                .thenReturn(Optional.of(swMember));
+        User target = User.createUser(targetId, "SW 운영진", "sw@example.com", "010-0000-0000", "컴퓨터학부");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
+        when(passwordEncoder.encode("ValidPass1!")).thenReturn("encoded");
+        when(staffAccountRepository.save(any(StaffAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, targetId)).thenReturn(true);
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "기획팀")));
+        StaffAccount created = service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "기획"));
 
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals(targetId, created.getUserId());
+        verify(forifTeamRepository, never()).save(any());
+    }
+
+    @Test
+    void officialTeamNamesKeepTheirExistingStorageFormat() {
+        account("회장");
+        Long targetId = 20260002L;
+        StaffAccount target = ordinaryTarget(targetId);
+
+        for (var entry : Map.of(
+                "회장단", "회장단",
+                "SW팀", "SW",
+                "법무회계팀", "법무회계",
+                "마케팅팀", "마케팅",
+                "전략기획팀", "전략기획").entrySet()) {
+            service.updateAdmin(USER_ID, targetId, null, null, entry.getKey());
+            assertEquals(entry.getValue(), target.getAffiliation());
+        }
+    }
+
+    @Test
+    void normalizedLeadershipNamesCannotBeSetThroughAffiliationUpdate() {
+        account("회장");
+        Long targetId = 20260002L;
+        StaffAccount target = ordinaryTarget(targetId);
+
+        for (String affiliation : List.of("회장팀", "부회장팀", "회장 팀")) {
+            ForifException denied = assertThrows(ForifException.class,
+                    () -> service.updateAdmin(USER_ID, targetId, null, null, affiliation));
+            assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+            assertEquals("기획", target.getAffiliation());
+        }
     }
 
     @Test
@@ -344,6 +382,19 @@ class StaffAccountServiceAuthorityTest {
         User user = user();
         StaffAccount account = StaffAccount.createStaffAccount(user, "encoded", "운영진", StaffRole.ADMIN, affiliation);
         when(staffAccountRepository.findByUserIdAndRole(USER_ID, StaffRole.ADMIN)).thenReturn(Optional.of(account));
+    }
+
+    private StaffAccount ordinaryTarget(Long targetId) {
+        User targetUser = User.createUser(targetId, "예시 운영진", "staff@example.com", "010-0000-0000", "컴퓨터학부");
+        StaffAccount target = StaffAccount.createStaffAccount(
+                targetUser, "encoded", "예시 운영진", StaffRole.ADMIN, "기획");
+        when(staffAccountRepository.findByUserIdAndRole(targetId, StaffRole.ADMIN)).thenReturn(Optional.of(target));
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
+                .thenReturn(Optional.empty());
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2027, 1, targetId))
+                .thenReturn(Optional.empty());
+        return target;
     }
 
     private void upcoming(String title) {
