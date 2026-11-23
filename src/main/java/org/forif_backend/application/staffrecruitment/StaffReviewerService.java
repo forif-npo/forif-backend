@@ -10,7 +10,6 @@ import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
-import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentReviewer;
@@ -41,7 +40,6 @@ public class StaffReviewerService {
 
     private final StaffRecruitmentReviewerRepository staffRecruitmentReviewerRepository;
     private final StaffRecruitmentRepository staffRecruitmentRepository;
-    private final StaffApplicationRepository staffApplicationRepository;
     private final StaffAccountRepository staffAccountRepository;
     private final ForifTeamRepository forifTeamRepository;
     private final UserRepository userRepository;
@@ -104,7 +102,7 @@ public class StaffReviewerService {
         if (expiresAt == null || !expiresAt.isAfter(now)) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
-        requireGrantable(recruitmentId, targetUserId);
+        requireGrantable(targetUserId);
 
         StaffRecruitmentReviewer reviewer = staffRecruitmentReviewerRepository
                 .findByRecruitmentIdAndUserIdForUpdate(recruitmentId, targetUserId)
@@ -142,7 +140,6 @@ public class StaffReviewerService {
 
     /**
      * 지원서 목록·상세 접근 검사. 회장단이거나 해당 회차의 유효한 열람 권한이 있어야 한다.
-     * 같은 회차에 지원한 사람은 권한이 있어도 열람할 수 없다.
      */
     @Transactional(readOnly = true)
     public void requireApplicationAccess(Long userId, Integer recruitmentId) {
@@ -156,9 +153,6 @@ public class StaffReviewerService {
                 .map(reviewer -> reviewer.isActive(now))
                 .orElse(false);
         if (!active) {
-            throw new ForifException(ErrorCode.STAFF_REVIEWER_NOT_ALLOWED);
-        }
-        if (staffApplicationRepository.existsByRecruitmentIdAndApplicantId(recruitmentId, userId)) {
             throw new ForifException(ErrorCode.STAFF_REVIEWER_NOT_ALLOWED);
         }
     }
@@ -178,9 +172,9 @@ public class StaffReviewerService {
 
     /**
      * 부여 가능 대상인지 확인한다.
-     * 현재 활동 학기의 운영진이면서 ADMIN 계정이 있어야 하고, 같은 회차 지원자는 제외한다.
+     * 현재 활동 학기의 운영진이면서 ADMIN 계정이 있어야 한다.
      */
-    private void requireGrantable(Integer recruitmentId, Long targetUserId) {
+    private void requireGrantable(Long targetUserId) {
         SemesterInfo active = semesterService.getActive();
         boolean teamMember = forifTeamRepository.existsByActYearAndActSemesterAndUserId(
                 active.actYear(), active.actSemester(), targetUserId);
@@ -188,9 +182,6 @@ public class StaffReviewerService {
             throw new ForifException(ErrorCode.STAFF_REVIEWER_CONFLICT);
         }
         if (!staffAccountRepository.existsByUserIdAndRole(targetUserId, StaffRole.ADMIN)) {
-            throw new ForifException(ErrorCode.STAFF_REVIEWER_CONFLICT);
-        }
-        if (staffApplicationRepository.existsByRecruitmentIdAndApplicantId(recruitmentId, targetUserId)) {
             throw new ForifException(ErrorCode.STAFF_REVIEWER_CONFLICT);
         }
     }
