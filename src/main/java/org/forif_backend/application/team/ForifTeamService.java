@@ -52,22 +52,21 @@ public class ForifTeamService {
     public ForifTeamResponse addMember(Long requesterId, Long userId, Integer actYear, Integer actSemester,
                                        String clubDepartment, String userTitle) {
         return addMemberInternal(requesterId, userId, actYear, actSemester, clubDepartment, userTitle,
-                semesterService.getActive(), false);
+                semesterService.getActive());
     }
 
-    /** 확정된 모집의 합격자를 등록한다. 차기 학기 SW 배정만 현직 회장 검사를 적용하지 않는다. */
+    /** 확정된 모집의 합격자를 등록한다. */
     @Transactional
     public ForifTeamResponse addFinalizedRecruitmentMember(Long requesterId, Long userId, int actYear,
                                                              int actSemester, String clubDepartment) {
         staffAccountService.requirePresidentTeam(requesterId);
-        SemesterInfo active = semesterService.getActive();
         return addMemberInternal(requesterId, userId, actYear, actSemester, clubDepartment, "팀원",
-                active, active.next().matches(actYear, actSemester));
+                semesterService.getActive());
     }
 
     private ForifTeamResponse addMemberInternal(Long requesterId, Long userId, Integer actYear,
                                                  Integer actSemester, String clubDepartment, String userTitle,
-                                                 SemesterInfo active, boolean allowNextSemesterSw) {
+                                                 SemesterInfo active) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -75,10 +74,6 @@ public class ForifTeamService {
         int semester = actSemester != null ? actSemester : active.actSemester();
 
         validateLeadershipChange(requesterId, year, semester, userId, null, userTitle);
-        if (isSwTeam(clubDepartment) && !allowNextSemesterSw) {
-            staffAccountService.requireIncumbentPresident(requesterId);
-        }
-
         if (forifTeamRepository.existsByActYearAndActSemesterAndUserId(year, semester, userId)) {
             throw new ForifException(ErrorCode.FORIF_TEAM_MEMBER_ALREADY_EXISTS);
         }
@@ -102,11 +97,6 @@ public class ForifTeamService {
         if (staffAccountService.isPresidentTeam(requesterId)) {
             validateLeadershipChange(requesterId, forifTeam.getActYear(), forifTeam.getActSemester(),
                     forifTeam.getUser().getId(), forifTeam.getUserTitle(), userTitle);
-            if (clubDepartment != null
-                    && !Objects.equals(ClubDepartmentService.normalizeName(clubDepartment), forifTeam.getClubDepartment())
-                    && (isSwTeam(clubDepartment) || isSwTeam(forifTeam.getClubDepartment()))) {
-                staffAccountService.requireIncumbentPresident(requesterId);
-            }
             forifTeam.update(userTitle, clubDepartment, introTag, selfIntro, graduateYear);
             if (clubDepartment != null) {
                 forifTeam.assignClubDepartment(clubDepartment.isBlank()
@@ -138,7 +128,7 @@ public class ForifTeamService {
     public void deleteMember(Long requesterId, Long id) {
         ForifTeam member = forifTeamRepository.findById(id)
                 .orElseThrow(() -> new ForifException(ErrorCode.FORIF_TEAM_MEMBER_NOT_FOUND));
-        if (isLeadershipTitle(member.getUserTitle()) || isSwTeam(member.getClubDepartment())) {
+        if (isLeadershipTitle(member.getUserTitle())) {
             staffAccountService.requireIncumbentPresident(requesterId);
         }
         forifTeamRepository.deleteById(id);
@@ -163,10 +153,6 @@ public class ForifTeamService {
 
     private boolean isLeadershipTitle(String title) {
         return "회장".equals(title) || "부회장".equals(title);
-    }
-
-    private boolean isSwTeam(String department) {
-        return "SW".equals(ClubDepartmentService.normalizeName(department));
     }
 
     private void validateOwner(Long requesterId, ForifTeam forifTeam) {

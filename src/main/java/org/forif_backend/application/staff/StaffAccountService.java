@@ -359,14 +359,6 @@ public class StaffAccountService {
         }
         PasswordUtils.validate(command.password());
 
-        SemesterInfo active = semesterService.getActive();
-        boolean existingSwTeamMember = forifTeamRepository.findByActYearAndActSemesterAndUserId(
-                        active.actYear(), active.actSemester(), command.userId())
-                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
-        if (isSwTeam(command.affiliation()) || existingSwTeamMember) {
-            requireIncumbentPresident(requesterId);
-        }
-
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -383,6 +375,7 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
+        SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {

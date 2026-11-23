@@ -14,11 +14,13 @@ import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
 import org.forif_backend.domain.team.ClubDepartment;
 import org.forif_backend.domain.user.User;
+import org.forif_backend.domain.user.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 import java.util.List;
@@ -37,6 +39,8 @@ class StaffAccountServiceAuthorityTest {
 
     @Mock private SemesterService semesterService;
     @Mock private StaffAccountRepository staffAccountRepository;
+    @Mock private PasswordEncoder passwordEncoder;
+    @Mock private UserRepository userRepository;
     @Mock private ForifTeamRepository forifTeamRepository;
     @Mock private ClubDepartmentService clubDepartmentService;
     @Mock private JwtProvider jwtProvider;
@@ -238,34 +242,37 @@ class StaffAccountServiceAuthorityTest {
     }
 
     @Test
-    void nonIncumbentCannotCreateSwTeamAdminAccount() {
+    void presidentTeamCanCreateSwTeamAdminAccount() {
         account("운영진");
         upcoming("회장");
         Long targetId = 20260002L;
-        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
-                .thenReturn(Optional.empty());
+        User target = User.createUser(targetId, "새 운영진", "new@example.com", "010-0000-0000", "컴퓨터학부");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
+        when(passwordEncoder.encode("ValidPass1!")).thenReturn("encoded");
+        when(staffAccountRepository.save(any(StaffAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW")));
+        StaffAccount created = service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "SW"));
 
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals(targetId, created.getUserId());
+        verify(forifTeamRepository).save(any(ForifTeam.class));
     }
 
     @Test
-    void nonIncumbentCannotCreateAdminForExistingSwTeamMember() {
+    void presidentTeamCanCreateAdminForExistingSwTeamMember() {
         account("운영진");
         upcoming("회장");
         Long targetId = 20260002L;
-        ForifTeam swMember = ForifTeam.create(
-                User.createUser(targetId, "SW팀", "sw@example.com", "010-0000-0000", "컴퓨터학부"),
-                2026, 2, "SW");
-        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
-                .thenReturn(Optional.of(swMember));
+        User target = User.createUser(targetId, "SW 운영진", "sw@example.com", "010-0000-0000", "컴퓨터학부");
+        when(userRepository.findById(targetId)).thenReturn(Optional.of(target));
+        when(passwordEncoder.encode("ValidPass1!")).thenReturn("encoded");
+        when(staffAccountRepository.save(any(StaffAccount.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(forifTeamRepository.existsByActYearAndActSemesterAndUserId(2026, 2, targetId)).thenReturn(true);
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "기획팀")));
+        StaffAccount created = service.createAdmin(USER_ID, new CreateAdminCommand(targetId, "ValidPass1!", "기획"));
 
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        assertEquals(targetId, created.getUserId());
+        verify(forifTeamRepository, never()).save(any());
     }
 
     @Test
