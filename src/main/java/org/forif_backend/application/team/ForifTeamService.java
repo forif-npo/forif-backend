@@ -148,7 +148,7 @@ public class ForifTeamService {
     }
 
     private boolean isSwTeam(String department) {
-        return "SW팀".equals(ClubDepartmentService.normalizeName(department));
+        return "SW".equals(ClubDepartmentService.normalizeName(department));
     }
 
     private void validateOwner(Long requesterId, ForifTeam forifTeam) {

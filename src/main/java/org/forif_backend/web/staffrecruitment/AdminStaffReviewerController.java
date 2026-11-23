@@ -68,7 +68,7 @@ public class AdminStaffReviewerController {
     }
 
     @Operation(summary = "열람 권한 부여",
-            description = "즉시 부여됩니다. 같은 회차 지원자와 ADMIN 계정이 없는 운영진은 부여할 수 없습니다.")
+            description = "즉시 부여됩니다. ADMIN 계정이 없는 운영진은 부여할 수 없습니다.")
     @PostMapping("/reviewers")
     public ResponseEntity<ApiResponse<ReviewerResponse>> grant(
             @AuthenticationPrincipal Long userId,

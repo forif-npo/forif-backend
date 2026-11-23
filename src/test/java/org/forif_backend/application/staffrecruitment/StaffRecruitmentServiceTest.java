@@ -11,7 +11,11 @@ import org.forif_backend.application.staffrecruitment.dto.UpdateStaffRecruitment
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
 import org.forif_backend.domain.staffrecruitment.RecruitmentApplicationStatus;
+import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewQuestion;
+import org.forif_backend.domain.staffrecruitment.StaffInterviewQuestionRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitment;
+import org.forif_backend.domain.staffrecruitment.StaffRecruitmentDepartmentSpec;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentQuestionType;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentRepository;
 import org.forif_backend.domain.staffrecruitment.StaffRecruitmentStatus;
@@ -42,6 +46,12 @@ class StaffRecruitmentServiceTest {
 
     @Mock
     private StaffRecruitmentRepository staffRecruitmentRepository;
+
+    @Mock
+    private StaffApplicationRepository staffApplicationRepository;
+
+    @Mock
+    private StaffInterviewQuestionRepository staffInterviewQuestionRepository;
 
     @Mock
     private SemesterService semesterService;
@@ -141,6 +151,52 @@ class StaffRecruitmentServiceTest {
                 null, "바뀐 제목", null, null, STARTS_AT, ENDS_AT, null, null)))
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
         assertThat(target.getTitle()).isEqualTo("2027-1 운영진 모집");
+    }
+
+    @Test
+    void 면접_질문이_있는_부서는_초안에서도_삭제할_수_없다() {
+        StaffRecruitment target = recruitmentWithDepartments(7);
+        when(staffRecruitmentRepository.findByIdForUpdate(7)).thenReturn(Optional.of(target));
+        when(staffInterviewQuestionRepository.findAllByRecruitmentId(7)).thenReturn(List.of(
+                StaffInterviewQuestion.create(target, target.getDepartments().get(0), "면접 질문", 1)));
+
+        assertThatThrownBy(() -> staffRecruitmentService.update(7, updateKeepingDepartment(12)))
+                .isInstanceOf(ForifException.class)
+                .hasFieldOrPropertyWithValue("errorCode",
+                        ErrorCode.STAFF_RECRUITMENT_DEPARTMENT_HAS_INTERVIEW_QUESTIONS);
+        assertThat(target.getDepartments()).hasSize(2);
+    }
+
+    @Test
+    void 삭제하지_않는_부서의_면접_질문은_다른_부서_삭제를_막지_않는다() {
+        StaffRecruitment target = recruitmentWithDepartments(8);
+        when(staffRecruitmentRepository.findByIdForUpdate(8)).thenReturn(Optional.of(target));
+        when(staffInterviewQuestionRepository.findAllByRecruitmentId(8)).thenReturn(List.of(
+                StaffInterviewQuestion.create(target, null, "공통 질문", 1),
+                StaffInterviewQuestion.create(target, target.getDepartments().get(0), "기획팀 질문", 1)));
+        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(ClubDepartment.create("기획팀"));
+
+        StaffRecruitmentDetail detail = staffRecruitmentService.update(8, updateKeepingDepartment(11));
+
+        assertThat(detail.departments()).extracting(StaffRecruitmentDetail.DepartmentInfo::name)
+                .containsExactly("기획팀");
+    }
+
+    private StaffRecruitment recruitmentWithDepartments(int recruitmentId) {
+        StaffRecruitment target = recruitment(recruitmentId, false);
+        target.mergeDepartments(List.of(
+                new StaffRecruitmentDepartmentSpec(null, "기획팀", null, 1, true),
+                new StaffRecruitmentDepartmentSpec(null, "SW팀", null, 2, true)), false);
+        ReflectionTestUtils.setField(target.getDepartments().get(0), "id", 11);
+        ReflectionTestUtils.setField(target.getDepartments().get(1), "id", 12);
+        return target;
+    }
+
+    private UpdateStaffRecruitmentCommand updateKeepingDepartment(int departmentId) {
+        String name = departmentId == 11 ? "기획팀" : "SW팀";
+        return new UpdateStaffRecruitmentCommand(null, "2027-1 운영진 모집", null, null,
+                STARTS_AT, ENDS_AT,
+                List.of(new StaffRecruitmentDepartmentCommand(departmentId, name, null, 1, true)), null);
     }
 
     @Test
