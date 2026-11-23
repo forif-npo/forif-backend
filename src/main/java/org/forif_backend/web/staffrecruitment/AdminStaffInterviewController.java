@@ -136,7 +136,7 @@ public class AdminStaffInterviewController {
     @Operation(summary = "합격자 운영진 등록",
             description = "면접 결과 최종 확정 후 합격자를 모집 회차의 활동 학기 운영진 명단에 배정 부서로 올립니다. "
                     + "이미 명단에 있는 사람은 건너뛰므로 여러 번 눌러도 됩니다. "
-                    + "운영진 추가와 같은 권한 규칙(SW팀은 현직 회장만 등)을 따릅니다.")
+                    + "차기 학기 SW 합격자는 회장단이 등록할 수 있고, 현재 학기 SW 등록은 현직 회장만 할 수 있습니다.")
     @PostMapping("/staff-registration")
     public ResponseEntity<ApiResponse<StaffRegistrationResponse>> registerPassedApplicants(
             @AuthenticationPrincipal Long userId,

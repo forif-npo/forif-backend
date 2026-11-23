@@ -51,15 +51,33 @@ public class ForifTeamService {
     @Transactional
     public ForifTeamResponse addMember(Long requesterId, Long userId, Integer actYear, Integer actSemester,
                                        String clubDepartment, String userTitle) {
+        return addMemberInternal(requesterId, userId, actYear, actSemester, clubDepartment, userTitle,
+                semesterService.getActive(), false);
+    }
+
+    /** 확정된 모집의 합격자를 등록한다. 차기 학기 SW 배정만 현직 회장 검사를 적용하지 않는다. */
+    @Transactional
+    public ForifTeamResponse addFinalizedRecruitmentMember(Long requesterId, Long userId, int actYear,
+                                                             int actSemester, String clubDepartment) {
+        staffAccountService.requirePresidentTeam(requesterId);
+        SemesterInfo active = semesterService.getActive();
+        return addMemberInternal(requesterId, userId, actYear, actSemester, clubDepartment, "팀원",
+                active, active.next().matches(actYear, actSemester));
+    }
+
+    private ForifTeamResponse addMemberInternal(Long requesterId, Long userId, Integer actYear,
+                                                 Integer actSemester, String clubDepartment, String userTitle,
+                                                 SemesterInfo active, boolean allowNextSemesterSw) {
         User user = userRepository.findUserById(userId)
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
-        SemesterInfo active = semesterService.getActive();
         int year = actYear != null ? actYear : active.actYear();
         int semester = actSemester != null ? actSemester : active.actSemester();
 
         validateLeadershipChange(requesterId, year, semester, userId, null, userTitle);
-        if (isSwTeam(clubDepartment)) staffAccountService.requireIncumbentPresident(requesterId);
+        if (isSwTeam(clubDepartment) && !allowNextSemesterSw) {
+            staffAccountService.requireIncumbentPresident(requesterId);
+        }
 
         if (forifTeamRepository.existsByActYearAndActSemesterAndUserId(year, semester, userId)) {
             throw new ForifException(ErrorCode.FORIF_TEAM_MEMBER_ALREADY_EXISTS);
@@ -159,7 +177,9 @@ public class ForifTeamService {
 
     private void validateSelfUpdateFields(ForifTeam forifTeam, String userTitle, String clubDepartment) {
         if ((userTitle != null && !Objects.equals(userTitle, forifTeam.getUserTitle()))
-                || (clubDepartment != null && !Objects.equals(clubDepartment, forifTeam.getClubDepartment()))) {
+                || (clubDepartment != null && !Objects.equals(
+                        ClubDepartmentService.normalizeName(clubDepartment),
+                        ClubDepartmentService.normalizeName(forifTeam.getClubDepartment())))) {
             throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
         }
     }

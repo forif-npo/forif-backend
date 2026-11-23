@@ -453,7 +453,7 @@ public class StaffAccountService {
                     || "회장".equals(targetAuthority) || "부회장".equals(targetAuthority)) {
                 throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
             }
-            staffAccount.updateAffiliation(affiliation);
+            staffAccount.updateAffiliation(ClubDepartmentService.normalizeName(affiliation));
         }
 
         return staffAccount;

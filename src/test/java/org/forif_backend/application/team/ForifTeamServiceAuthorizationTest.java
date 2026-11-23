@@ -1,6 +1,7 @@
 package org.forif_backend.application.team;
 
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.exception.ErrorCode;
@@ -22,6 +23,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +43,52 @@ class ForifTeamServiceAuthorizationTest {
     @Mock private StaffAccountService staffAccountService;
     @Mock private ClubDepartmentService clubDepartmentService;
     @InjectMocks private ForifTeamService forifTeamService;
+
+    @Test
+    void finalizedRecruitmentCanRegisterNextSemesterSwWithoutIncumbentApproval() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = forifTeamService.addFinalizedRecruitmentMember(OTHER_OPERATOR_ID, OWNER_ID, 2027, 1, "SW");
+
+        assertEquals("SW", result.clubDepartment());
+        assertEquals("팀원", result.userTitle());
+        verify(staffAccountService).requirePresidentTeam(OTHER_OPERATOR_ID);
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
+
+    @Test
+    void manualNextSemesterSwAssignmentStillRequiresIncumbentApproval() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
+                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.addMember(OTHER_OPERATOR_ID, OWNER_ID, 2027, 1, "SW팀", "팀원"));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        verify(forifTeamRepository, never()).save(any());
+    }
+
+    @Test
+    void finalizedRecruitmentCurrentSemesterSwAssignmentStillRequiresIncumbentApproval() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
+                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+
+        ForifException denied = assertThrows(ForifException.class,
+                () -> forifTeamService.addFinalizedRecruitmentMember(OTHER_OPERATOR_ID, OWNER_ID, 2026, 2, "SW"));
+
+        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
+        verify(forifTeamRepository, never()).save(any());
+    }
 
     @Test
     void generalOperatorCanUpdateOnlyOwnPublicProfileFields() {

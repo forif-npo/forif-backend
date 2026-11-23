@@ -95,9 +95,9 @@ class StaffInterviewStaffRegistrationServiceTest {
 
         StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
 
-        verify(forifTeamService).addMember(REQUESTER_ID, 10L, 2027, 1, "기획팀", "팀원");
-        verify(forifTeamService, never()).addMember(any(), eq(11L), anyInt(), anyInt(), any(), any());
-        verify(forifTeamService, never()).addMember(any(), eq(12L), anyInt(), anyInt(), any(), any());
+        verify(forifTeamService).addFinalizedRecruitmentMember(REQUESTER_ID, 10L, 2027, 1, "기획팀");
+        verify(forifTeamService, never()).addFinalizedRecruitmentMember(any(), eq(11L), anyInt(), anyInt(), any());
+        verify(forifTeamService, never()).addFinalizedRecruitmentMember(any(), eq(12L), anyInt(), anyInt(), any());
         assertThat(result.actYear()).isEqualTo(2027);
         assertThat(result.actSemester()).isEqualTo(1);
         assertThat(result.registered()).containsExactly("가합격");
@@ -111,7 +111,7 @@ class StaffInterviewStaffRegistrationServiceTest {
 
         StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
 
-        verify(forifTeamService, never()).addMember(any(), anyLong(), anyInt(), anyInt(), any(), any());
+        verify(forifTeamService, never()).addFinalizedRecruitmentMember(any(), anyLong(), anyInt(), anyInt(), any());
         assertThat(result.registered()).isEmpty();
         assertThat(result.alreadyMembers()).containsExactly("가합격");
     }
@@ -123,21 +123,19 @@ class StaffInterviewStaffRegistrationServiceTest {
 
         StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
 
-        verify(forifTeamService, never()).addMember(any(), any(), any(), any(), any(), any());
+        verify(forifTeamService, never()).addFinalizedRecruitmentMember(any(), anyLong(), anyInt(), anyInt(), any());
         assertThat(result.withdrawn()).containsExactly("탈퇴자");
     }
 
     @Test
-    void 운영진_추가_권한_규칙에_걸리면_등록하지_않는다() {
-        // SW는 현직 회장만 올릴 수 있다는 운영진 관리 규칙을 그대로 따른다.
+    void 확정된_차기_학기_SW_합격자를_회장단이_등록한다() {
         givenRecords(
                 record(user(10L, "가합격"), "가합격", StaffInterviewStatus.PASSED, sw));
-        when(forifTeamService.addMember(REQUESTER_ID, 10L, 2027, 1, "SW", "팀원"))
-                .thenThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION));
 
-        assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
-                .isInstanceOf(ForifException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INSUFFICIENT_PERMISSION);
+        StaffRegistrationResult result = service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID);
+
+        verify(forifTeamService).addFinalizedRecruitmentMember(REQUESTER_ID, 10L, 2027, 1, "SW");
+        assertThat(result.registered()).containsExactly("가합격");
     }
 
     @Test
@@ -159,6 +157,6 @@ class StaffInterviewStaffRegistrationServiceTest {
         assertThatThrownBy(() -> service.registerPassedApplicants(REQUESTER_ID, RECRUITMENT_ID))
                 .isInstanceOf(ForifException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.STAFF_INTERVIEW_RESULTS_NOT_FINALIZED);
-        verify(forifTeamService, never()).addMember(any(), any(), any(), any(), any(), any());
+        verify(forifTeamService, never()).addFinalizedRecruitmentMember(any(), anyLong(), anyInt(), anyInt(), any());
     }
 }

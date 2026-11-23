@@ -21,15 +21,12 @@ import java.util.List;
  * 합격 처리는 면접 보드·지원서 보기에서 바로 하고, 명단 등록은 발표 시점에 맞춰 회장단이
  * 따로 누른다. 명단은 사이트 운영진 소개에 쓰이기 때문이다.
  * 등록 학기는 모집 회차의 활동 학기이고, 부서는 합격 때 배정한 부서다.
- * 실제 추가는 운영진 관리와 같은 {@link ForifTeamService#addMember}로 해서 권한 규칙을 그대로 따른다.
+ * 실제 추가는 운영진 관리 서비스를 사용한다. 차기 학기 SW 합격자는 확정된 결과에 한해 회장단이 등록할 수 있다.
  * 직급은 팀원으로 넣는다. 차기 회장·부회장·팀장은 회장단이 운영진 목록의 차기 탭에서 따로 지정한다.
  */
 @Service
 @RequiredArgsConstructor
 public class StaffInterviewStaffRegistrationService {
-
-    /** 합격자의 기본 직급. 회장단 직급이 아니라서 운영진 추가의 회장단 지정 규칙에 걸리지 않는다. */
-    static final String DEFAULT_TITLE = "팀원";
 
     private final StaffRecruitmentRepository staffRecruitmentRepository;
     private final StaffInterviewRecordRepository staffInterviewRecordRepository;
@@ -74,8 +71,8 @@ public class StaffInterviewStaffRegistrationService {
                 alreadyMembers.add(application.getApplicantName());
                 continue;
             }
-            forifTeamService.addMember(requesterId, applicant.getId(), year, semester,
-                    clubDepartmentName(record.getPassedDepartment()), DEFAULT_TITLE);
+            forifTeamService.addFinalizedRecruitmentMember(requesterId, applicant.getId(), year, semester,
+                    clubDepartmentName(record.getPassedDepartment()));
             registered.add(application.getApplicantName());
         }
         return new StaffRegistrationResult(year, semester, registered, alreadyMembers, withdrawn);
