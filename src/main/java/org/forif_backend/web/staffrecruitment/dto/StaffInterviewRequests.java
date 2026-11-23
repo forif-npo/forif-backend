@@ -11,7 +11,8 @@ public final class StaffInterviewRequests {
     private StaffInterviewRequests() {
     }
 
-    public record StatusRequest(@NotNull StaffInterviewStatus status) {
+    /** 합격이면 지원자의 1지망·2지망 중 배정할 모집 부서를 함께 보낸다. 지망이 하나면 생략할 수 있다. */
+    public record StatusRequest(@NotNull StaffInterviewStatus status, Integer departmentId) {
     }
 
     /** 빈 답변을 보내면 적어 둔 답변을 지운다. */
