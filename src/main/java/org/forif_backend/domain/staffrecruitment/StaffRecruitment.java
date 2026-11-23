@@ -74,6 +74,10 @@ public class StaffRecruitment extends BaseTimeEntity {
     @Column(name = "close_reason", length = 200)
     private String closeReason;
 
+    /** 면접 결과를 확정한 시각. 확정 후에는 합격 상태와 배정 부서를 바꾸지 않는다. */
+    @Column(name = "interview_results_finalized_at")
+    private LocalDateTime interviewResultsFinalizedAt;
+
     @Version
     @Column(nullable = false)
     private Long version;
@@ -251,6 +255,15 @@ public class StaffRecruitment extends BaseTimeEntity {
         this.publishedSlot = null;
         this.endedAt = (this.endsAt != null && !now.isBefore(this.endsAt)) ? this.endsAt : now;
         this.closeReason = reason;
+    }
+
+    public void finalizeInterviewResults(LocalDateTime now) {
+        if (this.status != StaffRecruitmentStatus.CLOSED) {
+            throw new ForifException(ErrorCode.STAFF_RECRUITMENT_INVALID_STATUS);
+        }
+        if (interviewResultsFinalizedAt == null) {
+            interviewResultsFinalizedAt = now;
+        }
     }
 
     /** 초안과 게시 중 회차를 취소한다. 취소 시각을 그대로 기록한다. */

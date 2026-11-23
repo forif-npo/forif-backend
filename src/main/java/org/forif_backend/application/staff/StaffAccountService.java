@@ -359,14 +359,6 @@ public class StaffAccountService {
         }
         PasswordUtils.validate(command.password());
 
-        SemesterInfo active = semesterService.getActive();
-        boolean existingSwTeamMember = forifTeamRepository.findByActYearAndActSemesterAndUserId(
-                        active.actYear(), active.actSemester(), command.userId())
-                .map(member -> isSwTeam(member.getClubDepartment())).orElse(false);
-        if (isSwTeam(command.affiliation()) || existingSwTeamMember) {
-            requireIncumbentPresident(requesterId);
-        }
-
         User user = userRepository.findById(command.userId())
                 .orElseThrow(() -> new ForifException(ErrorCode.USER_NOT_FOUND));
 
@@ -383,6 +375,7 @@ public class StaffAccountService {
         StaffAccount saved = staffAccountRepository.save(staffAccount);
 
         // 운영진 이력 기록 (StaffAccount 삭제 후에도 남아야 함)
+        SemesterInfo active = semesterService.getActive();
         int currentYear = active.actYear();
         int currentSemester = active.actSemester();
         if (!forifTeamRepository.existsByActYearAndActSemesterAndUserId(currentYear, currentSemester, user.getId())) {
@@ -448,12 +441,13 @@ public class StaffAccountService {
             refreshTokenService.deleteRefreshToken(targetUserId.toString(), StaffRole.ADMIN.getValue());
         }
         if (affiliation != null) {
+            String normalizedAffiliation = ClubDepartmentService.normalizeName(affiliation);
             String targetAuthority = authorityAffiliation(staffAccount);
-            if ("회장".equals(affiliation) || "부회장".equals(affiliation)
+            if ("회장".equals(normalizedAffiliation) || "부회장".equals(normalizedAffiliation)
                     || "회장".equals(targetAuthority) || "부회장".equals(targetAuthority)) {
                 throw new ForifException(ErrorCode.INSUFFICIENT_PERMISSION);
             }
-            staffAccount.updateAffiliation(affiliation);
+            staffAccount.updateAffiliation(normalizedAffiliation);
         }
 
         return staffAccount;

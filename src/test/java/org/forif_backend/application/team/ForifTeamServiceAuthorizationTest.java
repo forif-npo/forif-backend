@@ -1,6 +1,7 @@
 package org.forif_backend.application.team;
 
 import org.forif_backend.application.semester.SemesterService;
+import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staff.StaffAccountService;
 import org.forif_backend.application.user.UserService;
 import org.forif_backend.common.exception.ErrorCode;
@@ -22,6 +23,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -40,6 +43,67 @@ class ForifTeamServiceAuthorizationTest {
     @Mock private StaffAccountService staffAccountService;
     @Mock private ClubDepartmentService clubDepartmentService;
     @InjectMocks private ForifTeamService forifTeamService;
+
+    @Test
+    void presidentTeamCanRegisterFinalizedRecruitmentSw() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = forifTeamService.addFinalizedRecruitmentMember(OTHER_OPERATOR_ID, OWNER_ID, 2027, 1, "SW");
+
+        assertEquals("SW", result.clubDepartment());
+        assertEquals("팀원", result.userTitle());
+        verify(staffAccountService).requirePresidentTeam(OTHER_OPERATOR_ID);
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
+
+    @Test
+    void presidentTeamCanAddNextSemesterSw() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        when(clubDepartmentService.getOrCreate("SW팀")).thenReturn(ClubDepartment.create("SW"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = forifTeamService.addMember(OTHER_OPERATOR_ID, OWNER_ID, 2027, 1, "SW팀", "팀원");
+
+        assertEquals("SW", result.clubDepartment());
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
+
+    @Test
+    void presidentTeamCanAddCurrentSemesterSw() {
+        User applicant = User.createUser(OWNER_ID, "운영진", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = forifTeamService.addMember(OTHER_OPERATOR_ID, OWNER_ID, null, null, "SW", "팀원");
+
+        assertEquals("SW", result.clubDepartment());
+        assertEquals(2026, result.actYear());
+        assertEquals(2, result.actSemester());
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
+
+    @Test
+    void presidentTeamCanRegisterCurrentSemesterSw() {
+        User applicant = User.createUser(OWNER_ID, "합격자", "applicant@example.com", "01000000000", "컴퓨터학부");
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(userRepository.findUserById(OWNER_ID)).thenReturn(Optional.of(applicant));
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var result = forifTeamService.addFinalizedRecruitmentMember(OTHER_OPERATOR_ID, OWNER_ID, 2026, 2, "SW");
+
+        assertEquals("SW", result.clubDepartment());
+        verify(staffAccountService).requirePresidentTeam(OTHER_OPERATOR_ID);
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
+    }
 
     @Test
     void generalOperatorCanUpdateOnlyOwnPublicProfileFields() {
@@ -182,35 +246,29 @@ class ForifTeamServiceAuthorizationTest {
     }
 
     @Test
-    void nonIncumbentCannotAssignSwTeamMembership() {
+    void presidentTeamCanAssignSwTeamMembership() {
         ForifTeam member = team(OWNER_ID);
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
         when(staffAccountService.isPresidentTeam(OTHER_OPERATOR_ID)).thenReturn(true);
-        org.mockito.Mockito.doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
-                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+        when(clubDepartmentService.getOrCreate("SW")).thenReturn(ClubDepartment.create("SW"));
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID,
-                        null, "SW", null, null, null));
+        forifTeamService.updateMember(OTHER_OPERATOR_ID, TEAM_ID,
+                null, "SW", null, null, null);
 
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
-        assertEquals("개발팀", member.getClubDepartment());
+        assertEquals("SW", member.getClubDepartment());
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
     }
 
     @Test
-    void nonIncumbentCannotRemoveSwTeamMembership() {
+    void presidentTeamCanDeleteSwTeamMembership() {
         ForifTeam member = ForifTeam.create(
                 User.createUser(OWNER_ID, "운영진", "owner@example.com", "010-0000-0000", "컴퓨터학부"),
                 2026, 1, "SW");
         when(forifTeamRepository.findById(TEAM_ID)).thenReturn(Optional.of(member));
-        org.mockito.Mockito.doThrow(new ForifException(ErrorCode.INSUFFICIENT_PERMISSION))
-                .when(staffAccountService).requireIncumbentPresident(OTHER_OPERATOR_ID);
+        forifTeamService.deleteMember(OTHER_OPERATOR_ID, TEAM_ID);
 
-        ForifException denied = assertThrows(ForifException.class,
-                () -> forifTeamService.deleteMember(OTHER_OPERATOR_ID, TEAM_ID));
-
-        assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
-        verify(forifTeamRepository, never()).deleteById(TEAM_ID);
+        verify(forifTeamRepository).deleteById(TEAM_ID);
+        verify(staffAccountService, never()).requireIncumbentPresident(OTHER_OPERATOR_ID);
     }
 
     @Test

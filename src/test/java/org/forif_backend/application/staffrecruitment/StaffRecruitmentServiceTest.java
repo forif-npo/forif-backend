@@ -79,10 +79,10 @@ class StaffRecruitmentServiceTest {
 
     @Test
     void 학기를_지정하지_않으면_현재_활동_학기를_값으로_복사한다() {
-        ClubDepartment planning = ClubDepartment.create("기획팀");
+        ClubDepartment planning = ClubDepartment.create("기획");
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2027, 1));
         when(staffRecruitmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(planning);
+        when(clubDepartmentService.getOrCreate("기획")).thenReturn(planning);
 
         StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
                 null, null, "2027-1 운영진 모집", "요약", "안내", STARTS_AT, ENDS_AT,
@@ -95,7 +95,7 @@ class StaffRecruitmentServiceTest {
         assertThat(detail.semesterLabel()).isEqualTo("27-1");
         assertThat(detail.publicationStatus()).isEqualTo(StaffRecruitmentStatus.DRAFT);
         assertThat(detail.departments()).hasSize(1);
-        assertThat(detail.departments().get(0).name()).isEqualTo("기획팀");
+        assertThat(detail.departments().get(0).name()).isEqualTo("기획");
         ArgumentCaptor<StaffRecruitment> saved = ArgumentCaptor.forClass(StaffRecruitment.class);
         verify(staffRecruitmentRepository).save(saved.capture());
         assertThat(saved.getValue().getDepartments().get(0).getClubDepartment()).isSameAs(planning);
@@ -106,7 +106,7 @@ class StaffRecruitmentServiceTest {
     void 파일_문항의_내부_답변_길이는_클라이언트_값과_무관하게_설정한다() {
         when(semesterService.getActive()).thenReturn(SemesterInfo.of(2027, 1));
         when(staffRecruitmentRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(ClubDepartment.create("기획팀"));
+        when(clubDepartmentService.getOrCreate("기획")).thenReturn(ClubDepartment.create("기획"));
 
         StaffRecruitmentDetail detail = staffRecruitmentService.create(new CreateStaffRecruitmentCommand(
                 null, null, "2027-1 운영진 모집", null, "안내", STARTS_AT, ENDS_AT,
@@ -174,12 +174,12 @@ class StaffRecruitmentServiceTest {
         when(staffInterviewQuestionRepository.findAllByRecruitmentId(8)).thenReturn(List.of(
                 StaffInterviewQuestion.create(target, null, "공통 질문", 1),
                 StaffInterviewQuestion.create(target, target.getDepartments().get(0), "기획팀 질문", 1)));
-        when(clubDepartmentService.getOrCreate("기획팀")).thenReturn(ClubDepartment.create("기획팀"));
+        when(clubDepartmentService.getOrCreate("기획")).thenReturn(ClubDepartment.create("기획"));
 
         StaffRecruitmentDetail detail = staffRecruitmentService.update(8, updateKeepingDepartment(11));
 
         assertThat(detail.departments()).extracting(StaffRecruitmentDetail.DepartmentInfo::name)
-                .containsExactly("기획팀");
+                .containsExactly("기획");
     }
 
     private StaffRecruitment recruitmentWithDepartments(int recruitmentId) {
