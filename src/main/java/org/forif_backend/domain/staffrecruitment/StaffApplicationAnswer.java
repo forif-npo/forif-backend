@@ -38,15 +38,21 @@ public class StaffApplicationAnswer {
     @Column(columnDefinition = "TEXT")
     private String answer;
 
-    private StaffApplicationAnswer(StaffRecruitmentQuestion question, String answer) {
+    private StaffApplicationAnswer(StaffRecruitmentQuestion question, String answer,
+                                   StaffRecruitmentQuestionType answerType) {
         this.question = question;
         this.questionLabel = question.getLabel();
-        this.questionType = question.getType();
+        this.questionType = answerType;
         this.answer = answer;
     }
 
     public static StaffApplicationAnswer create(StaffRecruitmentQuestion question, String answer) {
-        return new StaffApplicationAnswer(question, answer);
+        return new StaffApplicationAnswer(question, answer, question.getType());
+    }
+
+    public static StaffApplicationAnswer createAttachment(StaffRecruitmentQuestion question, String answer,
+                                                          StaffRecruitmentQuestionType answerType) {
+        return new StaffApplicationAnswer(question, answer, answerType);
     }
 
     void assignTo(StaffApplication application) {

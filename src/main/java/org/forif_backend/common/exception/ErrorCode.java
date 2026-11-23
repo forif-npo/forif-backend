@@ -136,6 +136,8 @@ public enum ErrorCode {
     STAFF_INTERVIEW_QUESTION_ANSWERED(HttpStatus.CONFLICT, "FOR171-409", "답변이 적힌 면접 질문은 지울 수 없습니다. 내용을 고쳐 써 주세요."),
     STAFF_RECRUITMENT_STRUCTURE_LOCKED(HttpStatus.CONFLICT, "FOR164-409",
             "제출된 지원서가 있어 부서·문항을 지울 수 없습니다. 더 뽑지 않는 부서는 숨김으로 바꿔 주세요."),
+    STAFF_RECRUITMENT_DEPARTMENT_HAS_INTERVIEW_QUESTIONS(HttpStatus.CONFLICT, "FOR173-409",
+            "면접 질문이 등록된 부서입니다. 질문을 먼저 삭제해 주세요."),
     STAFF_APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR154-409", "이미 이 모집 회차에 지원했습니다."),
     STAFF_REVIEWER_ALREADY_EXISTS(HttpStatus.CONFLICT, "FOR159-409", "이미 이 회차의 열람 권한을 가지고 있습니다."),
     STAFF_REVIEWER_CONFLICT(HttpStatus.CONFLICT, "FOR160-409", "열람 권한을 부여할 수 없는 대상입니다."),

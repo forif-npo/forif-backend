@@ -3,6 +3,7 @@ package org.forif_backend.application.staff;
 import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staff.dto.CreateAdminCommand;
+import org.forif_backend.application.team.ClubDepartmentService;
 import org.forif_backend.common.auth.JwtProvider;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
@@ -11,6 +12,7 @@ import org.forif_backend.domain.staff.StaffAccountRepository;
 import org.forif_backend.domain.staff.StaffRole;
 import org.forif_backend.domain.team.ForifTeam;
 import org.forif_backend.domain.team.ForifTeamRepository;
+import org.forif_backend.domain.team.ClubDepartment;
 import org.forif_backend.domain.user.User;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +25,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,6 +38,7 @@ class StaffAccountServiceAuthorityTest {
     @Mock private SemesterService semesterService;
     @Mock private StaffAccountRepository staffAccountRepository;
     @Mock private ForifTeamRepository forifTeamRepository;
+    @Mock private ClubDepartmentService clubDepartmentService;
     @Mock private JwtProvider jwtProvider;
     @InjectMocks private StaffAccountService service;
 
@@ -56,6 +62,81 @@ class StaffAccountServiceAuthorityTest {
                     () -> service.delegate(USER_ID, 20260002L, role));
             assertEquals(ErrorCode.INSUFFICIENT_PERMISSION, denied.getErrorCode());
         }
+    }
+
+    @Test
+    void designatingNextPresidentKeepsIncumbentRoleAndReplacesPreviousDesignation() {
+        StaffAccount incumbent = StaffAccount.createStaffAccount(user(), "encoded", "현 회장", StaffRole.ADMIN, "회장");
+        Long previousId = 20260002L;
+        Long targetId = 20260003L;
+        User previousUser = User.createUser(previousId, "이전 차기 회장", "previous@example.com", "010-0000-0000", "컴퓨터학부");
+        User targetUser = User.createUser(targetId, "새 차기 회장", "target@example.com", "010-0000-0000", "컴퓨터학부");
+        StaffAccount target = StaffAccount.createStaffAccount(targetUser, "encoded", "새 차기 회장", StaffRole.ADMIN, "부회장");
+        ForifTeam previous = ForifTeam.create(previousUser, 2027, 1, "기획팀");
+        previous.update("회장", null, null, null, null);
+        ForifTeam next = ForifTeam.create(targetUser, 2027, 1, "회장단");
+        when(staffAccountRepository.findByUserIdAndRole(USER_ID, StaffRole.ADMIN)).thenReturn(Optional.of(incumbent));
+        when(staffAccountRepository.findByUserIdAndRole(targetId, StaffRole.ADMIN)).thenReturn(Optional.of(target));
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(forifTeamRepository.findByYearAndSemester(2027, 1)).thenReturn(List.of(previous, next));
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
+                .thenReturn(Optional.empty());
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2027, 1, targetId))
+                .thenReturn(Optional.of(next));
+
+        service.delegate(USER_ID, targetId, "회장");
+
+        assertEquals("회장", incumbent.getAffiliation());
+        assertEquals("부회장", target.getAffiliation());
+        assertEquals("", previous.getUserTitle());
+        assertEquals("회장", next.getUserTitle());
+        assertEquals("회장", service.getAuthorityAffiliation(targetId));
+        StaffAccount previousAccount = StaffAccount.createStaffAccount(
+                previousUser, "encoded", "이전 차기 회장", StaffRole.ADMIN, "운영진");
+        when(forifTeamRepository.findByYearAndSemester(2026, 2)).thenReturn(List.of());
+        var authorities = service.getAdminAuthorities(List.of(previousAccount, target));
+        assertNull(authorities.get(previousId).upcomingAffiliation());
+        assertEquals("운영진", authorities.get(previousId).affiliation());
+        assertEquals("회장", authorities.get(targetId).upcomingAffiliation());
+    }
+
+    @Test
+    void designatingNextVicePresidentAddsMissingNextSemesterMemberWithoutDemotingIncumbent() {
+        StaffAccount incumbent = StaffAccount.createStaffAccount(user(), "encoded", "현 회장", StaffRole.ADMIN, "회장");
+        Long viceId = 20260002L;
+        StaffAccount currentVice = StaffAccount.createStaffAccount(
+                User.createUser(viceId, "현 부회장", "vice@example.com", "010-0000-0000", "컴퓨터학부"),
+                "encoded", "현 부회장", StaffRole.ADMIN, "부회장");
+        Long targetId = 20260003L;
+        User targetUser = User.createUser(targetId, "차기 부회장", "target@example.com", "010-0000-0000", "컴퓨터학부");
+        StaffAccount target = StaffAccount.createStaffAccount(targetUser, "encoded", "차기 부회장", StaffRole.ADMIN, "운영진");
+        when(staffAccountRepository.findByUserIdAndRole(USER_ID, StaffRole.ADMIN)).thenReturn(Optional.of(incumbent));
+        when(staffAccountRepository.findByUserIdAndRole(targetId, StaffRole.ADMIN)).thenReturn(Optional.of(target));
+        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
+        when(forifTeamRepository.findByYearAndSemester(2027, 1)).thenReturn(List.of());
+        when(clubDepartmentService.getOrCreate("회장단")).thenReturn(ClubDepartment.create("회장단"));
+        when(forifTeamRepository.save(any(ForifTeam.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.delegate(USER_ID, targetId, "부회장");
+
+        var member = org.mockito.ArgumentCaptor.forClass(ForifTeam.class);
+        verify(forifTeamRepository).save(member.capture());
+        assertEquals(targetId, member.getValue().getUser().getId());
+        assertEquals(2027, member.getValue().getActYear());
+        assertEquals(1, member.getValue().getActSemester());
+        assertEquals("부회장", member.getValue().getUserTitle());
+        assertEquals("회장단", member.getValue().getClubDepartment());
+        assertEquals("회장", incumbent.getAffiliation());
+        assertEquals("부회장", currentVice.getAffiliation());
+        assertEquals("운영진", target.getAffiliation());
+        verify(staffAccountRepository, never()).findByAffiliation("부회장");
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2026, 2, targetId))
+                .thenReturn(Optional.empty());
+        when(forifTeamRepository.findByActYearAndActSemesterAndUserId(2027, 1, targetId))
+                .thenReturn(Optional.of(member.getValue()));
+        when(forifTeamRepository.findByYearAndSemester(2027, 1))
+                .thenReturn(List.of(member.getValue()));
+        assertEquals("부회장", service.getAuthorityAffiliation(targetId));
     }
 
     @Test

@@ -169,7 +169,8 @@ public class StaffRecruitment extends BaseTimeEntity {
     /** 부서와 같은 규칙으로 문항을 맞춘다. 제출된 답변이 있으면 문항 삭제를 거절한다. */
     public void mergeQuestions(List<StaffRecruitmentQuestionSpec> specs, boolean hasApplications) {
         requireDraft();
-        if (specs.stream().filter(spec -> spec.type() == StaffRecruitmentQuestionType.FILE).count() > 1) {
+        if (specs.stream().filter(spec -> spec.type() == StaffRecruitmentQuestionType.FILE
+                || spec.type() == StaffRecruitmentQuestionType.ATTACHMENT).count() > 1) {
             throw new ForifException(ErrorCode.INVALID_INPUT);
         }
 
