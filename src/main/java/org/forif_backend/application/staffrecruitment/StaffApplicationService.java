@@ -13,6 +13,7 @@ import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplication
 import org.forif_backend.common.dto.response.CursorPageResponse;
 import org.forif_backend.common.exception.ErrorCode;
 import org.forif_backend.common.exception.ForifException;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationAnswer;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationChoice;
@@ -231,7 +232,7 @@ public class StaffApplicationService {
     @Transactional(readOnly = true)
     public CursorPageResponse<StaffApplicationSummary> getAdminList(Integer recruitmentId, Integer departmentId,
                                                                     String search, Integer cursor, Integer page,
-                                                                    int size) {
+                                                                    int size, List<SortCriteria> sorting) {
         requireRecruitment(recruitmentId);
         String keyword = (search == null || search.isBlank()) ? null : search.trim();
         long totalElements = staffApplicationRepository.countForAdmin(recruitmentId, departmentId, keyword);
@@ -239,7 +240,7 @@ public class StaffApplicationService {
         CursorPageResponse<StaffApplication> applications = CursorPageResponse.paginate(
                 page, size, totalElements,
                 () -> staffApplicationRepository.findForAdminWithOffset(recruitmentId, departmentId, keyword,
-                        page == null ? 0 : page, size),
+                        page == null ? 0 : page, size, sorting),
                 () -> staffApplicationRepository.findForAdminWithCursor(recruitmentId, departmentId, keyword,
                         cursor, size),
                 StaffApplication::getId);

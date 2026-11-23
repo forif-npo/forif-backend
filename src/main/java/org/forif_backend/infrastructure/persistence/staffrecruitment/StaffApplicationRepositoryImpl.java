@@ -4,9 +4,13 @@ import lombok.RequiredArgsConstructor;
 import org.forif_backend.domain.staffrecruitment.StaffApplication;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationInterviewSlot;
 import org.forif_backend.domain.staffrecruitment.StaffApplicationRepository;
+import org.forif_backend.common.type.SortCriteria;
+import org.forif_backend.common.type.SortDirection;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,9 +83,26 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
 
     @Override
     public List<StaffApplication> findForAdminWithOffset(Integer recruitmentId, Integer departmentId, String search,
-                                                         int page, int size) {
-        return staffApplicationJpaRepository.findForAdmin(recruitmentId, departmentId, search, null,
-                PageRequest.of(page, size));
+                                                         int page, int size, List<SortCriteria> sorting) {
+        return staffApplicationJpaRepository.findForAdminPage(recruitmentId, departmentId, search,
+                PageRequest.of(page, size, adminSort(sorting)));
+    }
+
+    /** 허용 필드는 컨트롤러가 거른다. 같은 값끼리는 최신 제출(id 내림차순)이 먼저 오도록 id를 마지막에 둔다. */
+    private Sort adminSort(List<SortCriteria> sorting) {
+        List<Sort.Order> orders = new ArrayList<>();
+        for (SortCriteria criterion : sorting) {
+            String property = switch (criterion.field()) {
+                case "department" -> "applicantDepartment";
+                case "submittedAt" -> "submittedAt";
+                default -> throw new IllegalStateException("Unsupported staff application sort field: "
+                        + criterion.field());
+            };
+            orders.add(criterion.direction() == SortDirection.ASC
+                    ? Sort.Order.asc(property) : Sort.Order.desc(property));
+        }
+        orders.add(Sort.Order.desc("id"));
+        return Sort.by(orders);
     }
 
     @Override
