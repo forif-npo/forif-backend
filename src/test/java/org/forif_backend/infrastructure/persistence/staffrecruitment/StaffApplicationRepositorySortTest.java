@@ -45,7 +45,7 @@ class StaffApplicationRepositorySortTest {
     }
 
     @Test
-    void 정렬이_없으면_최신_제출부터_온다() {
+    void 정렬이_없으면_지원서_ID_내림차순으로_온다() {
         assertThat(departments(List.of())).containsExactly("다 학과", "가 학과", "나 학과");
     }
 

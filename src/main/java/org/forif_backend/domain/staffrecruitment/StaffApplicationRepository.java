@@ -39,7 +39,7 @@ public interface StaffApplicationRepository {
     /** 회장단 목록 — 부서 필터는 1·2지망 모두, 검색은 제출 당시 이름만 대상으로 한다. */
     long countForAdmin(Integer recruitmentId, Integer departmentId, String search);
 
-    /** sorting은 허용 필드(department, submittedAt)만 담고, 비어 있으면 최신 제출순이다. */
+    /** sorting은 허용 필드(department, submittedAt)만 담고, 비어 있으면 지원서 ID 내림차순이다. */
     List<StaffApplication> findForAdminWithOffset(Integer recruitmentId, Integer departmentId, String search,
                                                   int page, int size, List<SortCriteria> sorting);
 

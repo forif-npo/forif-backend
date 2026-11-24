@@ -88,7 +88,7 @@ public class StaffApplicationRepositoryImpl implements StaffApplicationRepositor
                 PageRequest.of(page, size, adminSort(sorting)));
     }
 
-    /** 허용 필드는 컨트롤러가 거른다. 같은 값끼리는 최신 제출(id 내림차순)이 먼저 오도록 id를 마지막에 둔다. */
+    /** 허용 필드는 컨트롤러가 거른다. 같은 값끼리는 ID 내림차순이 되도록 id를 마지막에 둔다. */
     private Sort adminSort(List<SortCriteria> sorting) {
         List<Sort.Order> orders = new ArrayList<>();
         for (SortCriteria criterion : sorting) {
