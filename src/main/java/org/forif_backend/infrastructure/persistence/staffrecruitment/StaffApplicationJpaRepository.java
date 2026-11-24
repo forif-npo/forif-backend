@@ -97,4 +97,17 @@ public interface StaffApplicationJpaRepository extends JpaRepository<StaffApplic
                                         @Param("search") String search,
                                         @Param("cursor") Integer cursor,
                                         Pageable pageable);
+
+    /** offset 목록. 정렬은 pageable의 Sort로 받는다(쿼리에 ORDER BY를 두면 Sort가 그 뒤에 붙어 무시된다). */
+    @Query("""
+            SELECT DISTINCT a FROM StaffApplication a
+            LEFT JOIN a.choices c
+            WHERE a.recruitment.id = :recruitmentId
+              AND (:departmentId IS NULL OR c.department.id = :departmentId)
+              AND (:search IS NULL OR a.applicantName LIKE CONCAT('%', :search, '%'))
+            """)
+    List<StaffApplication> findForAdminPage(@Param("recruitmentId") Integer recruitmentId,
+                                            @Param("departmentId") Integer departmentId,
+                                            @Param("search") String search,
+                                            Pageable pageable);
 }

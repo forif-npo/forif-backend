@@ -9,6 +9,7 @@ import org.forif_backend.application.staffrecruitment.StaffReviewerService;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
 import org.forif_backend.common.dto.response.ApiResponse;
 import org.forif_backend.common.dto.response.CursorPageResponse;
+import org.forif_backend.common.type.SortCriteria;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.DetailResponse;
 import org.forif_backend.web.staffrecruitment.dto.StaffApplicationResponse.SummaryResponse;
 import org.springframework.http.CacheControl;
@@ -21,6 +22,8 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Set;
 
 /**
  * 제출 지원서 조회.
@@ -50,13 +53,15 @@ public class AdminStaffApplicationController {
             @Parameter(description = "제출 당시 이름 검색") @RequestParam(required = false) String search,
             @Parameter(description = "커서 (이전 응답의 next_cursor)") @RequestParam(required = false) Integer cursor,
             @Parameter(description = "0부터 시작하는 페이지. 주면 오프셋 방식") @RequestParam(required = false) Integer page,
-            @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(defaultValue = "20") int size
+            @Parameter(description = "페이지 크기 (최대 100)") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "정렬 조건 \"필드:ASC|DESC\" (department, submittedAt). page를 지정한 offset 모드에서만 적용되며, cursor 모드에서는 무시된다.")
+            @RequestParam(value = "sort", required = false) List<String> sort
     ) {
         staffReviewerService.requireApplicationAccess(userId, recruitmentId);
 
         CursorPageResponse<StaffApplicationSummary> result =
                 staffApplicationService.getAdminList(recruitmentId, departmentId, search, cursor, page,
-                        clampSize(size));
+                        clampSize(size), SortCriteria.parse(sort, Set.of("department", "submittedAt")));
 
         return noStore(ApiResponse.success(
                 result.withContent(result.content().stream().map(SummaryResponse::from).toList())));
