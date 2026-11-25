@@ -75,6 +75,13 @@ public interface StudyUserJpaRepository extends JpaRepository<StudyUser, StudyUs
             SELECT CASE WHEN COUNT(su) > 0 THEN true ELSE false END
             FROM StudyUser su
             WHERE su.user.id = :userId
+            """)
+    boolean existsByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT CASE WHEN COUNT(su) > 0 THEN true ELSE false END
+            FROM StudyUser su
+            WHERE su.user.id = :userId
               AND su.study.actYear = :year
               AND su.study.actSemester = :semester
             """)

@@ -1,8 +1,6 @@
 package org.forif_backend.application.staffrecruitment;
 
-import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.file.port.out.FilePort;
-import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand;
 import org.forif_backend.application.staffrecruitment.dto.SubmitStaffApplicationCommand.AnswerCommand;
@@ -83,9 +81,6 @@ class StaffApplicationServiceTest {
 
     @Mock
     private StudyUserRepository studyUserRepository;
-
-    @Mock
-    private SemesterService semesterService;
 
     @Mock
     private FilePort filePort;
@@ -190,18 +185,18 @@ class StaffApplicationServiceTest {
     }
 
     @Test
-    void 본인_지원서_수정_가능_여부는_접수_상태와_현재_활동_여부로_판정한다() {
+    void 본인_지원서_수정_가능_여부는_접수_상태와_수강_이력으로_판정한다() {
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID)).thenReturn(Optional.of(openRecruitment()));
-        givenActiveMember();
+        givenStudyHistory();
         assertThat(staffApplicationService.canModifyMine(RECRUITMENT_ID, APPLICANT_ID)).isTrue();
 
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(APPLICANT_ID, 2026, 2))
+        when(studyUserRepository.existsByUserId(APPLICANT_ID))
                 .thenReturn(false);
         assertThat(staffApplicationService.canModifyMine(RECRUITMENT_ID, APPLICANT_ID)).isFalse();
     }
 
     @Test
-    void 모집이_마감되면_활동_부원도_수정할_수_없다() {
+    void 모집이_마감되면_수강_이력이_있어도_수정할_수_없다() {
         LocalDateTime now = LocalDateTime.now();
         when(staffRecruitmentRepository.findById(RECRUITMENT_ID))
                 .thenReturn(Optional.of(recruitment(now.minusDays(10), now.minusDays(1))));
@@ -218,7 +213,7 @@ class StaffApplicationServiceTest {
     @Test
     void 필수_파일_문항은_파일이_없으면_제출할_수_없다() {
         givenQuestionType(StaffRecruitmentQuestionType.FILE);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -231,7 +226,7 @@ class StaffApplicationServiceTest {
     @Test
     void 파일_문항은_5메가바이트_초과_파일을_거부한다() {
         givenQuestionType(StaffRecruitmentQuestionType.FILE);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf",
                 new byte[5 * 1024 * 1024 + 1]);
@@ -247,7 +242,7 @@ class StaffApplicationServiceTest {
     @Test
     void 파일_답변은_비공개_경로에_저장하고_상세에는_파일명만_표시한다() {
         givenQuestionType(StaffRecruitmentQuestionType.FILE);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf", new byte[]{1});
         String key = "staff-applications/12/123e4567-e89b-12d3-a456-426614174000-portfolio.pdf";
@@ -285,7 +280,7 @@ class StaffApplicationServiceTest {
     @Test
     void 링크_문항은_http_스킴만_허용한다() {
         givenQuestionType(StaffRecruitmentQuestionType.LINK);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -297,7 +292,7 @@ class StaffApplicationServiceTest {
     @Test
     void 첨부파일_문항은_링크_또는_파일_하나를_제출할_수_있다() {
         givenQuestionType(StaffRecruitmentQuestionType.ATTACHMENT);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -320,7 +315,7 @@ class StaffApplicationServiceTest {
     @Test
     void 첨부파일_문항은_링크와_파일을_동시에_받지_않는다() {
         givenQuestionType(StaffRecruitmentQuestionType.ATTACHMENT);
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         MockMultipartFile file = new MockMultipartFile("file_41", "portfolio.pdf", "application/pdf", new byte[]{1});
 
@@ -338,7 +333,7 @@ class StaffApplicationServiceTest {
         String oldKey = "staff-applications/12/old.pdf";
         StaffApplication application = existingApplication(recruitment, oldKey);
         ReflectionTestUtils.setField(application.getAnswers().get(0), "questionType", StaffRecruitmentQuestionType.FILE);
-        givenActiveMember();
+        givenStudyHistory();
 
         StaffApplicationDetail updated = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, "https://example.com/new"))),
@@ -349,9 +344,8 @@ class StaffApplicationServiceTest {
         verify(filePort).deleteFile(oldKey);
     }
 
-    private void givenActiveMember() {
-        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(APPLICANT_ID, 2026, 2)).thenReturn(true);
+    private void givenStudyHistory() {
+        when(studyUserRepository.existsByUserId(APPLICANT_ID)).thenReturn(true);
     }
 
     private void givenApplicantLoaded() {
@@ -377,7 +371,7 @@ class StaffApplicationServiceTest {
     @Test
     void 면접_가능_시간을_고르면_지원서에_함께_저장한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         givenInterviewPlan(true);
         when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -395,7 +389,7 @@ class StaffApplicationServiceTest {
     @Test
     void 같은_칸을_두_번_보내면_한_번만_저장한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         givenInterviewPlan(true);
         when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -411,7 +405,7 @@ class StaffApplicationServiceTest {
     @Test
     void 설정_범위_밖의_칸은_거절한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         givenInterviewPlan(true);
 
@@ -426,7 +420,7 @@ class StaffApplicationServiceTest {
     @Test
     void 필수인데_한_칸도_고르지_않으면_거절한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         givenInterviewPlan(true);
 
@@ -439,7 +433,7 @@ class StaffApplicationServiceTest {
     @Test
     void 면접_일정이_없는_회차에_칸을_보내면_거절한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         when(staffInterviewPlanRepository.findByRecruitmentId(RECRUITMENT_ID)).thenReturn(Optional.empty());
 
@@ -451,10 +445,8 @@ class StaffApplicationServiceTest {
     }
 
     @Test
-    void 이번_학기_활동_부원이_아니면_제출할_수_없다() {
+    void 스터디_수강_이력이_없으면_제출할_수_없다() {
         givenOpenRecruitment();
-        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
-        when(studyUserRepository.existsByUserIdAndStudyYearSemester(APPLICANT_ID, 2026, 2)).thenReturn(false);
 
         assertThatThrownBy(() -> staffApplicationService.submit(
                 RECRUITMENT_ID, APPLICANT_ID, command(firstChoiceOnly(), validAnswers())))
@@ -466,7 +458,7 @@ class StaffApplicationServiceTest {
     @Test
     void 같은_회차에_두_번_제출할_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         when(staffApplicationRepository.existsByRecruitmentIdAndApplicantId(RECRUITMENT_ID, APPLICANT_ID))
                 .thenReturn(true);
 
@@ -482,7 +474,7 @@ class StaffApplicationServiceTest {
         LocalDateTime now = LocalDateTime.now();
         when(staffRecruitmentRepository.findDetailById(RECRUITMENT_ID))
                 .thenReturn(Optional.of(recruitment(now.minusDays(10), now.minusDays(1))));
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(
@@ -495,7 +487,7 @@ class StaffApplicationServiceTest {
     @Test
     void 일지망이_없으면_제출할_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -507,7 +499,7 @@ class StaffApplicationServiceTest {
     @Test
     void 같은_부서를_두_지망에_넣을_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -520,7 +512,7 @@ class StaffApplicationServiceTest {
     @Test
     void 모집하지_않는_부서는_고를_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -532,7 +524,7 @@ class StaffApplicationServiceTest {
     @Test
     void 필수_문항에_답하지_않으면_제출할_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -544,7 +536,7 @@ class StaffApplicationServiceTest {
     @Test
     void 문항의_최대_길이를_넘으면_제출할_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -556,7 +548,7 @@ class StaffApplicationServiceTest {
     @Test
     void 다른_회차의_문항에는_답할_수_없다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
 
         assertThatThrownBy(() -> staffApplicationService.submit(RECRUITMENT_ID, APPLICANT_ID,
@@ -568,7 +560,7 @@ class StaffApplicationServiceTest {
     @Test
     void 제출하면_그_시점의_개인정보와_지망_답변을_저장한다() {
         givenOpenRecruitment();
-        givenActiveMember();
+        givenStudyHistory();
         givenApplicantLoaded();
         when(staffApplicationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -631,7 +623,7 @@ class StaffApplicationServiceTest {
     @Test
     void 접수_중인_본인_지원서는_지망과_답변을_수정한다() {
         StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
-        givenActiveMember();
+        givenStudyHistory();
 
         StaffApplicationDetail result = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(List.of(new ChoiceCommand(DEV_TEAM, 1)), validAnswers()), Map.of(), Set.of());
@@ -647,7 +639,7 @@ class StaffApplicationServiceTest {
         StaffRecruitment recruitment = openRecruitment();
         ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "required", false);
         StaffApplication application = existingApplication(recruitment, "기존 답변");
-        givenActiveMember();
+        givenStudyHistory();
 
         assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(firstChoiceOnly(), List.of()), Map.of(), Set.of()))
@@ -658,9 +650,8 @@ class StaffApplicationServiceTest {
     }
 
     @Test
-    void 이번_학기_활동_부원이_아니면_수정은_막고_취소는_허용한다() {
+    void 스터디_수강_이력이_없으면_수정은_막고_취소는_허용한다() {
         StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
-        when(semesterService.getActive()).thenReturn(SemesterInfo.of(2026, 2));
 
         assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(firstChoiceOnly(), validAnswers()), Map.of(), Set.of()))
@@ -675,7 +666,7 @@ class StaffApplicationServiceTest {
     @Test
     void 잘못된_수정_요청은_기존_지원서를_바꾸지_않는다() {
         StaffApplication application = existingApplication(openRecruitment(), "기존 답변");
-        givenActiveMember();
+        givenStudyHistory();
 
         assertThatThrownBy(() -> staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(List.of(new ChoiceCommand(CLOSED_TEAM, 1)), validAnswers()), Map.of(), Set.of()))
@@ -691,7 +682,7 @@ class StaffApplicationServiceTest {
         ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "type", StaffRecruitmentQuestionType.FILE);
         String oldKey = "staff-applications/12/old.pdf";
         existingApplication(recruitment, oldKey);
-        givenActiveMember();
+        givenStudyHistory();
         StaffApplicationDetail retained = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))), Map.of(), Set.of());
         assertThat(retained.answers().get(0).answer()).isEqualTo(oldKey);
@@ -714,7 +705,7 @@ class StaffApplicationServiceTest {
         ReflectionTestUtils.setField(recruitment.getQuestions().get(0), "required", false);
         String oldKey = "staff-applications/12/old.pdf";
         existingApplication(recruitment, oldKey);
-        givenActiveMember();
+        givenStudyHistory();
 
         StaffApplicationDetail updated = staffApplicationService.update(RECRUITMENT_ID, APPLICANT_ID,
                 command(firstChoiceOnly(), List.of(new AnswerCommand(MOTIVE_QUESTION, ""))),

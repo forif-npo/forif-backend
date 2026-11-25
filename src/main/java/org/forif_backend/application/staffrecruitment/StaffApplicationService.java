@@ -1,10 +1,8 @@
 package org.forif_backend.application.staffrecruitment;
 
 import lombok.RequiredArgsConstructor;
-import org.forif_backend.application.semester.SemesterService;
 import org.forif_backend.application.file.TransactionalFileCleanup;
 import org.forif_backend.application.file.port.out.FilePort;
-import org.forif_backend.application.semester.dto.SemesterInfo;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationDetail;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationInterviewSummary;
 import org.forif_backend.application.staffrecruitment.dto.StaffApplicationSummary;
@@ -64,7 +62,6 @@ public class StaffApplicationService {
     private final StaffInterviewRecordRepository staffInterviewRecordRepository;
     private final UserRepository userRepository;
     private final StudyUserRepository studyUserRepository;
-    private final SemesterService semesterService;
     private final FilePort filePort;
     private static final long MAX_ATTACHMENT_BYTES = 5L * 1024 * 1024;
     private static final String PRIVATE_FILE_DIRECTORY = "staff-applications";
@@ -85,7 +82,7 @@ public class StaffApplicationService {
             throw new ForifException(ErrorCode.STAFF_RECRUITMENT_NOT_FOUND);
         }
 
-        requireActiveMember(userId);
+        requireStudyHistory(userId);
         if (staffApplicationRepository.existsByRecruitmentIdAndApplicantId(recruitmentId, userId)) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_ALREADY_EXISTS);
         }
@@ -123,7 +120,7 @@ public class StaffApplicationService {
                                          SubmitStaffApplicationCommand command,
                                          Map<Integer, MultipartFile> files, Set<Integer> removedFileQuestionIds) {
         StaffApplication application = requireMutableMine(recruitmentId, userId);
-        requireActiveMember(userId);
+        requireStudyHistory(userId);
         StaffRecruitment recruitment = application.getRecruitment();
         List<StaffApplicationChoice> choices = createChoices(recruitment, command.departmentChoices());
         Set<Integer> currentQuestionIds = recruitment.getQuestions().stream()
@@ -217,7 +214,7 @@ public class StaffApplicationService {
     public boolean canModifyMine(Integer recruitmentId, Long userId) {
         return staffRecruitmentRepository.findById(recruitmentId)
                 .filter(recruitment -> recruitment.isApplicationOpen(LocalDateTime.now()))
-                .isPresent() && isActiveMember(userId);
+                .isPresent() && hasStudyHistory(userId);
     }
 
     @Transactional(readOnly = true)
@@ -291,20 +288,15 @@ public class StaffApplicationService {
 
     // ==================== 내부 ====================
 
-    /**
-     * 지원 자격은 현재 활동 학기의 수강 관계로 판정한다.
-     * 회비 납부 플래그만으로 판정하지 않는다. 등록 철회 시 해당 학기 관계가 삭제되기 때문이다.
-     */
-    private void requireActiveMember(Long userId) {
-        if (!isActiveMember(userId)) {
+    /** 학기에 관계없이 스터디 수강 이력이 한 번이라도 있는 회원만 지원할 수 있다. */
+    private void requireStudyHistory(Long userId) {
+        if (!hasStudyHistory(userId)) {
             throw new ForifException(ErrorCode.STAFF_APPLICATION_ELIGIBILITY_REQUIRED);
         }
     }
 
-    private boolean isActiveMember(Long userId) {
-        SemesterInfo active = semesterService.getActive();
-        return studyUserRepository.existsByUserIdAndStudyYearSemester(
-                userId, active.actYear(), active.actSemester());
+    private boolean hasStudyHistory(Long userId) {
+        return studyUserRepository.existsByUserId(userId);
     }
 
     private void requireRecruitment(Integer recruitmentId) {
