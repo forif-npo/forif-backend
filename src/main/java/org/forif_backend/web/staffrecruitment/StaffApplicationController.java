@@ -43,7 +43,7 @@ public class StaffApplicationController {
     private final StaffApplicationService staffApplicationService;
 
     @Operation(summary = "지원서 제출",
-            description = "이번 학기 활동 부원만 제출할 수 있습니다. 한 회차당 한 번만 제출됩니다.")
+            description = "스터디 수강 이력이 있는 회원만 제출할 수 있습니다. 한 회차당 한 번만 제출됩니다.")
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<SubmitResponse>> submit(
             @AuthenticationPrincipal Long userId,
