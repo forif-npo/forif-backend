@@ -21,6 +21,8 @@ public interface StudyUserRepository {
     /** 현재 활동 학기에서 부원을 제외할 때, 해당 학기의 모든 수강 관계를 삭제한다. */
     int deleteByUserIdAndStudyYearSemester(Long userId, int year, int semester);
 
+    boolean existsByUserId(Long userId);
+
     boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester);
 
     /** 해당 학기 수강생 수 (수료증 발급 현황 안내용) */

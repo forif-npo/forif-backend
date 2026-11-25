@@ -72,7 +72,7 @@ public enum ErrorCode {
     // 403 Forbidden
     INSUFFICIENT_PERMISSION(HttpStatus.FORBIDDEN, "FOR020-403", "권한이 없습니다."),
     NOT_STUDY_MENTOR(HttpStatus.FORBIDDEN, "FOR021-403", "해당 스터디의 멘토가 아닙니다."),
-    STAFF_APPLICATION_ELIGIBILITY_REQUIRED(HttpStatus.FORBIDDEN, "FOR153-403", "이번 학기 활동 부원만 운영진에 지원할 수 있습니다."),
+    STAFF_APPLICATION_ELIGIBILITY_REQUIRED(HttpStatus.FORBIDDEN, "FOR153-403", "스터디 수강 이력이 있는 회원만 운영진에 지원할 수 있습니다."),
     STAFF_REVIEWER_NOT_ALLOWED(HttpStatus.FORBIDDEN, "FOR158-403", "이 모집 회차의 지원서를 열람할 권한이 없습니다."),
     STUDY_NOT_IN_ACTIVE_SEMESTER(HttpStatus.FORBIDDEN, "FOR127-403", "지난 학기 스터디는 관리할 수 없습니다."),
     STUDY_APPLY_NOT_IN_ACTIVE_SEMESTER(HttpStatus.FORBIDDEN, "FOR129-403", "활동 학기가 아닌 스터디 신청은 취소할 수 없습니다."),

@@ -61,6 +61,11 @@ public class StudyUserRepositoryImpl implements StudyUserRepository {
     }
 
     @Override
+    public boolean existsByUserId(Long userId) {
+        return studyUserJpaRepository.existsByUserId(userId);
+    }
+
+    @Override
     public boolean existsByUserIdAndStudyYearSemester(Long userId, int year, int semester) {
         return studyUserJpaRepository.existsByUserIdAndStudyYearSemester(userId, year, semester);
     }
